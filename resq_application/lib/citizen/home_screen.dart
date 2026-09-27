@@ -150,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Timer? _activeCheckTimer;
   Map<String, dynamic>? _activeIncident;
+  List<dynamic> _dispatchedVehicles = [];
   String _activeVehicleCode = "BFP-001";
   String _activeStatusStr = "Pending";
 
@@ -193,24 +194,134 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }).toList();
 
     if (mounted) {
-      setState(() {
-        if (activeList.isNotEmpty) {
-          _activeIncident = activeList.first;
-          _activeStatusStr = (_activeIncident!['reqStatus'] ?? 'Pending').toString();
-          final plate = _activeIncident!['plateNo'];
-          final vType = _activeIncident!['vehicleType'];
-          if (plate != null && plate.toString().isNotEmpty) {
-            _activeVehicleCode = plate.toString();
-          } else if (vType != null && vType.toString().isNotEmpty) {
-            _activeVehicleCode = vType.toString();
-          } else {
-            _activeVehicleCode = "BFP-001";
-          }
-        } else {
-          _activeIncident = null;
+      if (activeList.isNotEmpty) {
+        final activeReq = activeList.first;
+        final reqId = activeReq['Req_ID'];
+        final dispatched = await FirebaseService.getDispatchedVehicles(reqId);
+
+        if (mounted) {
+          setState(() {
+            _activeIncident = activeReq;
+            _dispatchedVehicles = dispatched;
+            _activeStatusStr = (_activeIncident!['reqStatus'] ?? 'Pending').toString();
+
+            if (_dispatchedVehicles.isNotEmpty) {
+              final firstV = _dispatchedVehicles.first;
+              final p = firstV['plate_no'];
+              final vt = firstV['vehicle_type'];
+              _activeVehicleCode = (p != null && p.toString().isNotEmpty)
+                  ? p.toString()
+                  : ((vt != null && vt.toString().isNotEmpty) ? vt.toString() : "Unit Dispatched");
+            } else {
+              _activeVehicleCode = "BFP-001";
+            }
+
+            // Lock pin to reported active incident coordinates
+            final rawLat = double.tryParse((_activeIncident!['latitude'] ?? '').toString());
+            final rawLng = double.tryParse((_activeIncident!['longitude'] ?? '').toString());
+            if (rawLat != null && rawLng != null && rawLat.isFinite && rawLng.isFinite && !rawLat.isNaN && !rawLng.isNaN) {
+              _currentLocation = LatLng(rawLat, rawLng);
+            }
+          });
         }
-      });
+      } else {
+        if (mounted) {
+          setState(() {
+            _activeIncident = null;
+            _dispatchedVehicles = [];
+          });
+        }
+      }
     }
+  }
+
+  List<Marker> _buildDispatchedVehicleMarkers() {
+    if (!_hasActiveIncident || _dispatchedVehicles.isEmpty) return [];
+
+    final List<Marker> markers = [];
+    for (int i = 0; i < _dispatchedVehicles.length; i++) {
+      final v = _dispatchedVehicles[i];
+      if (v is! Map) continue;
+      final rawLat = double.tryParse((v['latitude'] ?? '').toString());
+      final rawLng = double.tryParse((v['longitude'] ?? '').toString());
+
+      // If live GPS coordinates are missing, position slightly offset from emergency pin for visibility
+      double vLat = (rawLat != null && rawLat.isFinite && !rawLat.isNaN)
+          ? rawLat
+          : (_currentLocation.latitude + (0.0015 * (i + 1)));
+      double vLng = (rawLng != null && rawLng.isFinite && !rawLng.isNaN)
+          ? rawLng
+          : (_currentLocation.longitude + (0.0015 * (i + 1)));
+
+      if (!vLat.isFinite || !vLng.isFinite || vLat.isNaN || vLng.isNaN) continue;
+
+      final plate = (v['plate_no'] ?? v['vehicle_type'] ?? 'Unit').toString();
+      final type = (v['vehicle_type'] ?? v['deptName'] ?? '').toString().toUpperCase();
+
+      Color color = const Color(0xFFEF4444); // BFP Red
+      IconData icon = Icons.local_fire_department_rounded;
+      if (type.contains('MED') || type.contains('AMBULANCE') || type.contains('CDRRMO')) {
+        color = const Color(0xFF2563EB); // CDRRMO Blue
+        icon = Icons.medical_services_rounded;
+      } else if (type.contains('POL') || type.contains('CRIME') || type.contains('PNP')) {
+        color = const Color(0xFF1E40AF); // PNP Navy
+        icon = Icons.local_police_rounded;
+      }
+
+      markers.add(
+        Marker(
+          point: LatLng(vLat, vLng),
+          width: 90,
+          height: 65,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                  border: Border.all(color: color, width: 1.5),
+                ),
+                child: Text(
+                  plate,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.4),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return markers;
   }
 
   Future<void> _requestDashboardPermissions() async {
@@ -223,8 +334,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ].request();
   }
 
+  Future<void> _updateLocationFromLatLng(LatLng point) async {
+    if (!mounted) return;
+    // Citizens cannot change/update location while an active incident is in progress
+    if (_hasActiveIncident) return;
+
+    LatLng safePoint = point;
+    if (!point.latitude.isFinite || !point.longitude.isFinite || point.latitude.isNaN || point.longitude.isNaN) {
+      safePoint = const LatLng(13.4210, 123.4142);
+    }
+
+    setState(() {
+      _currentLocation = safePoint;
+      _isLoadingLocation = true;
+    });
+    _mapController.move(safePoint, 16.0);
+
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        safePoint.latitude,
+        safePoint.longitude,
+      );
+
+      String barangay = placemarks.isNotEmpty
+          ? (placemarks[0].subLocality ?? placemarks[0].name ?? "")
+          : "";
+      String city = placemarks.isNotEmpty ? (placemarks[0].locality ?? placemarks[0].subAdministrativeArea ?? "") : "";
+
+      String formattedAddress = (barangay.isNotEmpty && city.isNotEmpty)
+          ? "$barangay, $city"
+          : (barangay.isNotEmpty ? barangay : (city.isNotEmpty ? city : "Iriga City"));
+
+      if (mounted) {
+        setState(() {
+          _currentAddressText = formattedAddress;
+          _isLoadingLocation = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
+  }
+
   Future<void> _initializeLiveTracking() async {
     if (!mounted) return;
+    // Do not override pin location if an active incident is in progress
+    if (_hasActiveIncident) return;
     setState(() => _isLoadingLocation = true);
 
     try {
@@ -244,42 +401,162 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return;
       }
 
+      // Try last known position first for instant response
+      Position? lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null && mounted) {
+        _updateLocationFromLatLng(LatLng(lastKnown.latitude, lastKnown.longitude));
+      }
+
       Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.best,
+          timeLimit: Duration(seconds: 10),
         ),
       );
 
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      String barangay = placemarks.isNotEmpty
-          ? (placemarks[0].subLocality ?? "")
-          : "";
-      String city = placemarks.isNotEmpty ? (placemarks[0].locality ?? "") : "";
-
-      String formattedAddress = (barangay.isNotEmpty)
-          ? "$barangay, $city"
-          : city;
-
-      if (!mounted) return;
-
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-        _currentAddressText = formattedAddress.isNotEmpty
-            ? formattedAddress
-            : "Location Found";
-        _isLoadingLocation = false;
-      });
-
-      _mapController.move(_currentLocation, 16.0);
+      _updateLocationFromLatLng(LatLng(position.latitude, position.longitude));
     } catch (e) {
       if (mounted) {
         setState(() => _isLoadingLocation = false);
       }
     }
+  }
+
+  void _showFullScreenMapDialog() {
+    final LatLng safeLocation = (_currentLocation.latitude.isFinite &&
+            _currentLocation.longitude.isFinite &&
+            !_currentLocation.latitude.isNaN &&
+            !_currentLocation.longitude.isNaN)
+        ? _currentLocation
+        : const LatLng(13.4210, 123.4142);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final MapController fullScreenMapController = MapController();
+        return Dialog.fullscreen(
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 1,
+              leading: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Color(0xFF0F172A)),
+                onPressed: () => Navigator.of(dialogContext).pop(),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _hasActiveIncident ? "Active Incident Location" : "Location Selector Map",
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                  Text(
+                    _hasActiveIncident
+                        ? "Location locked for current emergency report"
+                        : "Tap anywhere on map to set emergency pin",
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+              actions: [
+                if (!_hasActiveIncident)
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.check_circle_rounded, color: Color(0xFFFF5200)),
+                    label: const Text(
+                      "Confirm Location",
+                      style: TextStyle(color: Color(0xFFFF5200), fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+            body: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Stack(
+                  children: [
+                    FlutterMap(
+                      mapController: fullScreenMapController,
+                      options: MapOptions(
+                        initialCenter: safeLocation,
+                        initialZoom: 16.5,
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all,
+                        ),
+                        onTap: _hasActiveIncident
+                            ? null
+                            : (tapPosition, point) {
+                                if (point.latitude.isFinite &&
+                                    point.longitude.isFinite &&
+                                    !point.latitude.isNaN &&
+                                    !point.longitude.isNaN) {
+                                  _updateLocationFromLatLng(point);
+                                  setDialogState(() {});
+                                }
+                              },
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.resq',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: safeLocation,
+                              width: 60,
+                              height: 60,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: brandOrange.withValues(alpha: 0.3),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.location_on_rounded,
+                                    color: Color(0xFFFF5200),
+                                    size: 38,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ..._buildDispatchedVehicleMarkers(),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    if (!_hasActiveIncident)
+                      Positioned(
+                        bottom: 24,
+                        right: 16,
+                        child: FloatingActionButton.extended(
+                          heroTag: 'recenter_gps',
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF0F172A),
+                          onPressed: () async {
+                            await _initializeLiveTracking();
+                            if (_currentLocation.latitude.isFinite && _currentLocation.longitude.isFinite) {
+                              fullScreenMapController.move(_currentLocation, 16.5);
+                            }
+                            setDialogState(() {});
+                          },
+                          icon: const Icon(Icons.my_location_rounded, color: Color(0xFFFF5200)),
+                          label: const Text("My GPS Location", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showAttachmentSourcePicker() async {
@@ -580,9 +857,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 8),
 
-              // Map View
+              // Map View with Moveable Map & Fullscreen Option
               Container(
-                height: 180,
+                height: 200,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -593,11 +870,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
-                        initialCenter: _currentLocation,
-                        initialZoom: 15.5,
+                        initialCenter: (_currentLocation.latitude.isFinite && _currentLocation.longitude.isFinite)
+                            ? _currentLocation
+                            : const LatLng(13.4210, 123.4142),
+                        initialZoom: 16.0,
                         interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.none,
+                          flags: InteractiveFlag.all,
                         ),
+                        onTap: _hasActiveIncident ? null : (tapPosition, point) => _updateLocationFromLatLng(point),
                       ),
                       children: [
                         TileLayer(
@@ -608,7 +888,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         MarkerLayer(
                           markers: [
                             Marker(
-                              point: _currentLocation,
+                              point: (_currentLocation.latitude.isFinite && _currentLocation.longitude.isFinite)
+                                  ? _currentLocation
+                                  : const LatLng(13.4210, 123.4142),
                               width: 60,
                               height: 60,
                               child: AnimatedBuilder(
@@ -646,9 +928,78 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ),
                             ),
+                            ..._buildDispatchedVehicleMarkers(),
                           ],
                         ),
                       ],
+                    ),
+
+                    // Top Right Controls: GPS Recenter & Fullscreen Map
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Row(
+                        children: [
+                          if (!_hasActiveIncident) ...[
+                            Material(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              elevation: 2,
+                              child: InkWell(
+                                onTap: _initializeLiveTracking,
+                                borderRadius: BorderRadius.circular(10),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(Icons.my_location_rounded, size: 20, color: Color(0xFFFF5200)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            elevation: 2,
+                            child: InkWell(
+                              onTap: _showFullScreenMapDialog,
+                              borderRadius: BorderRadius.circular(10),
+                              child: const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: Icon(Icons.fullscreen_rounded, size: 20, color: Color(0xFF0F172A)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Bottom Left Touch Hint
+                    Positioned(
+                      bottom: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _hasActiveIncident ? Icons.lock_rounded : Icons.touch_app_rounded,
+                              size: 12,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _hasActiveIncident
+                                  ? "Active Emergency Location (Locked)"
+                                  : "Moveable Map · Tap to set pin",
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

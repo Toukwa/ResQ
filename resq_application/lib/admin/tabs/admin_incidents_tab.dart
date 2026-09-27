@@ -5,6 +5,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../admin_service.dart';
 import '../../config.dart';
+import '../../shared/image_gallery_widget.dart';
 
 // ==========================================
 // DB DATA MODEL (MAPPED EXACTLY TO resq_db)
@@ -105,13 +106,45 @@ class EmergencyRequestModel {
   }
 
   factory EmergencyRequestModel.fromMap(Map<String, dynamic> map) {
-    // Format request ID based on timestamp and ID
-    DateTime date = DateTime.now();
-    if (map['SOS_timeStamp'] != null) {
-      date = DateTime.tryParse(map['SOS_timeStamp'].toString()) ?? date;
-    } else if (map['rawTimestamp'] != null) {
-      date = DateTime.tryParse(map['rawTimestamp'].toString()) ?? date;
+    DateTime parseTimestamp(Map<String, dynamic> m) {
+      final val = m['SOS_timeStamp'] ??
+          m['sos_timestamp'] ??
+          m['sos_timeStamp'] ??
+          m['rawTimestamp'] ??
+          m['created_at'] ??
+          m['createdAt'] ??
+          m['timeString'] ??
+          m['time'] ??
+          m['Time'] ??
+          m['timestamp'] ??
+          m['date_created'] ??
+          m['date'];
+      if (val == null) return DateTime.now();
+      if (val is DateTime) return val.toLocal();
+
+      final str = val.toString().trim();
+      if (str.isEmpty || str == 'null') return DateTime.now();
+
+      final dt = DateTime.tryParse(str);
+      if (dt != null) return dt.toLocal();
+
+      final ms = int.tryParse(str);
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms > 10000000000 ? ms : ms * 1000).toLocal();
+      }
+
+      final timeMatch = RegExp(r'^(\d{1,2}):(\d{2})(?::\d{2})?$').firstMatch(str);
+      if (timeMatch != null) {
+        final now = DateTime.now();
+        final h = int.parse(timeMatch.group(1)!);
+        final min = int.parse(timeMatch.group(2)!);
+        return DateTime(now.year, now.month, now.day, h, min);
+      }
+
+      return DateTime.now();
     }
+
+    final date = parseTimestamp(map);
     final dateCode = DateFormat('yyMMdd').format(date);
     final dailySeq = map['dailySeq'] ?? map['id'] ?? 1;
     final formattedReqId = 'REQ-$dateCode-${dailySeq.toString().padLeft(3, '0')}';
@@ -131,9 +164,7 @@ class EmergencyRequestModel {
       imagePath: map['image_path'] ?? map['imagePath'] ?? '',
       latitude: double.tryParse(map['latitude'].toString()) ?? 0.0,
       longitude: double.tryParse(map['longitude'].toString()) ?? 0.0,
-      sosTimeStamp:
-          DateTime.tryParse(map['SOS_timeStamp'].toString()) ?? 
-          DateTime.tryParse(map['rawTimestamp'].toString()) ?? DateTime.now(),
+      sosTimeStamp: date,
       reqStatus: map['reqStatus'] ?? map['status'] ?? 'Pending',
       citizenName: map['userName'] ?? map['residentName'] ?? 'Citizen User',
       contactNo: map['contactNo'] ?? map['phoneNumber'] ?? 'N/A',
@@ -875,60 +906,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
     }
   }
 
-  String _getFullImageUrl(String imagePath) {
-    if (imagePath.isEmpty) return '';
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-    final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    return '${AppConfig.baseUrl}/$cleanPath';
-  }
 
-  void _showFullScreenImage(String imagePath) {
-    if (imagePath.isEmpty) return;
-    
-    final fullImageUrl = _getFullImageUrl(imagePath);
-    
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.9),
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.zero,
-          child: Stack(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Center(
-                  child: Image.network(
-                    fullImageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Text(
-                          "Failed to load image",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 40,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 32),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildModalHeader(BuildContext context, EmergencyRequestModel req) {
     IconData incidentIcon;
@@ -1162,74 +1140,12 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (incident.imagePath.isNotEmpty) ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Stack(
-                                children: [
-                                  Image.network(
-                                    _getFullImageUrl(incident.imagePath),
-                                    height: 220,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        height: 220,
-                                        color: const Color(0xFFF1F5F9),
-                                        child: const Center(
-                                          child: Text("Image not available", style: TextStyle(color: Color(0xFF94A3B8))),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  Positioned.fill(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.transparent,
-                                            Colors.black.withValues(alpha: 0.75),
-                                          ],
-                                          stops: const [0.5, 1.0],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 12,
-                                    left: 12,
-                                    right: 12,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.linked_camera_outlined, color: Colors.white, size: 14),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              "Scene Photo · ${incident.formattedReqId ?? incident.formattedIncId}",
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Text(
-                                          incident.formattedTime,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            IncidentImageGallery(
+                              rawImagePath: incident.imagePath,
+                              label: 'SCENE PHOTO',
+                              captionLeft: 'Scene Photo · ${incident.formattedReqId ?? incident.formattedIncId}',
+                              captionRight: incident.formattedTime,
+                              imageHeight: 220,
                             ),
                             const SizedBox(height: 20),
                           ],
@@ -1857,70 +1773,12 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                         ),
                         const SizedBox(height: 12),
                         if (req.imagePath.isNotEmpty) ...[
-                          const Text("SUBMITTED PHOTO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () => _showFullScreenImage(req.imagePath),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Stack(
-                                children: [
-                                  Image.network(
-                                    _getFullImageUrl(req.imagePath),
-                                    height: 180,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        height: 180,
-                                        color: const Color(0xFFF1F5F9),
-                                        child: const Center(
-                                          child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        height: 180,
-                                        color: const Color(0xFFF1F5F9),
-                                        child: Center(
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              const Text("Image not available", style: TextStyle(color: Color(0xFF94A3B8))),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                "Path: ${req.imagePath}",
-                                                style: const TextStyle(fontSize: 8, color: Color(0xFF64748B)),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  Positioned(
-                                    bottom: 8,
-                                    left: 8,
-                                    right: 8,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "Submitted by ${req.citizenName}",
-                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500, shadows: [Shadow(blurRadius: 4, color: Colors.black)]),
-                                        ),
-                                        Text(
-                                          req.formattedTime,
-                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500, shadows: [Shadow(blurRadius: 4, color: Colors.black)]),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          IncidentImageGallery(
+                            rawImagePath: req.imagePath,
+                            label: 'SUBMITTED PHOTO',
+                            captionLeft: 'Submitted by ${req.citizenName}',
+                            captionRight: req.formattedTime,
+                            imageHeight: 180,
                           ),
                         ] else ...[
                           const SizedBox(height: 12),
@@ -1931,16 +1789,9 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                               color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("SUBMITTED PHOTO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "No image available (Path: ${req.imagePath})",
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                ),
-                              ],
+                            child: const Text(
+                              'No image submitted',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                             ),
                           ),
                         ],

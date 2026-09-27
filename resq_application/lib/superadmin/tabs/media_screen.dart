@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:async';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
+import '../../shared/image_gallery_widget.dart';
 
 class MediaScreen extends StatefulWidget {
   // 1. Declare the search parameter variable
@@ -127,9 +128,27 @@ class _MediaScreenState extends State<MediaScreen> {
         FirebaseService.getActiveIncidents().timeout(const Duration(seconds: 10)),
       ]);
 
-      final newMediaItems = results[0].map((item) => item as Map<String, dynamic>).toList();
+      final rawItems = results[0].map((item) => item as Map<String, dynamic>).toList();
       final newIncidentFilters = results[1].map((item) => item as Map<String, dynamic>).toList();
       final incidentsData = results[2];
+
+      // Expand comma-separated image paths into individual media items
+      final newMediaItems = <Map<String, dynamic>>[];
+      for (var item in rawItems) {
+        final imgPath = item['imagePath']?.toString() ?? item['image_path']?.toString() ?? '';
+        final paths = imgPath.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+        if (paths.length <= 1) {
+          newMediaItems.add(item);
+        } else {
+          for (int i = 0; i < paths.length; i++) {
+            final copy = Map<String, dynamic>.from(item);
+            copy['imagePath'] = paths[i];
+            copy['image_path'] = paths[i];
+            copy['filename'] = '${item['filename'] ?? 'Photo'} (${i + 1}/${paths.length})';
+            newMediaItems.add(copy);
+          }
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -715,7 +734,14 @@ class _MediaScreenState extends State<MediaScreen> {
                       children: [
                         // Actual Image from Database
                         Positioned.fill(
-                          child: Image.network(
+                          child: GestureDetector(
+                            onTap: () {
+                              final imgUrl = _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? '');
+                              if (imgUrl.isNotEmpty) {
+                                showImageGalleryDialog(context, images: [imgUrl]);
+                              }
+                            },
+                            child: Image.network(
                             _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? ''),
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
@@ -742,6 +768,7 @@ class _MediaScreenState extends State<MediaScreen> {
                             },
                           ),
                         ),
+                      ),
                         // Close Button (Top Right)
                         Positioned(
                           top: 14,

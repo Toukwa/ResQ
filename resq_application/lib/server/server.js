@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const PDFDocument = require('pdfkit');
 
 // Nodemailer SMTP Transporter setup
 let mailTransporter = null;
@@ -784,6 +785,18 @@ app.get('/api/admin/active-incidents-list', async (req, res) => {
       LEFT JOIN department dept ON v.dept_ID = dept.dept_ID
       ORDER BY e.SOS_timeStamp DESC
     `);
+    for (const incident of rows) {
+      const [deptRows] = await db.query(
+        'SELECT dept_name, status FROM incident_department_status WHERE req_ID = ?',
+        [incident.Req_ID]
+      );
+      if (deptRows.length === 0) {
+        const involved = getInvolvedDepartments(incident.incType);
+        incident.department_statuses = involved.map(d => ({ dept_name: d, status: incident.reqStatus || 'Pending' }));
+      } else {
+        incident.department_statuses = deptRows;
+      }
+    }
     res.json({ success: true, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -818,6 +831,170 @@ app.get('/api/admin/activity-logs', async (req, res) => {
   } catch (err) {
     console.error('Activity logs error:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Export Audit Logs ZIP package (Full-Day PDF report in DESC order + Evidence Photos Folder)
+app.get('/api/admin/export-audit-logs-zip', async (req, res) => {
+  try {
+    const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+    const startOfDay = `${targetDate} 00:00:00`;
+    const endOfDay = `${targetDate} 23:59:59`;
+
+    // 1. Fetch ALL system logs for the whole day ordered by DESCENDING timestamp (no limit!)
+    const [logRows] = await db.query(`
+      SELECT 
+        sl.log_id,
+        sl.user_ID,
+        sl.user_role,
+        sl.action,
+        sl.entity_type,
+        sl.entity_id,
+        sl.status,
+        sl.details,
+        sl.ip_address,
+        sl.timestamp,
+        COALESCE(r.userName, sl.user_role, 'System') as actor_display,
+        r.role as userRole
+      FROM system_logs sl
+      LEFT JOIN resident r ON sl.user_ID = r.Citizen_ID
+      WHERE sl.timestamp >= ? AND sl.timestamp <= ?
+        AND (sl.action NOT LIKE '% /api/%' AND sl.action NOT LIKE '% undefined%')
+      ORDER BY sl.timestamp DESC, sl.log_id DESC
+    `, [startOfDay, endOfDay]);
+
+    // 2. Fetch ALL emergency requests created on that day with uploaded photos
+    const [incidents] = await db.query(`
+      SELECT Req_ID, incType, image_path, SOS_timeStamp
+      FROM emergency_request
+      WHERE SOS_timeStamp >= ? AND SOS_timeStamp <= ?
+    `, [startOfDay, endOfDay]);
+
+    // 3. Setup ZIP Archiver stream
+    const { ZipArchive } = await import('archiver');
+    const archive = new ZipArchive({ zlib: { level: 9 } });
+    const zipFileName = `AuditLogs(${targetDate}).zip`;
+    const pdfFileName = `AuditLogs(${targetDate}).pdf`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
+
+    archive.pipe(res);
+
+    // 4. Generate PDF Document in memory using PDFKit
+    const doc = new PDFDocument({ margin: 36, size: 'A4' });
+    const pdfBuffers = [];
+    doc.on('data', chunk => pdfBuffers.push(chunk));
+
+    // PDF Header & Branding
+    doc.fillColor('#FF5200').fontSize(18).text('ResQ Emergency Operations Center', { align: 'left' });
+    doc.fillColor('#64748B').fontSize(10).text('OFFICIAL SYSTEM AUDIT LOG & COMPLIANCE REPORT', { align: 'left' });
+    doc.moveDown(0.5);
+
+    doc.strokeColor('#E2E8F0').lineWidth(1).moveTo(36, doc.y).lineTo(559, doc.y).stroke();
+    doc.moveDown(0.8);
+
+    doc.fillColor('#0F172A').fontSize(11).text(`Report Date: ${targetDate}`);
+    doc.fillColor('#475569').fontSize(10).text(`Total Audit Records: ${logRows.length} event(s) (Full-Day Scope)`);
+    doc.text(`Report Generated: ${new Date().toLocaleString()}`);
+    doc.moveDown(1);
+
+    if (logRows.length === 0) {
+      doc.fillColor('#94A3B8').fontSize(12).text('No audit log records found for the selected date.', { align: 'center' });
+    } else {
+      // Table Header
+      let y = doc.y;
+      doc.rect(36, y, 523, 20).fill('#1E293B');
+      doc.fillColor('#FFFFFF').fontSize(8);
+      doc.text('ID', 42, y + 6, { width: 35 });
+      doc.text('Timestamp', 80, y + 6, { width: 95 });
+      doc.text('Actor / Role', 180, y + 6, { width: 100 });
+      doc.text('Action / Event', 285, y + 6, { width: 110 });
+      doc.text('Status', 400, y + 6, { width: 50 });
+      doc.text('Details Payload', 455, y + 6, { width: 100 });
+      doc.y = y + 24;
+
+      // Render Rows in DESCENDING Order
+      for (let i = 0; i < logRows.length; i++) {
+        const log = logRows[i];
+        if (doc.y > 750) {
+          doc.addPage();
+        }
+
+        const currentY = doc.y;
+        const isEven = i % 2 === 0;
+        doc.rect(36, currentY, 523, 30).fill(isEven ? '#FFFFFF' : '#F8FAFC');
+
+        const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
+        const actor = `${log.actor_display || 'System'} (${log.user_role || 'Sys'})`;
+        const action = String(log.action || '').substring(0, 28);
+        const status = String(log.status || 'INFO').toUpperCase();
+        
+        let detailsStr = '';
+        if (log.details) {
+          try {
+            detailsStr = typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details);
+          } catch (_) {
+            detailsStr = String(log.details);
+          }
+        }
+        const refStr = log.entity_type ? `${log.entity_type} #${log.entity_id || ''} ${detailsStr}` : detailsStr;
+
+        doc.fillColor('#0F172A').fontSize(7.5);
+        doc.text(String(log.log_id || (i + 1)), 42, currentY + 6, { width: 35 });
+        doc.text(dateStr, 80, currentY + 6, { width: 95 });
+        doc.text(actor, 180, currentY + 6, { width: 100 });
+        doc.text(action, 285, currentY + 6, { width: 110 });
+
+        const statusColor = status === 'SUCCESS' ? '#16A34A' : (status === 'FAILED' ? '#DC2626' : '#D97706');
+        doc.fillColor(statusColor).text(status, 400, currentY + 6, { width: 50 });
+        doc.fillColor('#475569').text(refStr.substring(0, 45), 455, currentY + 6, { width: 100 });
+
+        doc.y = currentY + 32;
+      }
+    }
+
+    doc.end();
+
+    const pdfBuffer = await new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(pdfBuffers)));
+    });
+
+    // Add PDF file to ZIP archive inside root folder
+    const folderName = `AuditLogs(${targetDate})`;
+    const pdfZipPath = `${folderName}/${pdfFileName}`;
+    archive.append(pdfBuffer, { name: pdfZipPath });
+
+    // 5. Add Evidence Photos to `evidence_photos/` folder inside root folder of ZIP
+    const uploadDir = path.join(__dirname, 'uploads');
+    let photoCount = 0;
+
+    for (const inc of incidents) {
+      if (inc.image_path) {
+        const paths = String(inc.image_path).split(',');
+        for (let idx = 0; idx < paths.length; idx++) {
+          const rawPath = paths[idx].trim();
+          if (!rawPath) continue;
+          const cleanName = path.basename(rawPath);
+          const fullPath = path.join(uploadDir, cleanName);
+
+          if (fs.existsSync(fullPath)) {
+            const ext = path.extname(cleanName) || '.jpg';
+            const zipPhotoName = `${folderName}/evidence_photos/REQ-${String(inc.Req_ID).padStart(4, '0')}_photo${idx + 1}${ext}`;
+            archive.file(fullPath, { name: zipPhotoName });
+            photoCount++;
+          }
+        }
+      }
+    }
+
+    console.log(`[ZIP EXPORT SUCCESS] Created ${zipFileName} containing ${logRows.length} logs & ${photoCount} evidence photos`);
+    await archive.finalize();
+  } catch (err) {
+    console.error('[ZIP EXPORT ERROR]:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   }
 });
 
@@ -911,6 +1088,41 @@ app.get('/api/admin/incident-dispatch/:reqId', async (req, res) => {
       LIMIT 1
     `, [reqId]);
     res.json({ success: true, data: rows.length > 0 ? rows[0] : null });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET all dispatched vehicles & live telemetry assigned specifically to a citizen's emergency request
+app.get('/api/citizen/dispatched-vehicles/:reqId', async (req, res) => {
+  try {
+    const reqId = req.params.reqId;
+    const [rows] = await db.query(`
+      SELECT 
+        d.Disp_ID as dispatchId,
+        d.Req_ID as reqId,
+        d.Vehicle_ID as vehicleId,
+        d.Dispatch_timeStamp as dispatchTime,
+        d.status as dispatchStatus,
+        v.plate_no,
+        v.vehicle_type,
+        COALESCE(v.status, 'Dispatched') as vehicleStatus,
+        dept.deptName,
+        dept.agencyType,
+        vl.latitude,
+        vl.longitude,
+        vl.speed_kph,
+        vl.course_deg,
+        vl.fix_timestamp
+      FROM dispatch_event d
+      INNER JOIN response_vehicle v ON d.Vehicle_ID = v.vehicle_ID
+      LEFT JOIN department dept ON v.dept_ID = dept.dept_ID
+      LEFT JOIN vehicle_location vl ON v.vehicle_ID = vl.vehicle_ID
+      WHERE d.Req_ID = ? AND d.status != 'Cancelled'
+      ORDER BY d.Dispatch_timeStamp DESC
+    `, [reqId]);
+
+    res.json({ success: true, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

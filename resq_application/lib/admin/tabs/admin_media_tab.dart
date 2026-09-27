@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:async';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
+import '../../shared/image_gallery_widget.dart';
 
 class AdminMediaTab extends StatefulWidget {
   final String searchFilter;
@@ -178,9 +179,27 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
         FirebaseService.getActiveIncidents().timeout(const Duration(seconds: 10)),
       ]);
 
-      var newMediaItems = results[0].map((item) => item as Map<String, dynamic>).toList();
+      var rawItems = results[0].map((item) => item as Map<String, dynamic>).toList();
       // unused filters omitted
       final incidentsData = results[2];
+
+      // Expand comma-separated image paths into individual media items
+      var newMediaItems = <Map<String, dynamic>>[];
+      for (var item in rawItems) {
+        final imgPath = item['imagePath']?.toString() ?? item['image_path']?.toString() ?? '';
+        final paths = imgPath.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+        if (paths.length <= 1) {
+          newMediaItems.add(item);
+        } else {
+          for (int i = 0; i < paths.length; i++) {
+            final copy = Map<String, dynamic>.from(item);
+            copy['imagePath'] = paths[i];
+            copy['image_path'] = paths[i];
+            copy['filename'] = '${item['filename'] ?? 'Photo'} (${i + 1}/${paths.length})';
+            newMediaItems.add(copy);
+          }
+        }
+      }
 
       // Strictly filter media items by department jurisdiction
       newMediaItems = newMediaItems.where((item) => _isMediaForDepartment(item)).toList();
@@ -651,17 +670,25 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                     child: Stack(
                       children: [
                         Positioned.fill(
-                          child: Image.network(
-                            _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? ''),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: _parseColor(item['bgColor']),
-                              child: const Center(child: Icon(Icons.broken_image_rounded, size: 40, color: Color(0xFF94A3B8))),
-                            ),
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(color: _parseColor(item['bgColor']), child: const Center(child: CircularProgressIndicator()));
+                          child: GestureDetector(
+                            onTap: () {
+                              final imgUrl = _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? '');
+                              if (imgUrl.isNotEmpty) {
+                                showImageGalleryDialog(context, images: [imgUrl]);
+                              }
                             },
+                            child: Image.network(
+                              _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? ''),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: _parseColor(item['bgColor']),
+                                child: const Center(child: Icon(Icons.broken_image_rounded, size: 40, color: Color(0xFF94A3B8))),
+                              ),
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(color: _parseColor(item['bgColor']), child: const Center(child: CircularProgressIndicator()));
+                              },
+                            ),
                           ),
                         ),
                         Positioned(

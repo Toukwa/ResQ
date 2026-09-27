@@ -72,6 +72,14 @@ class AdminService {
     }
   }
 
+  static Future<List<int>?> downloadAuditLogPackageZip(String targetDate) async {
+    try {
+      return await FirebaseService.downloadAuditLogPackageZip(targetDate);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<Map<String, dynamic>?> getIncidentDispatch(int reqId) async {
     try {
       return await FirebaseService.getIncidentDispatch(reqId);

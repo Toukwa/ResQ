@@ -334,11 +334,19 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   /// Parses raw activity log records into display-ready maps and sorts newest-first.
   List<Map<String, dynamic>> _parseActivityLogs(List<dynamic> rawLogs) {
     final List<Map<String, dynamic>> parsedEvents = [];
+    final weekStart = FirebaseService.getStartOfCurrentWeekMonday();
 
     for (var raw in rawLogs) {
       if (raw is Map) {
         final event = _parseSingleLog(Map<String, dynamic>.from(raw));
         if (event != null) {
+          final tsStr = event['timestamp']?.toString() ?? '';
+          if (tsStr.isNotEmpty) {
+            final ts = DateTime.tryParse(tsStr);
+            if (ts != null && ts.isBefore(weekStart)) {
+              continue;
+            }
+          }
           parsedEvents.add(event);
         }
       }

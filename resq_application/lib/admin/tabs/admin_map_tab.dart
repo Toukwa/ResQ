@@ -1038,9 +1038,24 @@ class _AdminMapTabState extends State<AdminMapTab> {
 
   String _formatTimeString(dynamic timestamp) {
     if (timestamp == null) return 'N/A';
-    final dt = DateTime.tryParse(timestamp.toString());
-    if (dt != null) return DateFormat('HH:mm').format(dt);
-    return 'N/A';
+    final str = timestamp.toString().trim();
+    if (str.isEmpty || str == 'null' || str == 'N/A') return 'N/A';
+
+    final timeMatch = RegExp(r'^(\d{1,2}):(\d{2})(?::\d{2})?$').firstMatch(str);
+    if (timeMatch != null) {
+      int hour = int.parse(timeMatch.group(1)!);
+      int minute = int.parse(timeMatch.group(2)!);
+      final period = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12;
+      if (hour == 0) hour = 12;
+      final minStr = minute.toString().padLeft(2, '0');
+      final hourStr = hour.toString().padLeft(2, '0');
+      return '$hourStr:$minStr $period';
+    }
+
+    final dt = DateTime.tryParse(str);
+    if (dt != null) return DateFormat('hh:mm a').format(dt.toLocal());
+    return str;
   }
 
   String _formatRequestId(Map<String, dynamic> item) {

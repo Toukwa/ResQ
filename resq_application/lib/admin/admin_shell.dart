@@ -428,6 +428,7 @@ class _AdminShellState extends State<AdminShell> {
                       ),
                       AdminSettingsTab(
                         adminId: _effectiveUserId,
+                        searchFilter: _currentSearchQuery,
                       ),
                     ],
                   ),

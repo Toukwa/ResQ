@@ -216,6 +216,18 @@ class FirebaseService {
     return List<dynamic>.from(body['data'] ?? []);
   }
 
+  static Future<List<dynamic>> getDispatchedVehicles(dynamic reqId) async {
+    try {
+      final response = await http
+          .get(_uri('/citizen/dispatched-vehicles/$reqId'))
+          .timeout(_kTimeout);
+      final body = _decode(response);
+      return List<dynamic>.from(body['data'] ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
   static Future<List<dynamic>> searchIncidents(String query) async {
     final response = await http
         .get(
@@ -273,18 +285,63 @@ class FirebaseService {
     _decode(response);
   }
 
+  static DateTime getStartOfCurrentWeekMonday() {
+    final now = DateTime.now();
+    final daysFromMonday = now.weekday - 1;
+    return DateTime(now.year, now.month, now.day - daysFromMonday, 0, 0, 0);
+  }
+
   static Future<List<dynamic>> getActivityLogs({int limit = 50}) async {
     final url = _uri('/admin/activity-logs?limit=$limit');
     final response = await http.get(url).timeout(_kTimeout);
     final body = _decode(response);
-    return List<dynamic>.from(body['data'] ?? []);
+    final rawList = List<dynamic>.from(body['data'] ?? []);
+    final weekStart = getStartOfCurrentWeekMonday();
+
+    return rawList.where((raw) {
+      if (raw is! Map) return true;
+      final tsStr = raw['timestamp']?.toString() ??
+                    raw['created_at']?.toString() ??
+                    raw['createdAt']?.toString() ?? '';
+      if (tsStr.isEmpty) return true;
+      final ts = DateTime.tryParse(tsStr)?.toLocal();
+      if (ts == null) return true;
+      return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
+    }).toList();
+  }
+
+  static Future<List<int>?> downloadAuditLogPackageZip(String targetDate) async {
+    try {
+      final url = _uri('/admin/export-audit-logs-zip?date=$targetDate');
+      final response = await http.get(url).timeout(const Duration(minutes: 2));
+      if (response.statusCode >= 200 && response.statusCode < 300 && response.bodyBytes.isNotEmpty) {
+        return response.bodyBytes;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<List<dynamic>> getMediaGallery() async {
     final url = _uri('/admin/media-gallery');
     final response = await http.get(url).timeout(const Duration(seconds: 10));
     final body = _decode(response);
-    return List<dynamic>.from(body['data'] ?? []);
+    final rawList = List<dynamic>.from(body['data'] ?? []);
+    final weekStart = getStartOfCurrentWeekMonday();
+
+    return rawList.where((raw) {
+      if (raw is! Map) return true;
+      final tsStr = raw['uploadedAt']?.toString() ??
+                    raw['uploaded_at']?.toString() ??
+                    raw['SOS_timeStamp']?.toString() ??
+                    raw['timestamp']?.toString() ??
+                    raw['created_at']?.toString() ?? '';
+      if (tsStr.isEmpty) return true;
+      final ts = DateTime.tryParse(tsStr)?.toLocal();
+      if (ts == null) return true;
+      return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
+    }).toList();
   }
 
   static Future<List<dynamic>> getMediaFilters() async {

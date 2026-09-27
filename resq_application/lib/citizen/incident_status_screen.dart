@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import '../config.dart';
 import '../services/firebase_services.dart';
@@ -26,6 +28,7 @@ class IncidentStatusScreen extends StatefulWidget {
 class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
   Timer? _pollingTimer;
   Map<String, dynamic>? _currentIncidentData;
+  List<dynamic> _dispatchedVehicles = [];
 
   String _currentStatus = 'Pending';
   String _description = '';
@@ -52,16 +55,21 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
   Future<void> _fetchIncidentDetails() async {
     final data = await FirebaseService.getEmergencyRequest(widget.emergencyId);
-    if (data != null && mounted) {
+    final dispatched = await FirebaseService.getDispatchedVehicles(widget.emergencyId);
+
+    if (mounted) {
       setState(() {
         _currentIncidentData = data;
-        _currentStatus = (data['reqStatus'] ?? 'Pending').toString();
-        _description = (data['description'] ?? '').toString();
-        _displayEmergency = (data['incType'] ?? widget.emergencyTypes).toString();
-        final lat = data['latitude'];
-        final lng = data['longitude'];
-        if (lat != null && lng != null) {
-          _locationText = "$lat° N, $lng° E";
+        _dispatchedVehicles = dispatched;
+        if (data != null) {
+          _currentStatus = (data['reqStatus'] ?? 'Pending').toString();
+          _description = (data['description'] ?? '').toString();
+          _displayEmergency = (data['incType'] ?? widget.emergencyTypes).toString();
+          final lat = data['latitude'];
+          final lng = data['longitude'];
+          if (lat != null && lng != null) {
+            _locationText = "$lat° N, $lng° E";
+          }
         }
       });
     }
@@ -109,6 +117,47 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
         ),
       ),
     );
+  }
+
+  String _formatReportedTime(Map<String, dynamic>? data) {
+    if (data == null) return TimeOfDay.now().format(context);
+    final val = data['SOS_timeStamp'] ??
+        data['sos_timestamp'] ??
+        data['sos_timeStamp'] ??
+        data['rawTimestamp'] ??
+        data['created_at'] ??
+        data['createdAt'] ??
+        data['timeString'] ??
+        data['time'] ??
+        data['Time'];
+    if (val == null) return TimeOfDay.now().format(context);
+    final str = val.toString().trim();
+    if (str.isEmpty || str == 'null') return TimeOfDay.now().format(context);
+
+    final timeMatch = RegExp(r'^(\d{1,2}):(\d{2})(?::\d{2})?$').firstMatch(str);
+    if (timeMatch != null) {
+      int hour = int.parse(timeMatch.group(1)!);
+      int minute = int.parse(timeMatch.group(2)!);
+      final period = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12;
+      if (hour == 0) hour = 12;
+      final minStr = minute.toString().padLeft(2, '0');
+      final hourStr = hour.toString().padLeft(2, '0');
+      return '$hourStr:$minStr $period';
+    }
+
+    try {
+      final dt = DateTime.parse(str).toLocal();
+      return DateFormat('hh:mm a').format(dt);
+    } catch (_) {
+      final ms = int.tryParse(str);
+      if (ms != null) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(ms > 10000000000 ? ms : ms * 1000).toLocal();
+        return DateFormat('hh:mm a').format(dt);
+      }
+    }
+
+    return str;
   }
 
   String _formatTicketId(String rawId, Map<String, dynamic>? data) {
@@ -166,6 +215,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
               // 1. DYNAMIC ALERT STATUS CARD
               _buildStatusHeaderCard(ticketId, currentIndex),
+              const SizedBox(height: 16),
+
+              // 1.5 LIVE RESPONSE TRACKING MAP CARD
+              _buildLiveResponseTrackingMapCard(),
               const SizedBox(height: 16),
 
               // 2. INCIDENT DETAILS CARD
@@ -302,7 +355,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              TimeOfDay.now().format(context),
+                              _formatReportedTime(_currentIncidentData),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF64748B),
@@ -778,6 +831,194 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveResponseTrackingMapCard() {
+    final rawLat = double.tryParse((_currentIncidentData?['latitude'] ?? '').toString());
+    final rawLng = double.tryParse((_currentIncidentData?['longitude'] ?? '').toString());
+
+    final LatLng citizenLocation = (rawLat != null && rawLng != null && rawLat.isFinite && rawLng.isFinite && !rawLat.isNaN && !rawLng.isNaN)
+        ? LatLng(rawLat, rawLng)
+        : const LatLng(13.4210, 123.4142);
+
+    final List<Marker> vehicleMarkers = [];
+    for (int i = 0; i < _dispatchedVehicles.length; i++) {
+      final v = _dispatchedVehicles[i];
+      if (v is! Map) continue;
+      final vRawLat = double.tryParse((v['latitude'] ?? '').toString());
+      final vRawLng = double.tryParse((v['longitude'] ?? '').toString());
+
+      double vLat = (vRawLat != null && vRawLat.isFinite && !vRawLat.isNaN)
+          ? vRawLat
+          : (citizenLocation.latitude + (0.0015 * (i + 1)));
+      double vLng = (vRawLng != null && vRawLng.isFinite && !vRawLng.isNaN)
+          ? vRawLng
+          : (citizenLocation.longitude + (0.0015 * (i + 1)));
+
+      if (!vLat.isFinite || !vLng.isFinite || vLat.isNaN || vLng.isNaN) continue;
+
+      final plate = (v['plate_no'] ?? v['vehicle_type'] ?? 'Unit').toString();
+      final type = (v['vehicle_type'] ?? v['deptName'] ?? '').toString().toUpperCase();
+
+      Color color = const Color(0xFFEF4444);
+      IconData icon = Icons.local_fire_department_rounded;
+      if (type.contains('MED') || type.contains('AMBULANCE') || type.contains('CDRRMO')) {
+        color = const Color(0xFF2563EB);
+        icon = Icons.medical_services_rounded;
+      } else if (type.contains('POL') || type.contains('CRIME') || type.contains('PNP')) {
+        color = const Color(0xFF1E40AF);
+        icon = Icons.local_police_rounded;
+      }
+
+      vehicleMarkers.add(
+        Marker(
+          point: LatLng(vLat, vLng),
+          width: 90,
+          height: 65,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                  border: Border.all(color: color, width: 1.5),
+                ),
+                child: Text(
+                  plate,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.4),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 210,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: citizenLocation,
+              initialZoom: 15.5,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.resq',
+              ),
+              MarkerLayer(
+                markers: [
+                  // Citizen Location Pin
+                  Marker(
+                    point: citizenLocation,
+                    width: 60,
+                    height: 60,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B00).withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.location_on_rounded,
+                          color: Color(0xFFFF5200),
+                          size: 38,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // ONLY Dispatched Vehicles Assigned to this Citizen's Request
+                  ...vehicleMarkers,
+                ],
+              ),
+            ],
+          ),
+
+          // Map Header Status Overlay
+          Positioned(
+            top: 10,
+            left: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _dispatchedVehicles.isNotEmpty ? Icons.directions_car_rounded : Icons.my_location_rounded,
+                    size: 13,
+                    color: const Color(0xFFFF6B00),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _dispatchedVehicles.isNotEmpty
+                        ? "Assigned Response Unit(s): ${_dispatchedVehicles.map((v) => v['plate_no'] ?? v['vehicle_type'] ?? 'Unit').join(', ')}"
+                        : "Your Emergency Location · Awaiting Vehicle Dispatch",
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

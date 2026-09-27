@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
-import 'package:excel/excel.dart' as excel_pkg;
 import 'package:path_provider/path_provider.dart';
 import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
+import '../../services/firebase_services.dart';
 import '../../config.dart';
 
 class AdminLogsTab extends StatefulWidget {
@@ -170,41 +170,11 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   Future<void> _exportDailyLogsForMidnight() async {
     final previousDay = DateTime.now().subtract(const Duration(seconds: 1));
     final dateStr = DateFormat('yyyy-MM-dd').format(previousDay);
-
-    final dailyLogs = _timelineEvents.where((e) {
-      final eventDate = e['date']?.toString() ?? '';
-      return eventDate == dateStr;
-    }).toList();
-
-    if (dailyLogs.isNotEmpty) {
-      await _generateExcelFile(
-        eventsToExport: dailyLogs,
-        fileName: 'AuditLogs($dateStr).xlsx',
-        selectedFields: ['id', 'title', 'type', 'category', 'requestId', 'status', 'timestamp', 'details'],
-      );
-    }
+    await _downloadAuditLogPackageZip(dateStr);
   }
 
   void _showExportModal() {
-    if (_timelineEvents.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No activity logs available to export.')),
-      );
-      return;
-    }
-
-    bool exportFilteredOnly = _hasActiveFilters;
-
-    final Map<String, Map<String, dynamic>> columnOptions = {
-      'id': {'label': 'Log ID', 'checked': true},
-      'title': {'label': 'Actor / User', 'checked': true},
-      'type': {'label': 'Action / Event', 'checked': true},
-      'category': {'label': 'Entity Category', 'checked': true},
-      'requestId': {'label': 'Entity Reference ID', 'checked': true},
-      'status': {'label': 'Status', 'checked': true},
-      'timestamp': {'label': 'Timestamp', 'checked': true},
-      'details': {'label': 'Log Details', 'checked': true},
-    };
+    DateTime selectedExportDate = DateTime.now();
 
     showModalBottomSheet(
       context: context,
@@ -213,7 +183,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
       builder: (BuildContext ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            final activeCount = exportFilteredOnly ? _filteredEvents.length : _timelineEvents.length;
+            final dateStr = DateFormat('yyyy-MM-dd').format(selectedExportDate);
 
             return Container(
               padding: const EdgeInsets.all(24),
@@ -238,79 +208,62 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   const SizedBox(height: 16),
                   const Row(
                     children: [
-                      Icon(Icons.file_download_outlined, color: Color(0xFFFF5200)),
+                      Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF5200)),
                       SizedBox(width: 8),
                       Text(
-                        'Export Audit Logs to Excel',
+                        'Export Audit Package (PDF + Photos)',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Exports complete full-day activity logs in descending order formatted as a PDF report, packaged together with evidence photos of reported incidents in a ZIP archive.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
-                    'DATA SCOPE',
+                    'SELECT REPORT DATE',
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5),
                   ),
                   const SizedBox(height: 8),
-                  RadioGroup<bool>(
-                    groupValue: exportFilteredOnly,
-                    onChanged: (val) => setModalState(() => exportFilteredOnly = val!),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedExportDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedExportDate = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
                     child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          RadioListTile<bool>(
-                            value: true,
-                            activeColor: const Color(0xFFFF5200),
-                            title: const Text('Export Filtered Results Only', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            subtitle: Text('Exports current search and active filters ($activeCount events)', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today_rounded, size: 18, color: Color(0xFFFF5200)),
+                              const SizedBox(width: 12),
+                              Text(
+                                DateFormat('EEEE, MMMM d, yyyy').format(selectedExportDate),
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
+                            ],
                           ),
-                          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                          RadioListTile<bool>(
-                            value: false,
-                            activeColor: const Color(0xFFFF5200),
-                            title: const Text('Export All Recorded Logs', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            subtitle: Text('Exports entire activity log history (${_timelineEvents.length} events)', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                          ),
+                          const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF64748B)),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'SELECT DATA COLUMNS',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: columnOptions.entries.map((entry) {
-                      final key = entry.key;
-                      final label = entry.value['label'] as String;
-                      final isChecked = entry.value['checked'] as bool;
-
-                      return FilterChip(
-                        label: Text(label, style: TextStyle(fontSize: 11, color: isChecked ? const Color(0xFFFF5200) : const Color(0xFF64748B))),
-                        selected: isChecked,
-                        selectedColor: const Color(0xFFFFEAD9),
-                        checkmarkColor: const Color(0xFFFF5200),
-                        backgroundColor: const Color(0xFFF1F5F9),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: isChecked ? const Color(0xFFFF5200) : Colors.transparent),
-                        ),
-                        onSelected: (selected) {
-                          setModalState(() {
-                            columnOptions[key]!['checked'] = selected;
-                          });
-                        },
-                      );
-                    }).toList(),
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -323,50 +276,19 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton(
+                        child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF5200),
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: () {
-                            final selectedKeys = columnOptions.entries
-                                .where((e) => e.value['checked'] == true)
-                                .map((e) => e.key)
-                                .toList();
-
-                            if (selectedKeys.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please select at least one column.')),
-                              );
-                              return;
-                            }
-
                             Navigator.pop(ctx);
-
-                            final baseEvents = exportFilteredOnly ? _filteredEvents : _timelineEvents;
-                            final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-                            final dailyFilteredEvents = baseEvents.where((event) {
-                              final eventDateStr = event['date']?.toString() ?? '';
-                              if (eventDateStr.isNotEmpty) {
-                                return eventDateStr == todayStr;
-                              }
-                              
-                              final timestamp = DateTime.tryParse(event['timestamp']?.toString() ?? '');
-                              if (timestamp != null) {
-                                return DateFormat('yyyy-MM-dd').format(timestamp.toLocal()) == todayStr;
-                              }
-                              return false;
-                            }).toList();
-
-                            _generateExcelFile(
-                              eventsToExport: dailyFilteredEvents,
-                              fileName: 'AuditLogs($todayStr).xlsx',
-                              selectedFields: selectedKeys,
-                            );
+                            _downloadAuditLogPackageZip(dateStr);
                           },
-                          child: const Text('Download Excel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.archive_rounded, size: 18),
+                          label: const Text('Download ZIP', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -380,136 +302,71 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     );
   }
 
-  Future<void> _generateExcelFile({
-    required List<Map<String, dynamic>> eventsToExport,
-    required String fileName,
-    required List<String> selectedFields,
-  }) async {
-    if (eventsToExport.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No activity logs found created today for export.')),
-        );
-      }
-      return;
-    }
-
+  Future<void> _downloadAuditLogPackageZip(String dateStr) async {
     try {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
-              children: [
-                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              children: const [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
                 SizedBox(width: 16),
-                Text('Generating Excel report...'),
+                Text('Building full-day PDF audit log & evidence photos package...'),
               ],
             ),
+            duration: const Duration(seconds: 15),
           ),
         );
       }
 
-      final excel = excel_pkg.Excel.createExcel();
-      const String sheetName = 'Audit Logs';
-
-      excel.rename('Sheet1', sheetName);
-      final sheet = excel[sheetName];
-      sheet.isRTL = false;
-
-      final Map<String, String> keyToHeader = {
-        'id': 'Log ID',
-        'title': 'Actor / User',
-        'type': 'Action Executed',
-        'category': 'Entity Category',
-        'requestId': 'Entity Reference ID',
-        'status': 'Status',
-        'timestamp': 'Date & Timestamp',
-        'details': 'Log Details / Payload',
-      };
-
-      final activeHeaders = selectedFields.map((k) => keyToHeader[k] ?? k).toList();
-
-      for (int col = 0; col < activeHeaders.length; col++) {
-        final cellIndex = excel_pkg.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0);
-        final cell = sheet.cell(cellIndex);
-        cell.value = excel_pkg.TextCellValue(activeHeaders[col]);
-
-        cell.cellStyle = excel_pkg.CellStyle(
-          bold: true,
-          backgroundColorHex: excel_pkg.ExcelColor.fromHexString('#1E293B'),
-          fontColorHex: excel_pkg.ExcelColor.fromHexString('#FFFFFF'),
-        );
-      }
-
-      for (int rowIndex = 0; rowIndex < eventsToExport.length; rowIndex++) {
-        final event = eventsToExport[rowIndex];
-        final excelRowIndex = rowIndex + 1;
-        final isEven = rowIndex % 2 == 0;
-        final rowBgColor = isEven ? '#FFFFFF' : '#F8FAFC';
-
-        for (int colIndex = 0; colIndex < selectedFields.length; colIndex++) {
-          final fieldKey = selectedFields[colIndex];
-          dynamic rawValue = event[fieldKey] ?? '';
-
-          if (fieldKey == 'timestamp' && rawValue.toString().isNotEmpty) {
-            final parsed = DateTime.tryParse(rawValue.toString());
-            if (parsed != null) {
-              rawValue = DateFormat('yyyy-MM-dd hh:mm:ss a').format(parsed);
-            }
-          }
-
-          final cellIndex = excel_pkg.CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: excelRowIndex);
-          final cell = sheet.cell(cellIndex);
-          cell.value = excel_pkg.TextCellValue(rawValue.toString());
-
-          if (fieldKey == 'status') {
-            final isSuccess = rawValue.toString().toUpperCase() == 'SUCCESS';
-            cell.cellStyle = excel_pkg.CellStyle(
-              bold: true,
-              backgroundColorHex: excel_pkg.ExcelColor.fromHexString(isSuccess ? '#DCFCE7' : '#FEE2E2'),
-              fontColorHex: excel_pkg.ExcelColor.fromHexString(isSuccess ? '#166534' : '#991B1B'),
-            );
-          } else {
-            cell.cellStyle = excel_pkg.CellStyle(
-              backgroundColorHex: excel_pkg.ExcelColor.fromHexString(rowBgColor),
-            );
-          }
+      final zipBytes = await AdminService.downloadAuditLogPackageZip(dateStr);
+      if (zipBytes == null || zipBytes.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to generate audit package on server.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
         }
+        return;
       }
 
-      for (int colIndex = 0; colIndex < selectedFields.length; colIndex++) {
-        final fieldKey = selectedFields[colIndex];
-        double width = 18.0;
-        if (fieldKey == 'details') width = 45.0;
-        if (fieldKey == 'timestamp') width = 26.0;
-        if (fieldKey == 'type' || fieldKey == 'title') width = 24.0;
-        sheet.setColumnWidth(colIndex, width);
+      Directory? saveDir;
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        saveDir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+      } else {
+        saveDir = await getApplicationDocumentsDirectory();
       }
 
-      final bytes = excel.encode();
-      if (bytes == null) throw Exception('Failed to encode Excel file');
-
-      final directory = await getDownloadsDirectory();
-      if (directory == null) throw Exception('Could not access downloads directory');
-
-      final file = File('${directory.path}/$fileName');
-      await file.writeAsBytes(bytes);
+      final fileName = 'AuditLogs($dateStr).zip';
+      final filePath = '${saveDir.path}${Platform.pathSeparator}$fileName';
+      final file = File(filePath);
+      await file.writeAsBytes(zipBytes, flush: true);
 
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Saved $fileName to downloads folder'),
+            content: Text('✅ Download complete! Saved $fileName (PDF report + evidence photos) to Downloads.'),
             backgroundColor: const Color(0xFF10B981),
-            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Export Failed: $e'),
-            backgroundColor: const Color(0xFFEF4444),
+            content: Text('Error exporting audit package: $e'),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -693,6 +550,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
           });
         }
 
+        final weekStart = FirebaseService.getStartOfCurrentWeekMonday();
+
         parsedEvents.sort((a, b) {
           final aTime = DateTime.tryParse(a['timestamp'] ?? '') ?? DateTime.now();
           final bTime = DateTime.tryParse(b['timestamp'] ?? '') ?? DateTime.now();
@@ -704,14 +563,24 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             final existingIds = _timelineEvents.map((e) => e['id']).toSet();
             final newEvents = parsedEvents.where((e) => !existingIds.contains(e['id'])).toList();
             _timelineEvents = [...newEvents, ..._timelineEvents];
-            _timelineEvents.sort((a, b) {
-              final aTime = DateTime.tryParse(a['timestamp'] ?? '') ?? DateTime.now();
-              final bTime = DateTime.tryParse(b['timestamp'] ?? '') ?? DateTime.now();
-              return bTime.compareTo(aTime);
-            });
           } else {
             _timelineEvents = parsedEvents;
           }
+
+          // Purge events older than current week's Monday 12:00 AM
+          _timelineEvents = _timelineEvents.where((e) {
+            final tsStr = e['timestamp']?.toString() ?? '';
+            if (tsStr.isEmpty) return true;
+            final ts = DateTime.tryParse(tsStr);
+            if (ts == null) return true;
+            return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
+          }).toList();
+
+          _timelineEvents.sort((a, b) {
+            final aTime = DateTime.tryParse(a['timestamp'] ?? '') ?? DateTime.now();
+            final bTime = DateTime.tryParse(b['timestamp'] ?? '') ?? DateTime.now();
+            return bTime.compareTo(aTime);
+          });
           
           if (_timelineEvents.length > _maxRenderedItems) {
             _timelineEvents = _timelineEvents.sublist(0, _maxRenderedItems);

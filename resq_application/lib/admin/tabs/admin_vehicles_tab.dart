@@ -6,6 +6,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../admin_service.dart';
 import '../../config.dart';
+import '../../shared/image_gallery_widget.dart';
 
 class AdminVehiclesTab extends StatefulWidget {
   final String searchFilter;
@@ -143,15 +144,46 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     if (raw == null) return '—';
     dynamic timeVal = raw;
     if (raw is Map) {
-      timeVal = raw['created_at'] ?? raw['createdAt'] ?? raw['Time'] ?? raw['timestamp'] ?? raw['date_created'] ?? raw['date'];
+      timeVal = raw['SOS_timeStamp'] ??
+          raw['sos_timestamp'] ??
+          raw['sos_timeStamp'] ??
+          raw['rawTimestamp'] ??
+          raw['timeString'] ??
+          raw['created_at'] ??
+          raw['createdAt'] ??
+          raw['time'] ??
+          raw['Time'] ??
+          raw['timestamp'] ??
+          raw['date_created'] ??
+          raw['date'];
     }
     if (timeVal == null) return '—';
+    final str = timeVal.toString().trim();
+    if (str.isEmpty || str == 'null' || str == '—') return '—';
+
+    // 1. Check if 24-hr format HH:mm or HH:mm:ss like "16:14"
+    final timeMatch = RegExp(r'^(\d{1,2}):(\d{2})(?::\d{2})?$').firstMatch(str);
+    if (timeMatch != null) {
+      int hour = int.parse(timeMatch.group(1)!);
+      int minute = int.parse(timeMatch.group(2)!);
+      final period = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12;
+      if (hour == 0) hour = 12;
+      final minStr = minute.toString().padLeft(2, '0');
+      final hourStr = hour.toString().padLeft(2, '0');
+      return '$hourStr:$minStr $period';
+    }
+
     try {
-      final dt = DateTime.parse(timeVal.toString()).toLocal();
-      return DateFormat('MMM d, h:mm a').format(dt);
+      final dt = DateTime.parse(str).toLocal();
+      return DateFormat('MMM d, hh:mm a').format(dt);
     } catch (_) {
-      final s = timeVal.toString();
-      return s.length > 30 ? 'Recently' : s;
+      final ms = int.tryParse(str);
+      if (ms != null) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(ms > 10000000000 ? ms : ms * 1000).toLocal();
+        return DateFormat('MMM d, hh:mm a').format(dt);
+      }
+      return str;
     }
   }
 
@@ -187,24 +219,31 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     if (req is! Map) return false;
 
+    // 1. Check department_statuses list from backend
     final rawStatuses = req['department_statuses'];
     if (rawStatuses is List && rawStatuses.isNotEmpty) {
       final deptNames = rawStatuses.map((e) => (e['dept_name'] ?? e['dept'] ?? '').toString().toUpperCase().trim()).toList();
-      return deptNames.contains(dept);
+      if (deptNames.contains(dept)) return true;
     }
 
+    // 2. Check emergency type / agency keywords
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? '').toString().toUpperCase().trim();
     final agency = (req['Department_Name'] ?? req['agency'] ?? req['agencyType'] ?? req['deptName'] ?? '').toString().toUpperCase().trim();
 
     if (dept == 'BFP') {
-      return type.contains('FIRE') || type.contains('ARSON') || type.contains('EXPLOSION') || agency.contains('BFP');
+      if (type.contains('FIRE') || type.contains('ARSON') || type.contains('EXPLOSION') || agency.contains('BFP')) return true;
     }
     if (dept == 'CDRRMO') {
-      return type.contains('MED') || type.contains('RESCUE') || type.contains('AMBULANCE') || type.contains('DISASTER') || type.contains('FLOOD') || type.contains('HEALTH') || agency.contains('CDRRMO');
+      if (type.contains('MED') || type.contains('RESCUE') || type.contains('AMBULANCE') || type.contains('DISASTER') || type.contains('FLOOD') || type.contains('HEALTH') || agency.contains('CDRRMO')) return true;
     }
     if (dept == 'PNP') {
-      return type.contains('POL') || type.contains('ACCIDENT') || type.contains('CRIME') || type.contains('VIOLENCE') || type.contains('THEFT') || type.contains('ROBBERY') || agency.contains('PNP');
+      if (type.contains('POL') || type.contains('ACCIDENT') || type.contains('CRIME') || type.contains('VIOLENCE') || type.contains('THEFT') || type.contains('ROBBERY') || agency.contains('PNP')) return true;
     }
+
+    // 3. Fallback: Pending emergency requests are visible to all department admins
+    // so no incident is ever hidden or lost in the Request Queue.
+    final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString().toLowerCase();
+    if (status == 'pending') return true;
 
     return false;
   }
@@ -392,6 +431,36 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to decline request.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleActionTaken(int reqId) async {
+    setState(() => _isActionInProgress = true);
+    final success = await AdminService.updateIncidentStatus(
+      reqId: reqId,
+      status: 'Completed',
+      department: widget.department,
+    );
+    setState(() => _isActionInProgress = false);
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Action Taken — Request automatically marked as Completed!'),
+            backgroundColor: Color(0xFF0284C7),
+          ),
+        );
+        _fetchData(showLoading: false);
+        widget.onRefreshNeeded();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update request status.'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -951,105 +1020,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     );
   }
 
-  String _resolveImageUrl(String? path) {
-    if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    final clean = path.startsWith('/') ? path : '/$path';
-    return '${AppConfig.baseUrl}$clean';
-  }
 
-  void _showExpandedImage(BuildContext context, String imageUrl, String title) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.85),
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InteractiveViewer(
-                  panEnabled: true,
-                  boundaryMargin: const EdgeInsets.all(20),
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      padding: const EdgeInsets.all(40),
-                      color: const Color(0xFF1E293B),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.broken_image_outlined, size: 64, color: Color(0xFF94A3B8)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Unable to load image ($title)',
-                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Material(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildImagePlaceholder(String type) {
-    final icon = _getEmergencyIcon(type);
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 38, color: const Color(0xFFFF5C00)),
-            const SizedBox(height: 6),
-            Text(
-              '$type Responder / Evidence Photo',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ==========================================
   // COLUMN 2: SELECTED REQUEST DETAIL VIEW
@@ -1069,7 +1040,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString();
 
     final rawImagePath = (req['image_path'] ?? req['imagePath'] ?? req['photo'] ?? req['file_path'] ?? req['proof'] ?? req['evidence'] ?? '').toString();
-    final imageUrl = _resolveImageUrl(rawImagePath);
 
     final statusLow = status.toLowerCase();
     final isPending = statusLow == 'pending';
@@ -1088,58 +1058,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Responder / Incident Photo Evidence Banner (Expands on Press)
-          InkWell(
-            onTap: () {
-              if (imageUrl.isNotEmpty) {
-                _showExpandedImage(context, imageUrl, reqIdStr);
-              }
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    height: 160,
-                    width: double.infinity,
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(type),
-                          )
-                        : _buildImagePlaceholder(type),
-                  ),
-                ),
-                Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          imageUrl.isNotEmpty ? Icons.zoom_in_rounded : Icons.camera_alt_outlined,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          imageUrl.isNotEmpty ? 'Click to expand' : 'Responder Evidence Photo',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          // Top Responder / Incident Photo Evidence Banner with Paged Gallery & Counter
+          PagedImageGalleryBanner(
+            rawImagePath: rawImagePath,
+            height: 160,
+            type: type,
+            title: reqIdStr,
           ),
           const SizedBox(height: 16),
 
@@ -1307,48 +1231,73 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           if (_isActionInProgress)
             const Center(child: CircularProgressIndicator(color: Color(0xFFFF5C00)))
           else if (isPending && reqIdNum != 0)
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _handleAcceptRequest(reqIdNum),
-                      icon: const Icon(Icons.check, size: 16),
-                      label: const Text(
-                        'Accept Request',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00B050),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _handleAcceptRequest(reqIdNum),
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text(
+                            'Accept Request',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00B050),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _handleDenyRequest(reqIdNum),
-                      icon: const Icon(Icons.close, size: 16),
-                      label: const Text(
-                        'Deny Request',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFEB5757),
-                        backgroundColor: const Color(0xFFFFF0F0),
-                        side: const BorderSide(color: Color(0xFFFFDDE1)),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _handleDenyRequest(reqIdNum),
+                          icon: const Icon(Icons.close, size: 16),
+                          label: const Text(
+                            'Deny Request',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFEB5757),
+                            backgroundColor: const Color(0xFFFFF0F0),
+                            side: const BorderSide(color: Color(0xFFFFDDE1)),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleActionTaken(reqIdNum),
+                    icon: const Icon(Icons.task_alt_rounded, size: 18),
+                    label: const Text(
+                      'Taken Action (Duplicate Report)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0284C7),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
@@ -1356,33 +1305,58 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               ],
             )
           else if (isAccepted && reqIdNum != 0)
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: ElevatedButton.icon(
-                onPressed: _selectedVehicleId != null
-                    ? () => _handleDispatchUnit(
-                          reqIdNum,
-                          int.parse(_selectedVehicleId.toString()),
-                        )
-                    : null,
-                icon: const Icon(Icons.send_rounded, size: 16),
-                label: Text(
-                  _selectedVehicleId != null
-                      ? 'Dispatch Selected Unit'
-                      : 'Select an Available Unit on Right Panel to Dispatch',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5C00),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: ElevatedButton.icon(
+                    onPressed: _selectedVehicleId != null
+                        ? () => _handleDispatchUnit(
+                              reqIdNum,
+                              int.parse(_selectedVehicleId.toString()),
+                            )
+                        : null,
+                    icon: const Icon(Icons.send_rounded, size: 16),
+                    label: Text(
+                      _selectedVehicleId != null
+                          ? 'Dispatch Selected Unit'
+                          : 'Select an Available Unit on Right Panel to Dispatch',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF5C00),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleActionTaken(reqIdNum),
+                    icon: const Icon(Icons.task_alt_rounded, size: 18),
+                    label: const Text(
+                      'Taken Action (Mark as Completed)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0284C7),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             )
           else if (isDispatched && reqIdNum != 0)
             Row(

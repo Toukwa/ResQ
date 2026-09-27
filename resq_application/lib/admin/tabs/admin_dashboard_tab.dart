@@ -9,6 +9,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/firebase_services.dart';
+import '../../shared/image_gallery_widget.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
 
@@ -398,20 +399,25 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final List<Map<String, dynamic>> items = [];
 
     // Extract photo evidence attached to emergency reports
+    // Each incident may have multiple comma-separated image paths
     for (var inc in _incidents) {
       final img = inc['image_path'] ?? inc['photo'] ?? inc['proof'] ?? inc['evidence'];
       if (img != null && img.toString().isNotEmpty) {
         final reqId = _formatRequestId(inc);
         final type = (inc['Incident_Type'] ?? inc['type'] ?? 'Evidence').toString();
-        items.add({
-          'filename': '$reqId Photo Evidence',
-          'incidentId': inc['Req_ID'] ?? inc['req_ID'] ?? '',
-          'category': type,
-          'image_path': img.toString(),
-          'created_at': inc['time'] ?? inc['created_at'] ?? '',
-          'Incident_Type': type,
-          'emergency_types': inc['emergency_types'],
-        });
+        // Split comma-separated paths into individual items
+        final paths = img.toString().split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+        for (int i = 0; i < paths.length; i++) {
+          items.add({
+            'filename': paths.length > 1 ? '$reqId Photo ${i + 1}/${paths.length}' : '$reqId Photo Evidence',
+            'incidentId': inc['Req_ID'] ?? inc['req_ID'] ?? '',
+            'category': type,
+            'image_path': paths[i],
+            'created_at': inc['time'] ?? inc['created_at'] ?? '',
+            'Incident_Type': type,
+            'emergency_types': inc['emergency_types'],
+          });
+        }
       }
     }
 
@@ -1446,9 +1452,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final emergencyTypes = _parseEmergencyTypes(incident);
     final isMultiType = emergencyTypes.length > 1;
 
-    // Banner image URL (photo evidence linked to incident)
+    // Banner image URL — only use the first image from the comma-separated list
     final imagePath = incident['image_path']?.toString() ?? incident['photo']?.toString();
-    final bannerUrl = _resolveImageUrl(imagePath);
+    final bannerUrl = parseImageUrls(imagePath).firstOrNull;
 
     return InkWell(
       onTap: () {
