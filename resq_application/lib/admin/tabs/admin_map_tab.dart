@@ -9,6 +9,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../admin_service.dart';
 import '../../config.dart';
+import '../../services/theme_service.dart';
 
 class AdminMapTab extends StatefulWidget {
   final String searchFilter;
@@ -315,13 +316,14 @@ class _AdminMapTabState extends State<AdminMapTab> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgCanvas = Color(0xFFF1F5F9);
-    const Color textDark = Color(0xFF0F172A);
-    const Color textMuted = Color(0xFF64748B);
     const Color primaryOrange = Color(0xFFFF5200);
 
-    return Scaffold(
-      backgroundColor: bgCanvas,
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final ts = ThemeService.instance;
+        return Scaffold(
+      backgroundColor: ts.pageBackground,
       body: Row(
         children: [
           Expanded(
@@ -340,9 +342,9 @@ class _AdminMapTabState extends State<AdminMapTab> {
                             children: [
                               Container(
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE2E8F0),
+                                  color: ts.borderColor,
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.white, width: 2),
+                                  border: Border.all(color: ts.cardBackground, width: 2),
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(20),
@@ -362,6 +364,17 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                         userAgentPackageName: 'com.resq.admin.dashboard',
                                         tileProvider: CancellableNetworkTileProvider(),
+                                        tileBuilder: ts.isDark
+                                            ? (context, tileWidget, tile) => ColorFiltered(
+                                                colorFilter: const ColorFilter.matrix(<double>[
+                                                  -0.2126, -0.7152, -0.0722, 0, 255,
+                                                  -0.2126, -0.7152, -0.0722, 0, 255,
+                                                  -0.2126, -0.7152, -0.0722, 0, 255,
+                                                  0, 0, 0, 1, 0,
+                                                ]),
+                                                child: tileWidget,
+                                              )
+                                            : null,
                                       ),
                                       MarkerLayer(
                                         markers: _incidents
@@ -438,11 +451,11 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: ts.cardBackground,
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.08),
+                                        color: ts.shadowColor,
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -450,14 +463,14 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.near_me_rounded, size: 14, color: textMuted),
+                                      Icon(Icons.near_me_rounded, size: 14, color: ts.textMuted),
                                       const SizedBox(width: 6),
                                       Text(
                                         "${((_mapZoom / 15.0) * 100).round()}%",
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          color: textDark,
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                     ],
@@ -480,18 +493,18 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                     ? Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
+                                          color: ts.cardBackground,
                                           borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                                          border: Border.all(color: ts.borderColor),
                                         ),
                                         child: Row(
-                                          children: const [
-                                            Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF94A3B8)),
-                                            SizedBox(width: 8),
+                                          children: [
+                                            Icon(Icons.info_outline_rounded, size: 16, color: ts.textMuted),
+                                            const SizedBox(width: 8),
                                             Expanded(
                                               child: Text(
                                                 "Click a marker or list item to view details",
-                                                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                                style: TextStyle(fontSize: 11, color: ts.textMuted),
                                               ),
                                             ),
                                           ],
@@ -505,35 +518,35 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: ts.cardBackground,
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    border: Border.all(color: ts.borderColor),
                                   ),
                                   child: Column(
                                     children: [
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const Text(
+                                          Text(
                                             "Active Incidents",
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
-                                              color: textDark,
+                                              color: ts.textPrimary,
                                             ),
                                           ),
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFFFEDD5),
+                                              color: ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
                                               borderRadius: BorderRadius.circular(10),
                                             ),
                                             child: Text(
                                               "${_activeIncidents.length}",
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.bold,
-                                                color: primaryOrange,
+                                                color: ts.isDark ? const Color(0xFFFB923C) : primaryOrange,
                                               ),
                                             ),
                                           ),
@@ -564,7 +577,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                 curve: Curves.easeOutCubic,
                                                 transform: Matrix4.translationValues(isHovered ? 6.0 : 0.0, 0, 0),
                                                 child: Material(
-                                                  color: isSelected ? const Color(0xFFFFF7ED) : const Color(0xFFF8FAFC),
+                                                  color: isSelected ? (ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED)) : ts.subtleBackground,
                                                   borderRadius: BorderRadius.circular(12),
                                                   child: InkWell(
                                                     onTap: () {
@@ -584,7 +597,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                       decoration: BoxDecoration(
                                                         borderRadius: BorderRadius.circular(12),
                                                         border: Border.all(
-                                                          color: isSelected ? primaryOrange : (isHovered ? const Color(0xFFCBD5E1) : Colors.transparent),
+                                                          color: isSelected ? primaryOrange : (isHovered ? ts.borderColor : (ts.isDark ? ts.borderColor : Colors.transparent)),
                                                         ),
                                                       ),
                                                       child: Row(
@@ -606,17 +619,17 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                                   type,
                                                                   overflow: TextOverflow.ellipsis,
                                                                   maxLines: 1,
-                                                                  style: const TextStyle(
+                                                                  style: TextStyle(
                                                                     fontSize: 12,
                                                                     fontWeight: FontWeight.bold,
-                                                                    color: textDark,
+                                                                    color: ts.textPrimary,
                                                                   ),
                                                                 ),
                                                                 Text(
                                                                   location,
                                                                   overflow: TextOverflow.ellipsis,
                                                                   maxLines: 1,
-                                                                  style: const TextStyle(fontSize: 10, color: textMuted),
+                                                                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
                                                                 ),
                                                               ],
                                                             ),
@@ -658,35 +671,35 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: ts.cardBackground,
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    border: Border.all(color: ts.borderColor),
                                   ),
                                   child: Column(
                                     children: [
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const Text(
+                                          Text(
                                             "Unit Positions",
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
-                                              color: textDark,
+                                              color: ts.textPrimary,
                                             ),
                                           ),
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F5F9),
+                                              color: ts.subtleBackground,
                                               borderRadius: BorderRadius.circular(10),
                                             ),
                                             child: Text(
                                               "${_filteredVehicles.length} online",
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w600,
-                                                color: textMuted,
+                                                color: ts.textSecondary,
                                               ),
                                             ),
                                           ),
@@ -762,7 +775,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                               ),
                                                               Text(
                                                                 vehicleType,
-                                                                style: const TextStyle(fontSize: 10, color: textMuted),
+                                                                style: TextStyle(fontSize: 10, color: ts.textSecondary),
                                                               ),
                                                             ],
                                                           ),
@@ -815,6 +828,8 @@ class _AdminMapTabState extends State<AdminMapTab> {
         ],
       ),
     );
+      },
+    );
   }
 
   Widget _buildMapToolButton(IconData icon, VoidCallback onPressed) {
@@ -841,18 +856,17 @@ class _AdminMapTabState extends State<AdminMapTab> {
   }
 
   Widget _buildDetailCard(Map<String, dynamic> data, bool isIncident) {
-    const Color textDark = Color(0xFF0F172A);
-    const Color textMuted = Color(0xFF64748B);
+    final ts = ThemeService.instance;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: ts.borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: ts.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -881,16 +895,16 @@ class _AdminMapTabState extends State<AdminMapTab> {
                   isIncident 
                       ? _formatRequestId(data) 
                       : (data['plate_no']?.toString() ?? 'Unknown'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: textDark,
+                    color: ts.textPrimary,
                   ),
                 ),
               ),
               IconButton(
                 onPressed: () => setState(() => _selectedItem = null),
-                icon: const Icon(Icons.close_rounded, size: 18, color: textMuted),
+                icon: Icon(Icons.close_rounded, size: 18, color: ts.textSecondary),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -914,24 +928,24 @@ class _AdminMapTabState extends State<AdminMapTab> {
           ),
           const SizedBox(height: 14),
           if (isIncident) ...[
-            _buildDetailRow("Type", _formatEmergencyType(data['type']?.toString() ?? data['incType']?.toString() ?? 'General', incident: data), isBoldValue: true),
-            _buildDetailRow("Involved Depts", _getInvolvedDepartments(data).join(' • '), isBoldValue: true),
-            _buildDetailRow("Location", _getLocationLabel(data)),
-            _buildDetailRow("Reported", _formatTimeString(data['SOS_timeStamp'] ?? data['rawTimestamp'])),
-            _buildDetailRow("Assigned", _getAssignedVehicle(data), isBoldValue: true),
+            _buildDetailRow("Type", _formatEmergencyType(data['type']?.toString() ?? data['incType']?.toString() ?? 'General', incident: data), isBoldValue: true, ts: ts),
+            _buildDetailRow("Involved Depts", _getInvolvedDepartments(data).join(' • '), isBoldValue: true, ts: ts),
+            _buildDetailRow("Location", _getLocationLabel(data), ts: ts),
+            _buildDetailRow("Reported", _formatTimeString(data['SOS_timeStamp'] ?? data['rawTimestamp']), ts: ts),
+            _buildDetailRow("Assigned", _getAssignedVehicle(data), isBoldValue: true, ts: ts),
             const SizedBox(height: 12),
-            const Text("Description", style: TextStyle(fontSize: 11, color: textMuted)),
+            Text("Description", style: TextStyle(fontSize: 11, color: ts.textSecondary)),
             const SizedBox(height: 4),
             Text(
               data['description']?.toString() ?? 'No description available',
-              style: const TextStyle(fontSize: 11, color: textDark, height: 1.4),
+              style: TextStyle(fontSize: 11, color: ts.textPrimary, height: 1.4),
             ),
           ] else ...[
-            _buildDetailRow("Vehicle ID", data['vehicle_ID']?.toString() ?? 'Unknown', isBoldValue: true),
-            _buildDetailRow("Plate No", data['plate_no']?.toString() ?? 'Unknown'),
-            _buildDetailRow("Vehicle Type", data['vehicle_type']?.toString() ?? 'Unknown'),
-            _buildDetailRow("Department", _getVehicleDepartment(data)),
-            _buildDetailRow("Status", data['status']?.toString() ?? 'Unknown', isBoldValue: true),
+            _buildDetailRow("Vehicle ID", data['vehicle_ID']?.toString() ?? 'Unknown', isBoldValue: true, ts: ts),
+            _buildDetailRow("Plate No", data['plate_no']?.toString() ?? 'Unknown', ts: ts),
+            _buildDetailRow("Vehicle Type", data['vehicle_type']?.toString() ?? 'Unknown', ts: ts),
+            _buildDetailRow("Department", _getVehicleDepartment(data), ts: ts),
+            _buildDetailRow("Status", data['status']?.toString() ?? 'Unknown', isBoldValue: true, ts: ts),
           ],
         ],
       ),
@@ -998,19 +1012,20 @@ class _AdminMapTabState extends State<AdminMapTab> {
     return depts.toList();
   }
 
-  Widget _buildDetailRow(String label, String value, {Color valueColor = const Color(0xFF0F172A), bool isBoldValue = false}) {
+  Widget _buildDetailRow(String label, String value, {Color? valueColor, bool isBoldValue = false, ThemeService? ts}) {
+    final themeService = ts ?? ThemeService.instance;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+          Text(label, style: TextStyle(fontSize: 11, color: themeService.textSecondary)),
           Text(
             value,
             style: TextStyle(
               fontSize: 11,
               fontWeight: isBoldValue ? FontWeight.bold : FontWeight.normal,
-              color: valueColor,
+              color: valueColor ?? themeService.textPrimary,
             ),
           ),
         ],
@@ -1019,7 +1034,15 @@ class _AdminMapTabState extends State<AdminMapTab> {
   }
 
   Color _getStatusColor(String status) {
+    final ts = ThemeService.instance;
     final s = status.toLowerCase();
+    if (ts.isDark) {
+      if (s == 'en route' || s == 'en_route') return const Color(0xFFFB923C);
+      if (s == 'arrived') return const Color(0xFFC084FC);
+      if (s == 'completed') return const Color(0xFF34D399);
+      if (s == 'declined' || s == 'denied') return const Color(0xFFF87171);
+      return const Color(0xFF94A3B8);
+    }
     if (s == 'en route' || s == 'en_route') return const Color(0xFFFF5200);
     if (s == 'arrived') return const Color(0xFF8B5CF6);
     if (s == 'completed') return const Color(0xFF10B981);
@@ -1028,7 +1051,15 @@ class _AdminMapTabState extends State<AdminMapTab> {
   }
 
   Color _getStatusBgColor(String status) {
+    final ts = ThemeService.instance;
     final s = status.toLowerCase();
+    if (ts.isDark) {
+      if (s == 'en route' || s == 'en_route') return const Color(0xFF431407);
+      if (s == 'arrived') return const Color(0xFF2E1065);
+      if (s == 'completed') return const Color(0xFF064E3B);
+      if (s == 'declined' || s == 'denied') return const Color(0xFF450A0A);
+      return const Color(0xFF1E293B);
+    }
     if (s == 'en route' || s == 'en_route') return const Color(0xFFFFEDD5);
     if (s == 'arrived') return const Color(0xFFF3E8FF);
     if (s == 'completed') return const Color(0xFFECFDF5);
@@ -1173,15 +1204,29 @@ class _AdminMapTabState extends State<AdminMapTab> {
   Widget _buildCancelledRequestsColumn() {
     final isCancelledTab = _bottomTabFilter == 'Cancelled';
     final list = isCancelledTab ? _cancelledIncidents : _completedIncidents;
+    final ts = ThemeService.instance;
+
+    final containerBg = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF2D1215) : const Color(0xFFFFF5F5))
+        : (ts.isDark ? const Color(0xFF062C19) : const Color(0xFFF0FDF4));
+    final containerBorder = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1))
+        : (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0));
+
+    final cancelledActiveBg = ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1);
+    final cancelledActiveText = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757);
+
+    final completedActiveBg = ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0);
+    final completedActiveText = ts.isDark ? const Color(0xFF86EFAC) : const Color(0xFF16A34A);
+
+    final unselectedText = ts.isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCancelledTab ? const Color(0xFFFFF5F5) : const Color(0xFFF0FDF4),
+        color: containerBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isCancelledTab ? const Color(0xFFFFDDE1) : const Color(0xFFBBF7D0),
-        ),
+        border: Border.all(color: containerBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1195,19 +1240,19 @@ class _AdminMapTabState extends State<AdminMapTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isCancelledTab ? const Color(0xFFFFDDE1) : Colors.transparent,
+                    color: isCancelledTab ? cancelledActiveBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cancel_outlined, size: 13, color: Color(0xFFEB5757)),
+                      Icon(Icons.cancel_outlined, size: 13, color: isCancelledTab ? cancelledActiveText : unselectedText),
                       const SizedBox(width: 4),
                       Text(
                         'Cancelled',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isCancelledTab ? const Color(0xFFEB5757) : Colors.grey.shade600,
+                          color: isCancelledTab ? cancelledActiveText : unselectedText,
                         ),
                       ),
                     ],
@@ -1223,19 +1268,19 @@ class _AdminMapTabState extends State<AdminMapTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: !isCancelledTab ? const Color(0xFFBBF7D0) : Colors.transparent,
+                    color: !isCancelledTab ? completedActiveBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, size: 13, color: Color(0xFF16A34A)),
+                      Icon(Icons.check_circle_outline, size: 13, color: !isCancelledTab ? completedActiveText : unselectedText),
                       const SizedBox(width: 4),
                       Text(
                         'Completed',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: !isCancelledTab ? const Color(0xFF16A34A) : Colors.grey.shade600,
+                          color: !isCancelledTab ? completedActiveText : unselectedText,
                         ),
                       ),
                     ],
@@ -1247,7 +1292,9 @@ class _AdminMapTabState extends State<AdminMapTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isCancelledTab ? const Color(0xFFFFE5E5) : const Color(0xFFDCFCE7),
+                  color: isCancelledTab
+                      ? (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFE5E5))
+                      : (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7)),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -1255,7 +1302,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isCancelledTab ? const Color(0xFFEB5757) : const Color(0xFF16A34A),
+                    color: isCancelledTab ? cancelledActiveText : completedActiveText,
                   ),
                 ),
               ),
@@ -1268,7 +1315,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                   child: Center(
                     child: Text(
                       isCancelledTab ? 'No cancelled requests' : 'No completed incidents',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFA0A0A0)),
+                      style: TextStyle(fontSize: 11, color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFFA0A0A0)),
                     ),
                   ),
                 )
@@ -1290,6 +1337,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
 
   Widget _buildCancelledCard(dynamic req, bool isSelected) {
     if (req is! Map) return const SizedBox.shrink();
+    final ts = ThemeService.instance;
 
     final reqId = req['Request_ID'] ?? req['Req_ID'] ?? req['reqId'] ?? req['id'] ?? req['emergency_id'];
     final reqIdStr = reqId != null ? (reqId.toString().startsWith('REQ-') ? reqId.toString() : 'REQ-${reqId.toString().padLeft(4, '0')}') : 'REQ-000';
@@ -1297,9 +1345,25 @@ class _AdminMapTabState extends State<AdminMapTab> {
     final status = _formatStatus(req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined');
     final isCompleted = status.toLowerCase() == 'completed';
 
-    final primaryColor = isCompleted ? const Color(0xFF16A34A) : const Color(0xFFEB5757);
-    final selBgColor = isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFFFEAEA);
-    final badgeBgColor = isCompleted ? const Color(0xFFF0FDF4) : const Color(0xFFFFF0F0);
+    final primaryColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
+        : (ts.isDark ? const Color(0xFFF87171) : const Color(0xFFEB5757));
+
+    final selBgColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7))
+        : (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFEAEA));
+
+    final badgeBgColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFF0FDF4))
+        : (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFF0F0));
+
+    final cardBg = isSelected
+        ? selBgColor
+        : (ts.isDark ? const Color(0xFF1E293B) : Colors.white);
+
+    final cardBorder = isSelected
+        ? primaryColor
+        : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
       onTap: () {
@@ -1317,11 +1381,9 @@ class _AdminMapTabState extends State<AdminMapTab> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? selBgColor : Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? primaryColor : const Color(0xFFEEEEEE),
-          ),
+          border: Border.all(color: cardBorder),
         ),
         child: Row(
           children: [
@@ -1333,17 +1395,17 @@ class _AdminMapTabState extends State<AdminMapTab> {
             const SizedBox(width: 6),
             Text(
               reqIdStr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF212121),
+                color: ts.isDark ? Colors.white : const Color(0xFF212121),
               ),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 type,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF757575)),
+                style: TextStyle(fontSize: 11, color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF757575)),
                 overflow: TextOverflow.ellipsis,
               ),
             ),

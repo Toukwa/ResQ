@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
 import '../../config.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/theme_service.dart';
 
 class AdminManagementScreen extends StatefulWidget {
   final String searchFilter;
@@ -43,13 +44,6 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // Real-time updates
   Timer? _refreshTimer;
   io.Socket? _socket;
-
-  static const TextStyle _tableHeaderStyle = TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: Color(0xFF94A3B8),
-    letterSpacing: 0.5,
-  );
 
   @override
   void initState() {
@@ -290,12 +284,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ts = ThemeService.instance;
     final filteredVehicles = _filteredVehicles;
     final isRestrictedDept = widget.department.isNotEmpty && widget.department.toUpperCase() != 'ALL';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Padding(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      color: ts.pageBackground,
+      child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,11 +352,12 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             // RIGHT PANEL: VEHICLES DATA TABLE
             // ==========================================
             Expanded(
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ts.cardBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFF1F5F9)),
+                  border: Border.all(color: ts.borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,32 +374,32 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                 isRestrictedDept
                                     ? "${widget.department.toUpperCase()} Fleet Vehicles"
                                     : "All Department Vehicles",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
+                                  color: ts.textPrimary,
                                 ),
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 "(${filteredVehicles.length} results)",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Color(0xFF94A3B8),
+                                  color: ts.textSecondary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ),
                           IconButton(
-                            icon: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF64748B)),
+                            icon: Icon(Icons.refresh_rounded, size: 20, color: ts.textSecondary),
                             onPressed: () => _loadData(showLoading: true),
                             tooltip: "Refresh Vehicles",
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    Divider(height: 1, color: ts.borderColor),
 
                     // TABLE CONTENT
                     Expanded(
@@ -422,14 +419,16 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // UNASSIGNED VEHICLES CARD CONTAINER
   // ==========================================
   Widget _buildUnassignedVehiclesCard() {
+    final ts = ThemeService.instance;
     final unassignedCount = _unassignedVehicles.length;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,19 +436,21 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 "UNASSIGNED VEHICLES",
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF94A3B8),
+                  color: ts.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: unassignedCount > 0 ? const Color(0xFFFFF7ED) : const Color(0xFFF1F5F9),
+                  color: unassignedCount > 0
+                      ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
+                      : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(10),
                   border: unassignedCount > 0 ? Border.all(color: const Color(0xFFFF5200).withValues(alpha: 0.3)) : null,
                 ),
@@ -458,16 +459,16 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: unassignedCount > 0 ? const Color(0xFFFF5200) : const Color(0xFF94A3B8),
+                    color: unassignedCount > 0 ? const Color(0xFFFF5200) : ts.textSecondary,
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Auto-detected units waiting for department assignment",
-            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            style: TextStyle(fontSize: 11, color: ts.textSecondary),
           ),
           const SizedBox(height: 12),
           if (_unassignedVehicles.isEmpty)
@@ -475,12 +476,12 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               alignment: Alignment.center,
               child: Column(
-                children: const [
-                  Icon(Icons.sensors_off_outlined, size: 28, color: Color(0xFFCBD5E1)),
-                  SizedBox(height: 8),
+                children: [
+                  Icon(Icons.sensors_off_outlined, size: 28, color: ts.textSecondary),
+                  const SizedBox(height: 8),
                   Text(
                     "No unassigned units detected",
-                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 11, color: ts.textSecondary, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -507,16 +508,16 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                 return Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: ts.inputBackground,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: ts.borderColor),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED),
+                          color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFFFF5200)),
@@ -530,7 +531,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               "$plate (ID: #$idNum)",
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: ts.textPrimary),
                             ),
                             Row(
                               children: [
@@ -575,24 +576,26 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // FILTER BY AGENCY CARD
   // ==========================================
   Widget _buildFilterByAgencyCard() {
+    final ts = ThemeService.instance;
     final agencies = _agencyOptions;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "FILTER BY AGENCY",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -613,7 +616,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFFFF5200)
-                            : const Color(0xFFF1F5F9),
+                            : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -624,7 +627,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : const Color(0xFF64748B),
+                              color: isSelected ? Colors.white : ts.textSecondary,
                             ),
                           ),
                           if (count > 0) ...[
@@ -634,7 +637,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? Colors.white.withValues(alpha: 0.3)
-                                    : const Color(0xFFE2E8F0),
+                                    : ts.borderColor,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
@@ -642,7 +645,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                                  color: isSelected ? Colors.white : ts.textSecondary,
                                 ),
                               ),
                             ),
@@ -664,24 +667,26 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // FILTER BY STATUS CARD
   // ==========================================
   Widget _buildFilterByStatusCard() {
+    final ts = ThemeService.instance;
     final statuses = ['All Statuses', 'Available', 'Dispatched', 'Offline'];
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "FILTER BY STATUS",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -699,7 +704,9 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFFFF7ED) : Colors.transparent,
+                      color: isSelected
+                          ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -722,7 +729,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? const Color(0xFFFF5200) : const Color(0xFF64748B),
+                                color: isSelected ? const Color(0xFFFF5200) : ts.textSecondary,
                               ),
                             ),
                           ],
@@ -730,7 +737,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFF5200) : const Color(0xFFF1F5F9),
+                            color: isSelected ? const Color(0xFFFF5200) : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -738,7 +745,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              color: isSelected ? Colors.white : ts.textSecondary,
                             ),
                           ),
                         ),
@@ -758,28 +765,37 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // VEHICLES TABLE BUILDER
   // ==========================================
   Widget _buildVehiclesTable(List<Map<String, dynamic>> vehicles) {
+    final ts = ThemeService.instance;
+
     if (_isLoadingVehicles) {
       return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5200)));
     }
+
+    final tableHeaderStyle = TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.bold,
+      color: ts.textSecondary,
+      letterSpacing: 0.5,
+    );
 
     return Column(
       children: [
         // TABLE COLUMN HEADERS
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          color: const Color(0xFFFAFAFA),
+          color: ts.isDark ? const Color(0xFF111827) : const Color(0xFFFAFAFA),
           child: Row(
-            children: const [
-              Expanded(flex: 3, child: Text("PLATE NO / IDENTIFIER", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("VEHICLE TYPE", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("DEPARTMENT", style: _tableHeaderStyle)),
-              Expanded(flex: 3, child: Text("OFFICER IN CHARGE", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("STATUS", style: _tableHeaderStyle)),
-              SizedBox(width: 90, child: Align(alignment: Alignment.centerRight, child: Text("ACTIONS", style: _tableHeaderStyle))),
+            children: [
+              Expanded(flex: 3, child: Text("PLATE NO / IDENTIFIER", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("VEHICLE TYPE", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("DEPARTMENT", style: tableHeaderStyle)),
+              Expanded(flex: 3, child: Text("OFFICER IN CHARGE", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("STATUS", style: tableHeaderStyle)),
+              SizedBox(width: 90, child: Align(alignment: Alignment.centerRight, child: Text("ACTIONS", style: tableHeaderStyle))),
             ],
           ),
         ),
-        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+        Divider(height: 1, color: ts.borderColor),
 
         // TABLE CONTENT OR EMPTY STATE
         Expanded(
@@ -790,18 +806,18 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.directions_car_filled_outlined,
                         size: 48,
-                        color: Color(0xFFCBD5E1),
+                        color: ts.textSecondary,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         (_selectedAgency != 'All' || _selectedStatus != 'All Statuses' || _searchController.text.isNotEmpty)
                             ? "No department vehicles match your filters"
                             : "No vehicles registered yet",
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
+                        style: TextStyle(
+                          color: ts.textSecondary,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -826,7 +842,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     return Column(
                       children: [
                         _buildVehicleRow(vehicle),
-                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        Divider(height: 1, color: ts.borderColor),
                       ],
                     );
                   },
@@ -840,6 +856,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // TABLE ROW ITEM
   // ==========================================
   Widget _buildVehicleRow(Map<String, dynamic> v) {
+    final ts = ThemeService.instance;
     final plate = v['plate_no']?.toString() ?? 'Unassigned';
     final type = v['vehicle_type']?.toString() ?? 'Emergency Unit';
     final dept = v['agency']?.toString() ?? 'Unassigned';
@@ -860,7 +877,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7ED),
+                    color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -875,17 +892,17 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   children: [
                     Text(
                       plate == 'Unassigned' || plate == '0' || plate.isEmpty ? 'Pending Plate Assignment' : plate,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                        color: ts.textPrimary,
                       ),
                     ),
                     Text(
                       "ID: #${v['vehicle_ID'] ?? v['id'] ?? 'N/A'}",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF94A3B8),
+                        color: ts.textSecondary,
                       ),
                     ),
                   ],
@@ -899,10 +916,10 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             flex: 2,
             child: Text(
               type,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF334155),
+                color: ts.textPrimary,
               ),
             ),
           ),
@@ -937,9 +954,9 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             flex: 3,
             child: Text(
               officer,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF475569),
+                color: ts.textSecondary,
               ),
             ),
           ),
@@ -977,7 +994,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF64748B)),
+                  icon: Icon(Icons.edit_outlined, size: 18, color: ts.textSecondary),
                   onPressed: () => _showEditVehicleModal(v),
                   tooltip: "Edit Vehicle",
                 ),
@@ -1024,6 +1041,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) {
+        final ts = ThemeService.instance;
+
         return StatefulBuilder(
           builder: (context, setModalState) {
             String dynamicStatus = 'Available';
@@ -1039,12 +1058,13 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             final dynamicStatusColor = _getStatusColor(dynamicStatus);
 
             return AlertDialog(
+              backgroundColor: ts.cardBackground,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Row(
-                children: const [
-                  Icon(Icons.directions_car_filled_outlined, color: Color(0xFFFF5200)),
-                  SizedBox(width: 8),
-                  Text("Add New Department Vehicle", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                children: [
+                  const Icon(Icons.directions_car_filled_outlined, color: Color(0xFFFF5200)),
+                  const SizedBox(width: 8),
+                  Text("Add New Department Vehicle", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                 ],
               ),
               content: Container(
@@ -1058,21 +1078,27 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Unassigned Vehicles Dropdown
-                      const Text("Select Unassigned / Detected Vehicle", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Select Unassigned / Detected Vehicle", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<int?>(
                         initialValue: selectedUnassignedVehicleId,
                         isDense: true,
                         isExpanded: true,
+                        dropdownColor: ts.cardBackground,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
                           hintText: "Select unassigned vehicle or leave empty",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          hintStyle: TextStyle(fontSize: 12, color: ts.textSecondary),
+                          filled: true,
+                          fillColor: ts.inputBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: [
-                          const DropdownMenuItem<int?>(
+                          DropdownMenuItem<int?>(
                             value: null,
-                            child: Text("+ Register New Vehicle Record", overflow: TextOverflow.ellipsis),
+                            child: Text("+ Register New Vehicle Record", overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary)),
                           ),
                           ..._unassignedVehicles.map((uv) {
                             final id = uv['vehicle_ID'] ?? uv['id'];
@@ -1085,7 +1111,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                             final idNum = plate.startsWith('VHE-') ? plate.replaceAll('VHE-', '') : id.toString();
                             return DropdownMenuItem<int?>(
                               value: id is int ? id : int.tryParse(id.toString()),
-                              child: Text("Unassigned $plate (ID: #$idNum)", overflow: TextOverflow.ellipsis),
+                              child: Text("Unassigned $plate (ID: #$idNum)", overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary)),
                             );
                           }),
                         ],
@@ -1115,32 +1141,42 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       const SizedBox(height: 10),
 
                       // Plate Number
-                      const Text("Plate Number / Registration", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Plate Number / Registration", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       TextField(
                         controller: plateController,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
                           hintText: "e.g. ABC-1234 or Leave Empty for Auto-Detect",
+                          hintStyle: TextStyle(fontSize: 12, color: ts.textSecondary),
+                          filled: true,
+                          fillColor: ts.inputBackground,
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                       ),
                       const SizedBox(height: 10),
 
                       // Vehicle Type
-                      const Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         initialValue: selectedType,
                         isDense: true,
                         isExpanded: true,
+                        dropdownColor: ts.cardBackground,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: ts.inputBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: ['Fire Truck', 'Ambulance', 'Police Vehicle']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)))
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) setModalState(() => selectedType = val);
@@ -1149,28 +1185,33 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       const SizedBox(height: 10),
 
                       // Officer In Charge
-                      const Text("Officer In Charge", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Officer In Charge", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       TextField(
                         controller: officerController,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
                           hintText: "e.g. Capt. Juan Dela Cruz",
+                          hintStyle: TextStyle(fontSize: 12, color: ts.textSecondary),
+                          filled: true,
+                          fillColor: ts.inputBackground,
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                       ),
                       const SizedBox(height: 10),
 
                       // Dynamic Status Display Indicator (Non-choice, dynamic)
-                      const Text("Operational Status (Dynamic)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Operational Status (Dynamic)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
+                          color: ts.inputBackground,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: ts.borderColor),
                         ),
                         child: Row(
                           children: [
@@ -1192,9 +1233,9 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               ),
                             ),
                             const Spacer(),
-                            const Text(
+                            Text(
                               "(System Managed)",
-                              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                              style: TextStyle(fontSize: 11, color: ts.textSecondary),
                             ),
                           ],
                         ),
@@ -1207,7 +1248,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text("Cancel"),
+                  child: Text("Cancel", style: TextStyle(color: ts.textSecondary)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -1286,15 +1327,18 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) {
+        final ts = ThemeService.instance;
+
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              backgroundColor: ts.cardBackground,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Row(
-                children: const [
-                  Icon(Icons.edit_outlined, color: Color(0xFFFF5200)),
-                  SizedBox(width: 8),
-                  Text("Edit Vehicle Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                children: [
+                  const Icon(Icons.edit_outlined, color: Color(0xFFFF5200)),
+                  const SizedBox(width: 8),
+                  Text("Edit Vehicle Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                 ],
               ),
               content: Container(
@@ -1307,30 +1351,39 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Plate Number / Registration", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Plate Number / Registration", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       TextField(
                         controller: plateController,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: ts.inputBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                       ),
                       const SizedBox(height: 10),
 
-                      const Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         initialValue: selectedType,
                         isDense: true,
                         isExpanded: true,
+                        dropdownColor: ts.cardBackground,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: ts.inputBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: ['Fire Truck', 'Ambulance', 'Police Vehicle']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)))
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) setModalState(() => selectedType = val);
@@ -1338,30 +1391,39 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      const Text("Officer In Charge", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Officer In Charge", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       TextField(
                         controller: officerController,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: ts.inputBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                       ),
                       const SizedBox(height: 10),
 
-                      const Text("Operational Status", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text("Operational Status", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         initialValue: selectedStatus,
                         isDense: true,
                         isExpanded: true,
+                        dropdownColor: ts.cardBackground,
+                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: ts.inputBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: ['Available', 'Dispatched', 'En Route', 'Offline']
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis)))
+                            .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) setModalState(() => selectedStatus = val);
@@ -1375,7 +1437,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text("Cancel"),
+                  child: Text("Cancel", style: TextStyle(color: ts.textSecondary)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -1430,22 +1492,28 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) {
+        final ts = ThemeService.instance;
+
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              backgroundColor: ts.cardBackground,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Row(
-                children: const [
-                  Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
-                  SizedBox(width: 8),
-                  Text("Delete Vehicle"),
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+                  const SizedBox(width: 8),
+                  Text("Delete Vehicle", style: TextStyle(color: ts.textPrimary)),
                 ],
               ),
-              content: Text("Are you sure you want to delete vehicle $plate (ID: #$vehicleId)? This action cannot be undone."),
+              content: Text(
+                "Are you sure you want to delete vehicle $plate (ID: #$vehicleId)? This action cannot be undone.",
+                style: TextStyle(color: ts.textSecondary),
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text("Cancel"),
+                  child: Text("Cancel", style: TextStyle(color: ts.textSecondary)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(

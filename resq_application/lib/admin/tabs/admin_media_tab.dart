@@ -6,6 +6,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'dart:io';
 import 'dart:async';
 import '../../services/firebase_services.dart';
+import '../../services/theme_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 
@@ -174,13 +175,12 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
 
     try {
       final results = await Future.wait([
-        FirebaseService.getMediaGallery().timeout(const Duration(seconds: 10)),
-        FirebaseService.getMediaFilters().timeout(const Duration(seconds: 10)),
-        FirebaseService.getActiveIncidents().timeout(const Duration(seconds: 10)),
+        FirebaseService.getMediaGallery().timeout(const Duration(seconds: 10)).catchError((_) => <dynamic>[]),
+        FirebaseService.getMediaFilters().timeout(const Duration(seconds: 10)).catchError((_) => <dynamic>[]),
+        FirebaseService.getActiveIncidents().timeout(const Duration(seconds: 10)).catchError((_) => <dynamic>[]),
       ]);
 
       var rawItems = results[0].map((item) => item as Map<String, dynamic>).toList();
-      // unused filters omitted
       final incidentsData = results[2];
 
       // Expand comma-separated image paths into individual media items
@@ -261,120 +261,131 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
   @override
   Widget build(BuildContext context) {
     final filteredList = _filteredMedia;
+    final themeService = ThemeService.instance;
 
-    if (_isLoading) {
-      return Container(
-        color: const Color(0xFFF8FAFC),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    return ListenableBuilder(
+      listenable: themeService,
+      builder: (context, _) {
+        final isDark = themeService.isDark;
+        final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+        final toggleBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+        final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-    return Container(
-      color: const Color(0xFFF8FAFC),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 240,
-              child: Column(
-                children: [
-                  _buildGallerySummaryCard(),
-                  const SizedBox(height: 16),
-                  _buildByIncidentCard(),
-                  const SizedBox(height: 16),
-                  _buildCancelledRequestsColumn(),
-                ],
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        if (_isLoading) {
+          return Container(
+            color: bgColor,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return Container(
+          color: bgColor,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 240,
+                  child: Column(
                     children: [
-                      Text(
-                        "${filteredList.length} photos found",
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            _buildViewToggleBtn(
-                              label: "Grid",
-                              isSelected: _isGridView,
-                              onTap: () => setState(() => _isGridView = true),
-                            ),
-                            _buildViewToggleBtn(
-                              label: "List",
-                              isSelected: !_isGridView,
-                              onTap: () => setState(() => _isGridView = false),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildGallerySummaryCard(),
+                      const SizedBox(height: 16),
+                      _buildByIncidentCard(),
+                      const SizedBox(height: 16),
+                      _buildCancelledRequestsColumn(),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  filteredList.isEmpty
-                      ? Container(
-                          padding: const EdgeInsets.all(40),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            "No evidence media matches your criteria.",
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                          ),
-                        )
-                      : _isGridView
-                          ? GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 0.88,
-                              ),
-                              itemCount: filteredList.length,
-                              itemBuilder: (context, index) {
-                                return InkWell(
-                                  borderRadius: BorderRadius.circular(16),
-                                  onTap: () => _showImageDetailsModal(context, filteredList[index]),
-                                  child: _buildMediaCard(filteredList[index]),
-                                );
-                              },
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: filteredList.length,
-                              separatorBuilder: (context, index) => const SizedBox(height: 10),
-                              itemBuilder: (context, index) {
-                                return InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: () => _showImageDetailsModal(context, filteredList[index]),
-                                  child: _buildMediaListItem(filteredList[index]),
-                                );
-                              },
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${filteredList.length} photos found",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: subtitleColor,
                             ),
-                ],
-              ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: toggleBg,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildViewToggleBtn(
+                                  label: "Grid",
+                                  isSelected: _isGridView,
+                                  onTap: () => setState(() => _isGridView = true),
+                                ),
+                                _buildViewToggleBtn(
+                                  label: "List",
+                                  isSelected: !_isGridView,
+                                  onTap: () => setState(() => _isGridView = false),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      filteredList.isEmpty
+                          ? Container(
+                              padding: const EdgeInsets.all(40),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "No evidence media matches your criteria.",
+                                style: TextStyle(color: subtitleColor, fontSize: 13),
+                              ),
+                            )
+                          : _isGridView
+                              ? GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 4,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                    childAspectRatio: 0.88,
+                                  ),
+                                  itemCount: filteredList.length,
+                                  itemBuilder: (context, index) {
+                                    return InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: () => _showImageDetailsModal(context, filteredList[index]),
+                                      child: _buildMediaCard(filteredList[index]),
+                                    );
+                                  },
+                                )
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: filteredList.length,
+                                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                                  itemBuilder: (context, index) {
+                                    return InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () => _showImageDetailsModal(context, filteredList[index]),
+                                      child: _buildMediaListItem(filteredList[index]),
+                                    );
+                                  },
+                                ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -382,30 +393,31 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
     final photoCount = _mediaItems.length;
     final uniqueIncidents = _mediaItems.map((item) => item['incidentId']).toSet().length;
     final latestUpload = _mediaItems.isNotEmpty ? (_mediaItems.first['time']?.toString() ?? '--:--') : '--:--';
+    final isDark = ThemeService.instance.isDark;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "GALLERY SUMMARY",
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF94A3B8), letterSpacing: 0.5),
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.insert_photo_outlined, size: 14, color: Color(0xFF94A3B8)),
-                  SizedBox(width: 6),
-                  Text("Photo Evidence", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Icon(Icons.insert_photo_outlined, size: 14, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF94A3B8)),
+                  const SizedBox(width: 6),
+                  Text("Photo Evidence", style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B))),
                 ],
               ),
               Text("$photoCount", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF5200))),
@@ -415,16 +427,16 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Active Incidents", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              Text("$uniqueIncidents", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              Text("Active Incidents", style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B))),
+              Text("$uniqueIncidents", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Latest Upload", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              Text(latestUpload, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              Text("Latest Upload", style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B))),
+              Text(latestUpload, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
             ],
           ),
         ],
@@ -433,12 +445,14 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
   }
 
   Widget _buildByIncidentCard() {
+    final isDark = ThemeService.instance.isDark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,6 +468,10 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
               final isSelected = _selectedIncidentFilter == index;
               final filterColor = _parseColor(item['color']);
 
+              final selectedBg = isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED);
+              final unselectedText = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B);
+              final unselectedPill = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4.0),
                 child: InkWell(
@@ -463,7 +481,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFFFF7ED) : Colors.transparent,
+                      color: isSelected ? selectedBg : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -484,7 +502,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? const Color(0xFFFF5200) : const Color(0xFF64748B),
+                                color: isSelected ? const Color(0xFFFF5200) : unselectedText,
                               ),
                             ),
                           ],
@@ -492,7 +510,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFF5200) : const Color(0xFFF1F5F9),
+                            color: isSelected ? const Color(0xFFFF5200) : unselectedPill,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -518,13 +536,14 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
 
   Widget _buildMediaCard(Map<String, dynamic> item) {
     final categoryColor = _parseColor(item['categoryColor']);
-    final bgColor = _parseColor(item['bgColor']);
+    final itemBgColor = _parseColor(item['bgColor']);
+    final isDark = ThemeService.instance.isDark;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +552,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
             height: 108,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: bgColor,
+              color: itemBgColor,
               borderRadius: const BorderRadius.only(topLeft: Radius.circular(15), topRight: Radius.circular(15)),
             ),
             child: Stack(
@@ -545,12 +564,12 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                       _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? ''),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        color: bgColor,
+                        color: itemBgColor,
                         child: const Center(child: Icon(Icons.broken_image_rounded, size: 28, color: Color(0xFF94A3B8))),
                       ),
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
-                        return Container(color: bgColor, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                        return Container(color: itemBgColor, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)));
                       },
                     ),
                   ),
@@ -591,7 +610,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                       Text(item['filename']?.toString() ?? 'Unknown',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
                       const SizedBox(height: 2),
                       Text(item['incidentId']?.toString() ?? '',
                           style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
@@ -610,9 +629,9 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(item['time']?.toString() ?? '--:--',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFFCBD5E1), fontWeight: FontWeight.w500)),
+                          style: TextStyle(fontSize: 10, color: isDark ? const Color(0xFF64748B) : const Color(0xFFCBD5E1), fontWeight: FontWeight.w500)),
                       Text(item['size']?.toString() ?? 'Photo',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFFCBD5E1), fontWeight: FontWeight.w500)),
+                          style: TextStyle(fontSize: 10, color: isDark ? const Color(0xFF64748B) : const Color(0xFFCBD5E1), fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ],
@@ -652,12 +671,17 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (BuildContext context) {
+        final ts = ThemeService.instance;
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Container(
             width: 480,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(
+              color: ts.cardBackground,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: ts.borderColor),
+            ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: Column(
@@ -700,8 +724,11 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                             child: Container(
                               width: 28,
                               height: 28,
-                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                              child: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF64748B)),
+                              decoration: BoxDecoration(
+                                color: ts.isDark ? const Color(0xFF1E293B) : Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.close_rounded, size: 16, color: ts.textSecondary),
                             ),
                           ),
                         ),
@@ -710,10 +737,15 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                           left: 14,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(12)),
+                            decoration: BoxDecoration(
+                              color: ts.isDark
+                                  ? const Color(0xFF1E293B).withValues(alpha: 0.92)
+                                  : Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Text(
                               "${item['ext']?.toString() ?? 'JPG'} · ${item['size']?.toString() ?? 'Photo'}",
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: ts.textSecondary),
                             ),
                           ),
                         ),
@@ -725,17 +757,23 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item['filename']?.toString() ?? 'Unknown',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                        Text(
+                          item['filename']?.toString() ?? 'Unknown',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           "Uploaded ${item['time']?.toString() ?? '--:--'} · ${item['location']?.toString() ?? 'Iriga City'}",
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          style: TextStyle(fontSize: 12, color: ts.textSecondary),
                         ),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12)),
+                          decoration: BoxDecoration(
+                            color: ts.subtleBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ts.borderColor),
+                          ),
                           child: Column(
                             children: [
                               Row(
@@ -755,11 +793,17 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.sell_outlined, size: 14, color: Color(0xFF94A3B8)),
-                            SizedBox(width: 6),
-                            Text("TAGS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
+                            Icon(Icons.sell_outlined, size: 14, color: ts.textSecondary),
+                            const SizedBox(width: 6),
+                            Text("TAGS",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: ts.textSecondary,
+                                  letterSpacing: 0.5,
+                                )),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -769,9 +813,19 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                           children: (item['tags'] as List? ?? []).map<Widget>((tag) {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(12)),
-                              child: Text(tag,
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFEA580C))),
+                              decoration: BoxDecoration(
+                                color: ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED),
+                                borderRadius: BorderRadius.circular(12),
+                                border: ts.isDark ? Border.all(color: const Color(0xFF9A3412)) : null,
+                              ),
+                              child: Text(
+                                tag,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFEA580C),
+                                ),
+                              ),
                             );
                           }).toList(),
                         ),
@@ -826,42 +880,46 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
   }
 
   Widget _buildModalInfoItem(String label, String? value) {
+    final ts = ThemeService.instance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+        Text(label, style: TextStyle(fontSize: 10, color: ts.textSecondary, fontWeight: FontWeight.w500)),
         const SizedBox(height: 2),
-        Text(value ?? 'N/A',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+        Text(
+          value ?? 'N/A',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: ts.textPrimary),
+        ),
       ],
     );
   }
 
   Widget _buildMediaListItem(Map<String, dynamic> item) {
-    final bgColor = _parseColor(item['bgColor']);
+    final itemBgColor = _parseColor(item['bgColor']);
+    final isDark = ThemeService.instance.isDark;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
       ),
       child: Row(
         children: [
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: itemBgColor, borderRadius: BorderRadius.circular(10)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
                 _getFullImageUrl(item['imagePath']?.toString() ?? item['image_path']?.toString() ?? ''),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.photo_camera_rounded, color: Color(0xFF1E293B), size: 20),
+                    Icon(Icons.photo_camera_rounded, color: isDark ? Colors.white70 : const Color(0xFF1E293B), size: 20),
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return const Center(child: CircularProgressIndicator(strokeWidth: 2));
@@ -875,7 +933,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item['filename']?.toString() ?? 'Unknown',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
                 const SizedBox(height: 2),
                 Text(
                   "${item['incidentId']?.toString() ?? ''} · ${(item['tags'] as List? ?? []).join(' ')}",
@@ -884,9 +942,9 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
               ],
             ),
           ),
-          Text(item['time']?.toString() ?? '--:--', style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1))),
+          Text(item['time']?.toString() ?? '--:--', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF64748B) : const Color(0xFFCBD5E1))),
           const SizedBox(width: 16),
-          Text(item['size']?.toString() ?? 'Photo', style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1))),
+          Text(item['size']?.toString() ?? 'Photo', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF64748B) : const Color(0xFFCBD5E1))),
         ],
       ),
     );
@@ -1027,15 +1085,46 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
   Widget _buildCancelledRequestsColumn() {
     final isCancelledTab = _bottomTabFilter == 'Cancelled';
     final list = isCancelledTab ? _cancelledIncidents : _completedIncidents;
+    final ts = ThemeService.instance;
+
+    // Container colors
+    final containerBg = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFF5F5))
+        : (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFF0FDF4));
+    final containerBorder = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF991B1B) : const Color(0xFFFFDDE1))
+        : (ts.isDark ? const Color(0xFF166534) : const Color(0xFFBBF7D0));
+
+    // Cancelled pill colors
+    final cancelledPillBg = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFFDDE1))
+        : Colors.transparent;
+    final cancelledTextColor = isCancelledTab
+        ? (ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757))
+        : (ts.isDark ? Colors.grey.shade400 : Colors.grey.shade600);
+
+    // Completed pill colors
+    final completedPillBg = !isCancelledTab
+        ? (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0))
+        : Colors.transparent;
+    final completedTextColor = !isCancelledTab
+        ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
+        : (ts.isDark ? Colors.grey.shade400 : Colors.grey.shade600);
+
+    // Count badge
+    final badgeBg = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFFE5E5))
+        : (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFDCFCE7));
+    final badgeText = isCancelledTab
+        ? (ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757))
+        : (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A));
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCancelledTab ? const Color(0xFFFFF5F5) : const Color(0xFFF0FDF4),
+        color: containerBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isCancelledTab ? const Color(0xFFFFDDE1) : const Color(0xFFBBF7D0),
-        ),
+        border: Border.all(color: containerBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1049,19 +1138,20 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isCancelledTab ? const Color(0xFFFFDDE1) : Colors.transparent,
+                    color: cancelledPillBg,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cancel_outlined, size: 13, color: Color(0xFFEB5757)),
+                      Icon(Icons.cancel_outlined, size: 13,
+                          color: ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757)),
                       const SizedBox(width: 4),
                       Text(
                         'Cancelled',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isCancelledTab ? const Color(0xFFEB5757) : Colors.grey.shade600,
+                          color: cancelledTextColor,
                         ),
                       ),
                     ],
@@ -1077,19 +1167,20 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: !isCancelledTab ? const Color(0xFFBBF7D0) : Colors.transparent,
+                    color: completedPillBg,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, size: 13, color: Color(0xFF16A34A)),
+                      Icon(Icons.check_circle_outline, size: 13,
+                          color: ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A)),
                       const SizedBox(width: 4),
                       Text(
                         'Completed',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: !isCancelledTab ? const Color(0xFF16A34A) : Colors.grey.shade600,
+                          color: completedTextColor,
                         ),
                       ),
                     ],
@@ -1101,7 +1192,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isCancelledTab ? const Color(0xFFFFE5E5) : const Color(0xFFDCFCE7),
+                  color: badgeBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -1109,7 +1200,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isCancelledTab ? const Color(0xFFEB5757) : const Color(0xFF16A34A),
+                    color: badgeText,
                   ),
                 ),
               ),
@@ -1122,7 +1213,10 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
                   child: Center(
                     child: Text(
                       isCancelledTab ? 'No cancelled requests' : 'No completed incidents',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFA0A0A0)),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: ts.isDark ? Colors.grey.shade500 : const Color(0xFFA0A0A0),
+                      ),
                     ),
                   ),
                 )

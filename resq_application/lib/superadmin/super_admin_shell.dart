@@ -5,6 +5,7 @@ import './tabs/eoc_header.dart'; // Make sure this import path matches your proj
 import '../admin/admin_service.dart'; // Import AdminService for notification methods
 import '../../config.dart';
 import '../../services/session_service.dart';
+import '../../services/theme_service.dart';
 
 // Import your 7 dedicated feature modules
 import './tabs/super_admin_dashboard.dart'; // Tab 1: Live Map Overview
@@ -79,6 +80,9 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     try {
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       if (settings != null && mounted) {
+        if (settings['theme_mode'] != null) {
+          ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
+        }
         final autoLogout = _toBool(settings['auto_logout'], defaultValue: true);
         final timeoutStr = (settings['session_timeout'] as String?) ?? '15 min';
         final duration = _parseTimeoutDuration(timeoutStr);
@@ -327,165 +331,151 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgGrey = Color(0xFFF8FAFC);
     const Color brandOrange = Color(0xFFFF6B00);
 
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (_) => _handleUserInteraction(),
-      onPointerMove: (_) => _handleUserInteraction(),
-      onPointerHover: (_) => _handleUserInteraction(),
-      child: Scaffold(
-        backgroundColor: bgGrey,
-        body: Row(
-          children: [
-          // --- EOC SEVEN-TAB SIDEBAR ARCHITECTURE ---
-          Container(
-            width: 80,
-            color: Colors.white,
-            child: Column(
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final ts = ThemeService.instance;
+        final Color sidebarBg = ts.sidebarBackground;
+        final Color border = ts.borderColor;
+        final Color sidebarIconInactive = ts.isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+        final Color dividerColor = ts.isDark ? const Color(0xFF2D3748) : const Color(0xFFE2E8F0);
+
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _handleUserInteraction(),
+          onPointerMove: (_) => _handleUserInteraction(),
+          onPointerHover: (_) => _handleUserInteraction(),
+          child: Scaffold(
+            backgroundColor: ts.pageBackground,
+            body: Row(
               children: [
-                const SizedBox(height: 24),
-                // ResQ EOC Brand Shield
-                Container(
-                  padding: const EdgeInsets.all(12),
+                // --- EOC SEVEN-TAB SIDEBAR ARCHITECTURE ---
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  width: 80,
                   decoration: BoxDecoration(
-                    color: brandOrange,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.shield_outlined,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Main Navigation Icons (Scrollable to prevent overflow on compact desktop views)
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      children: [
-                        _buildSidebarIcon(
-                          Icons.dashboard_rounded,
-                          0,
-                          "Live Map View",
-                        ),
-                        _buildSidebarIcon(
-                          Icons.map_outlined,
-                          1,
-                          "Larger Map View",
-                        ),
-                        _buildSidebarIcon(
-                          Icons.gpp_maybe_outlined,
-                          2,
-                          "Active Incidents",
-                        ),
-                        _buildSidebarIcon(
-                          Icons.receipt_long_rounded,
-                          3,
-                          "Live Activity Logs",
-                        ),
-                        _buildSidebarIcon(
-                          Icons.perm_media_outlined,
-                          4,
-                          "Evidence / Media Gallery",
-                        ),
-                        _buildSidebarIcon(
-                          Icons.manage_accounts_outlined,
-                          5,
-                          "Account & Agency Management",
-                        ),
-                        _buildSidebarIcon(
-                          Icons.settings_outlined,
-                          6,
-                          "Settings",
-                        ),
-                      ],
+                    color: sidebarBg,
+                    border: Border(
+                      right: BorderSide(color: border, width: 1),
                     ),
                   ),
-                ),
-
-                const Divider(height: 1, indent: 16, endIndent: 16),
-
-                // --- SEPARATED LOGOUT DOOR BUTTON (Action Only, Not a Tab) ---
-                GestureDetector(
-                  onTap: () async {
-                    await SessionService.clearSession();
-                    if (context.mounted) {
-                      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                    }
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20.0),
-                    child: Tooltip(
-                      message: "Exit Super Admin Session",
-                      child: Icon(
-                        Icons.meeting_room_outlined,
-                        color: Color(0xFFEF4444),
-                        size: 26,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-
-          // --- MAIN WORKSPACE AREA WITH IMMUTABLE HEADER VIEW ---
-          Expanded(
-            child: Column(
-              children: [
-                // Unified Header UI component spanning across every sub-tab
-                EocHeader(
-                  screenTitle: _screenTitles[_selectedIndex],
-                  onRefreshPressed: _handleGlobalRefresh,
-                  systemNotifications: _notifications.map((n) => n['message'] as String).toList(),
-                  unreadCount: _unreadCount,
-                  onClearUnread: _clearUnreadNotifications,
-                  onMarkAsRead: _markNotificationAsRead,
-                  notificationObjects: _notifications,
-                  adminUsername:
-                      _currentAdminName, // passed down dynamic parameter fix here
-                  onSearchChanged: (textString) {
-                    setState(() {
-                      _currentSearchQuery = textString;
-                    });
-                  },
-                ),
-
-                // Central Dynamic View Area
-                Expanded(
-                  child: IndexedStack(
-                    index: _selectedIndex,
+                  child: Column(
                     children: [
-                      OverviewDashboardScreen(
-                        searchFilter: _currentSearchQuery,
-                        onOpenFullMap: () {
-                          setState(() => _selectedIndex = 1);
+                      const SizedBox(height: 24),
+                      // ResQ EOC Brand Shield
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: brandOrange,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.shield_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Main Navigation Icons
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            children: [
+                              _buildSidebarIcon(Icons.dashboard_rounded, 0, "Live Map View", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.map_outlined, 1, "Larger Map View", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.gpp_maybe_outlined, 2, "Active Incidents", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.receipt_long_rounded, 3, "Live Activity Logs", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.perm_media_outlined, 4, "Evidence / Media Gallery", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.manage_accounts_outlined, 5, "Account & Agency Management", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.settings_outlined, 6, "Settings", inactiveColor: sidebarIconInactive),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
+
+                      // --- LOGOUT BUTTON ---
+                      GestureDetector(
+                        onTap: () async {
+                          await SessionService.clearSession();
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                          }
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20.0),
+                          child: Tooltip(
+                            message: "Exit Super Admin Session",
+                            child: Icon(
+                              Icons.meeting_room_outlined,
+                              color: Color(0xFFEF4444),
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+
+                // --- MAIN WORKSPACE AREA ---
+                Expanded(
+                  child: Column(
+                    children: [
+                      EocHeader(
+                        screenTitle: _screenTitles[_selectedIndex],
+                        onRefreshPressed: _handleGlobalRefresh,
+                        systemNotifications: _notifications.map((n) => n['message'] as String).toList(),
+                        unreadCount: _unreadCount,
+                        onClearUnread: _clearUnreadNotifications,
+                        onMarkAsRead: _markNotificationAsRead,
+                        notificationObjects: _notifications,
+                        adminUsername: _currentAdminName,
+                        onSearchChanged: (textString) {
+                          setState(() {
+                            _currentSearchQuery = textString;
+                          });
                         },
                       ),
-                      MapScreen(
-                        searchFilter: _currentSearchQuery,
-                        onBackToDashboard: () {
-                          setState(() => _selectedIndex = 0);
-                        },
-                      ),
-                      IncidentsScreen(
-                        searchFilter: _currentSearchQuery,
-                        onAddNotification: addSystemNotification,
-                      ),
-                      LogsScreen(
-                        searchFilter: _currentSearchQuery,
-                      ),
-                      MediaScreen(searchFilter: _currentSearchQuery),
-                      ManagementScreen(searchFilter: _currentSearchQuery),
-                      SettingsScreen(
-                        searchFilter: _currentSearchQuery,
-                        userId: widget.userId ?? 13,
+                      Expanded(
+                        child: IndexedStack(
+                          index: _selectedIndex,
+                          children: [
+                            OverviewDashboardScreen(
+                              searchFilter: _currentSearchQuery,
+                              onOpenFullMap: () {
+                                setState(() => _selectedIndex = 1);
+                              },
+                            ),
+                            MapScreen(
+                              searchFilter: _currentSearchQuery,
+                              onBackToDashboard: () {
+                                setState(() => _selectedIndex = 0);
+                              },
+                            ),
+                            IncidentsScreen(
+                              searchFilter: _currentSearchQuery,
+                              onAddNotification: addSystemNotification,
+                            ),
+                            LogsScreen(
+                              searchFilter: _currentSearchQuery,
+                            ),
+                            MediaScreen(searchFilter: _currentSearchQuery),
+                            ManagementScreen(searchFilter: _currentSearchQuery),
+                            SettingsScreen(
+                              searchFilter: _currentSearchQuery,
+                              userId: widget.userId ?? 13,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -493,14 +483,13 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
               ],
             ),
           ),
-        ],
-      ),
-    ),
-  );
-}
+        );
+      },
+    );
+  }
 
   // --- TAB VALUE INTERACTION FACTORY ---
-  Widget _buildSidebarIcon(IconData icon, int targetIndex, String tooltipText) {
+  Widget _buildSidebarIcon(IconData icon, int targetIndex, String tooltipText, {Color? inactiveColor}) {
     final bool isActive = _selectedIndex == targetIndex;
     return GestureDetector(
       onTap: () {
@@ -515,7 +504,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
           padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
           child: Icon(
             icon,
-            color: isActive ? const Color(0xFFFF6B00) : const Color(0xFF94A3B8),
+            color: isActive ? const Color(0xFFFF6B00) : (inactiveColor ?? const Color(0xFF94A3B8)),
             size: 24,
           ),
         ),

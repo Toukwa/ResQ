@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/firebase_services.dart';
+import '../services/theme_service.dart';
 import 'citizen_header.dart';
 import 'incident_status_screen.dart';
 
@@ -498,6 +499,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.resq',
+                          tileBuilder: ThemeService.instance.isDark
+                              ? (context, tileWidget, tile) => ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix(<double>[
+                                    -0.2126, -0.7152, -0.0722, 0, 255,
+                                    -0.2126, -0.7152, -0.0722, 0, 255,
+                                    -0.2126, -0.7152, -0.0722, 0, 255,
+                                    0,       0,       0,       1, 0,
+                                  ]),
+                                  child: tileWidget,
+                                )
+                              : null,
                         ),
                         MarkerLayer(
                           markers: [

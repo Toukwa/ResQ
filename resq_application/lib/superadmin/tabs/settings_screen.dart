@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
-
+import '../../services/theme_service.dart';
 enum SettingsCategory {
   appearance,
   alerts,
@@ -10,38 +10,30 @@ enum SettingsCategory {
   security,
   operational,
 }
-
 class SettingsScreen extends StatefulWidget {
   final String searchFilter;
   final int userId;
-
   const SettingsScreen({
     super.key,
     required this.searchFilter,
     this.userId = 13,
   });
-
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
-
 class _SettingsScreenState extends State<SettingsScreen> {
   SettingsCategory _selectedCategory = SettingsCategory.appearance;
-
   // Loading and Saving states
   bool _isLoading = true;
   bool _isSaving = false;
   String? _saveStatusMessage;
-
   // Authenticated user profile
   String _userName = 'Super Admin';
   String _userRole = 'Super Admin';
   String _userInitials = 'SA';
-
   // Appearance state (backed by user_settings table)
   String _themeMode = 'Light';
   bool _reducedMotion = false;
-
   // Alerts & Notifications state (backed by user_settings table)
   bool _criticalEmergencyAlerts = true;
   bool _unitStatusUpdates = true;
@@ -50,36 +42,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundAlerts = true;
   bool _emailNotifications = true;
   bool _smsAlerts = false;
-
   // Map Settings state (backed by user_settings table)
   bool _autoCenterOnIncident = true;
   bool _showUnitLabels = true;
   bool _showRouteLines = true;
-
   // Account Security state (backed by user_settings table)
   bool _mfa = true;
   String _sessionTimeout = '15 min';
   bool _autoLogout = true;
   bool _activityLog = true;
-
   // Operational Settings state (backed by user_settings table)
   bool _emergencyBroadcast = true;
   bool _dataRetentionPolicy = true;
   bool _analyticsReporting = true;
-
   // RxDart Subjects for responsive state and debounced updates
   final BehaviorSubject<String> _searchSubject = BehaviorSubject<String>();
   final PublishSubject<String> _statusMessageSubject = PublishSubject<String>();
   StreamSubscription? _searchSubscription;
   StreamSubscription? _statusSubscription;
-
   @override
   void initState() {
     super.initState();
     _setupRxDart();
     _loadAllData();
   }
-
   void _setupRxDart() {
     _searchSubscription = _searchSubject
         .debounceTime(const Duration(milliseconds: 300))
@@ -87,7 +73,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .listen((_) {
       if (mounted) setState(() {});
     });
-
     _statusSubscription = _statusMessageSubject
         .debounceTime(const Duration(seconds: 4))
         .listen((_) {
@@ -96,7 +81,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     });
   }
-
   @override
   void dispose() {
     _searchSubscription?.cancel();
@@ -105,7 +89,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _statusMessageSubject.close();
     super.dispose();
   }
-
   @override
   void didUpdateWidget(covariant SettingsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -113,7 +96,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadAllData();
     }
   }
-
   Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
     await Future.wait([
@@ -124,15 +106,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _isLoading = false);
     }
   }
-
   Future<void> _loadUserSettings() async {
     try {
       final settings = await AdminService.getUserSettings(widget.userId);
       if (settings != null && mounted) {
         setState(() {
           _themeMode = (settings['theme_mode'] as String?) ?? 'Light';
+          ThemeService.instance.setThemeMode(_themeMode);
           _reducedMotion = _toBool(settings['reduced_motion']);
-
           _criticalEmergencyAlerts = _toBool(settings['critical_emergency_alerts'], defaultValue: true);
           _unitStatusUpdates = _toBool(settings['unit_status_updates'], defaultValue: true);
           _incidentUpdates = _toBool(settings['incident_updates'], defaultValue: true);
@@ -140,16 +121,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
           _emailNotifications = _toBool(settings['email_notifications'], defaultValue: true);
           _smsAlerts = _toBool(settings['sms_alerts']);
-
           _autoCenterOnIncident = _toBool(settings['auto_center_on_incident'], defaultValue: true);
           _showUnitLabels = _toBool(settings['show_unit_labels'], defaultValue: true);
           _showRouteLines = _toBool(settings['show_route_lines'], defaultValue: true);
-
           _mfa = _toBool(settings['mfa_enabled'], defaultValue: true);
           _sessionTimeout = (settings['session_timeout'] as String?) ?? '15 min';
           _autoLogout = _toBool(settings['auto_logout'], defaultValue: true);
           _activityLog = _toBool(settings['activity_log_enabled'], defaultValue: true);
-
           _emergencyBroadcast = _toBool(settings['emergency_broadcast'], defaultValue: true);
           _dataRetentionPolicy = _toBool(settings['data_retention_policy'], defaultValue: true);
           _analyticsReporting = _toBool(settings['analytics_reporting'], defaultValue: true);
@@ -159,7 +137,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       debugPrint('Error loading user settings: $e');
     }
   }
-
   bool _toBool(dynamic val, {bool defaultValue = false}) {
     if (val == null) return defaultValue;
     if (val is bool) return val;
@@ -167,14 +144,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (val is String) return val == '1' || val.toLowerCase() == 'true';
     return defaultValue;
   }
-
   Future<void> _loadUserProfile() async {
     try {
       final profile = await AdminService.getUserProfile(widget.userId);
       if (profile != null && mounted) {
         final name = (profile['name'] as String?) ?? 'Super Admin';
         final role = (profile['role'] as String?) ?? 'Super Admin';
-
         final parts = name.trim().split(RegExp(r'\s+'));
         String initials = 'SA';
         if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
@@ -182,7 +157,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
           initials = parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
         }
-
         setState(() {
           _userName = name;
           _userRole = role;
@@ -193,13 +167,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       debugPrint('Error loading user profile: $e');
     }
   }
-
   Future<void> _saveSetting(Map<String, dynamic> partial) async {
     setState(() {
       _isSaving = true;
       _saveStatusMessage = 'Saving...';
     });
-
     try {
       final success = await AdminService.updateUserSettings(widget.userId, partial);
       if (mounted) {
@@ -207,7 +179,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isSaving = false;
           _saveStatusMessage = success ? 'Saved' : 'Failed to save';
         });
-
         if (success) {
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted && _saveStatusMessage == 'Saved') {
@@ -225,95 +196,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
-
   bool _matchesSearch(String title, String subtitle) {
     if (widget.searchFilter.trim().isEmpty) return true;
     final query = widget.searchFilter.trim().toLowerCase();
     return title.toLowerCase().contains(query) || subtitle.toLowerCase().contains(query);
   }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F3F0),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Search Filter Indicator
-            if (widget.searchFilter.isNotEmpty)
-              Container(
-                width: double.infinity,
-                color: Colors.orange.shade50,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, size: 16, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Filtering settings for: '${widget.searchFilter}'",
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final pageBg = ThemeService.instance.pageBackground;
+        return Scaffold(
+          backgroundColor: pageBg,
+          body: SafeArea(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              color: pageBg,
+          child: Column(
+            children: [
+              // Search Filter Indicator
+              if (widget.searchFilter.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  color: Colors.orange.shade50,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, size: 16, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Filtering settings for: '${widget.searchFilter}'",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              // Content View (Sidebar Menu + Main Detail Panel)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Secondary Settings Menu Panel
+                      SizedBox(
+                        width: 240,
+                        child: _buildSettingsMenuPanel(),
+                      ),
+                      const SizedBox(width: 20),
+                      // Main Category Detail Panel
+                      Expanded(
+                        child: _isLoading
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const CircularProgressIndicator(strokeWidth: 3),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Loading settings...',
+                                      style: TextStyle(color: ThemeService.instance.textSecondary, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : _buildMainDetailPanel(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
-            // Content View (Sidebar Menu + Main Detail Panel)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Secondary Settings Menu Panel
-                    SizedBox(
-                      width: 240,
-                      child: _buildSettingsMenuPanel(),
-                    ),
-                    const SizedBox(width: 20),
-
-                    // Main Category Detail Panel
-                    Expanded(
-                      child: _isLoading
-                          ? const Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(strokeWidth: 3),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Loading settings...',
-                                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : _buildMainDetailPanel(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+      },
+    );
   }
-
   // ---------------------------------------------------------------------------
   // SETTINGS MENU PANEL (Left Column inside Page)
   // ---------------------------------------------------------------------------
   Widget _buildSettingsMenuPanel() {
-    return Container(
+    final cardBg = ThemeService.instance.cardBackground;
+    final border = ThemeService.instance.borderColor;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: ThemeService.instance.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -370,9 +352,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
+              color: ThemeService.instance.isDark ? ThemeService.instance.inputBackground : const Color(0xFFF9FAFB),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF3F4F6)),
+              border: Border.all(color: ThemeService.instance.borderColor),
             ),
             child: Row(
               children: [
@@ -396,18 +378,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Text(
                         _userName,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF111827),
+                          color: ThemeService.instance.textPrimary,
                         ),
                       ),
                       Text(
                         _userRole,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF8B5CF6),
+                          color: ThemeService.instance.textSecondary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -421,7 +403,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
   Widget _buildMenuItem({
     required SettingsCategory category,
     required String title,
@@ -429,6 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required Color activeColor,
   }) {
     final isSelected = _selectedCategory == category;
+    final ts = ThemeService.instance;
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -443,7 +425,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
+              color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -451,7 +433,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icon(
                   icon,
                   size: 18,
-                  color: isSelected ? activeColor : const Color(0xFF6B7280),
+                  color: isSelected ? activeColor : ts.textSecondary,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -460,7 +442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected ? activeColor : const Color(0xFF4B5563),
+                      color: isSelected ? activeColor : ts.textPrimary,
                     ),
                   ),
                 ),
@@ -471,21 +453,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
   // ---------------------------------------------------------------------------
   // MAIN DETAIL PANEL
   // ---------------------------------------------------------------------------
   Widget _buildMainDetailPanel() {
     final contentWidgets = _buildCategoryContent();
-
-    return Container(
+    final cardBg = ThemeService.instance.cardBackground;
+    final border = ThemeService.instance.borderColor;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: ThemeService.instance.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -598,7 +583,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
   Widget _buildCategoryHeader() {
     switch (_selectedCategory) {
       case SettingsCategory.appearance:
@@ -613,8 +597,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildHeaderItem('Operational Settings', 'Configure organizational rules and data policies', Icons.settings_outlined, const Color(0xFF8B5CF6));
     }
   }
-
   Widget _buildHeaderItem(String title, String subtitle, IconData icon, Color color) {
+    final textPrimary = ThemeService.instance.textPrimary;
+    final textSecondary = ThemeService.instance.textSecondary;
     return Row(
       children: [
         Container(
@@ -630,20 +615,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
+              child: Text(title),
             ),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(fontSize: 12, color: textSecondary),
+              child: Text(subtitle),
             ),
           ],
         ),
       ],
     );
   }
-
   // ---------------------------------------------------------------------------
   // CONTENT SWITCHER BY CATEGORY
   // ---------------------------------------------------------------------------
@@ -661,11 +647,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildOperationalContent();
     }
   }
-
   // --- APPEARANCE ---
   List<Widget> _buildAppearanceContent() {
     final list = <Widget>[];
-
     if (_matchesSearch('Interface Theme', 'Choose your preferred display theme')) {
       list.add(
         _buildRowLayout(
@@ -678,14 +662,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildThemeOption('Light', Icons.wb_sunny_outlined, _themeMode == 'Light', const Color(0xFFFF4D00)),
               const SizedBox(width: 8),
               _buildThemeOption('Dark', Icons.nightlight_round, _themeMode == 'Dark', const Color(0xFFFF4D00)),
-              const SizedBox(width: 8),
-              _buildThemeOption('Auto', Icons.desktop_windows_outlined, _themeMode == 'Auto', const Color(0xFFFF4D00)),
             ],
           ),
         ),
       );
     }
-
     if (_matchesSearch('Reduced Motion', 'Minimize animations and transitions')) {
       if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
       list.add(
@@ -704,36 +685,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-
     return list;
   }
-
   Widget _buildThemeOption(String label, IconData icon, bool isSelected, Color activeColor) {
+    final ts = ThemeService.instance;
     return InkWell(
       onTap: () {
         setState(() => _themeMode = label);
+        ThemeService.instance.setThemeMode(label);
         _saveSetting({'theme_mode': label});
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : const Color(0xFFF9FAFB),
+          color: isSelected
+              ? (ts.isDark ? const Color(0xFF431407) : Colors.white)
+              : (ts.isDark ? ts.inputBackground : const Color(0xFFF9FAFB)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? activeColor.withValues(alpha: 0.5) : const Color(0xFFE5E7EB),
+            color: isSelected ? activeColor.withValues(alpha: 0.8) : ts.borderColor,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: isSelected ? activeColor : const Color(0xFF6B7280)),
+            Icon(icon, size: 14, color: isSelected ? activeColor : ts.textSecondary),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? activeColor : const Color(0xFF374151),
+                color: isSelected ? activeColor : ts.textPrimary,
               ),
             ),
           ],
@@ -741,14 +724,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
   // --- ALERTS & NOTIFICATIONS ---
   List<Widget> _buildAlertsContent() {
     const activeColor = Color(0xFFEF4444);
     const accentOrange = Color(0xFFFF6B00);
     const accentPurple = Color(0xFF8B5CF6);
     const accentBlue = Color(0xFF0066FF);
-
     final items = <Map<String, dynamic>>[
       {
         'icon': Icons.notifications_none_rounded,
@@ -835,7 +816,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       },
     ];
-
     final list = <Widget>[];
     for (final item in items) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
@@ -854,12 +834,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     return list;
   }
-
   // --- MAP SETTINGS ---
   List<Widget> _buildMapContent() {
     const activeColor = Color(0xFF10B981);
     final list = <Widget>[];
-
     final switches = [
       {
         'icon': Icons.autorenew_rounded,
@@ -892,7 +870,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       },
     ];
-
     for (final item in switches) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
         if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
@@ -908,15 +885,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
-
     return list;
   }
-
   // --- ACCOUNT SECURITY ---
   List<Widget> _buildSecurityContent() {
     const activeColor = Color(0xFF0066FF);
     final list = <Widget>[];
-
     if (_matchesSearch('Multi-Factor Authentication', 'Require MFA for all logins')) {
       list.add(
         _buildSwitchRow(
@@ -932,7 +906,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-
     if (_matchesSearch('Session Timeout', 'Auto-lock after inactivity')) {
       if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
       list.add(
@@ -982,7 +955,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-
     if (_matchesSearch('Auto Logout on Inactivity', 'Force logout when session expires')) {
       if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
       list.add(
@@ -999,7 +971,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-
     if (_matchesSearch('Activity Log', 'Track and record all dispatcher actions')) {
       if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
       list.add(
@@ -1016,7 +987,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-
     if (_matchesSearch('Change Password', 'Update account authentication password')) {
       list.add(const SizedBox(height: 16));
       list.add(
@@ -1060,15 +1030,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-
     return list;
   }
-
   // --- OPERATIONAL SETTINGS ---
   List<Widget> _buildOperationalContent() {
     const accentRed = Color(0xFFEF4444);
     const accentPurple = Color(0xFF8B5CF6);
-
     final items = [
       {
         'icon': Icons.notifications_none_rounded,
@@ -1104,7 +1071,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       },
     ];
-
     final list = <Widget>[];
     for (final item in items) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
@@ -1123,7 +1089,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     return list;
   }
-
   // ---------------------------------------------------------------------------
   // CHANGE PASSWORD DIALOG MODAL
   // ---------------------------------------------------------------------------
@@ -1131,13 +1096,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
-
     bool obscureCurrent = true;
     bool obscureNew = true;
     bool obscureConfirm = true;
     bool isSubmitting = false;
     String? errorMessage;
-
     showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
@@ -1165,7 +1128,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 16),
-
                   if (errorMessage != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 14),
@@ -1188,7 +1150,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-
                   // Current Password
                   const Text(
                     'Current Password',
@@ -1213,7 +1174,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
                   // New Password
                   const Text(
                     'New Password',
@@ -1238,7 +1198,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
                   // Confirm New Password
                   const Text(
                     'Confirm New Password',
@@ -1284,7 +1243,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       final currentPass = currentPasswordController.text.trim();
                       final newPass = newPasswordController.text.trim();
                       final confirmPass = confirmPasswordController.text.trim();
-
                       if (currentPass.isEmpty) {
                         setDialogState(() => errorMessage = 'Please enter your current password.');
                         return;
@@ -1301,21 +1259,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         setDialogState(() => errorMessage = 'New password cannot be identical to current password.');
                         return;
                       }
-
                       setDialogState(() {
                         isSubmitting = true;
                         errorMessage = null;
                       });
-
                       final messenger = ScaffoldMessenger.of(context);
                       final navigator = Navigator.of(dialogCtx);
-
                       final res = await AdminService.changePassword(
                         userId: widget.userId,
                         currentPassword: currentPass,
                         newPassword: newPass,
                       );
-
                       if (res['success'] == true) {
                         navigator.pop();
                         messenger.showSnackBar(
@@ -1344,7 +1298,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
   // ---------------------------------------------------------------------------
   // HELPER WIDGET BUILDERS FOR REUSABLE ROWS
   // ---------------------------------------------------------------------------
@@ -1367,39 +1320,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
   Widget _buildRowLayout({
     required IconData icon,
     required String title,
     required String subtitle,
     required Widget trailing,
   }) {
+    final textPrimary = ThemeService.instance.textPrimary;
+    final textSecondary = ThemeService.instance.textSecondary;
+    final inputBg = ThemeService.instance.inputBackground;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
+              color: inputBg,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: const Color(0xFF6B7280)),
+            child: Icon(icon, size: 16, color: textSecondary),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textPrimary),
+                  child: Text(title),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: TextStyle(fontSize: 11, color: textSecondary),
+                  child: Text(subtitle),
                 ),
               ],
             ),

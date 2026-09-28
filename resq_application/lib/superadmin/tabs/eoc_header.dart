@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../services/theme_service.dart';
 
 // --- DATA MODELS ---
 enum IncidentFilter { active, pending, all }
@@ -255,13 +256,19 @@ class _EocDashboardScreenState extends State<EocDashboardScreen> {
     Color accentColor,
     Color bgColor,
   ) {
+    final ts = ThemeService.instance;
+    final cardBg = ts.isDark ? accentColor.withValues(alpha: 0.15) : bgColor;
+    final cardBorder = ts.isDark
+        ? accentColor.withValues(alpha: 0.35)
+        : accentColor.withValues(alpha: 0.2);
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: cardBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+          border: Border.all(color: cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,13 +303,19 @@ class _EocDashboardScreenState extends State<EocDashboardScreen> {
     Color color,
     Color bgColor,
   ) {
+    final ts = ThemeService.instance;
+    final cardBg = ts.isDark ? color.withValues(alpha: 0.15) : bgColor;
+    final cardBorder = ts.isDark
+        ? color.withValues(alpha: 0.35)
+        : color.withValues(alpha: 0.3);
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: cardBg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: cardBorder),
         ),
         child: Column(
           children: [
@@ -317,7 +330,10 @@ class _EocDashboardScreenState extends State<EocDashboardScreen> {
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8)),
+              style: TextStyle(
+                fontSize: 10,
+                color: ts.isDark ? color.withValues(alpha: 0.9) : color.withValues(alpha: 0.8),
+              ),
             ),
           ],
         ),
@@ -813,16 +829,20 @@ class _EocHeaderState extends State<EocHeader> {
 
   @override
   Widget build(BuildContext context) {
-    const Color textDark = Color(0xFF0F172A);
-    const Color textGrey = Color(0xFF94A3B8);
-    const Color borderGrey = Color(0xFFE2E8F0);
+    final Color cardBg = ThemeService.instance.cardBackground;
+    final Color textPrimary = ThemeService.instance.textPrimary;
+    final Color textSecondary = ThemeService.instance.textSecondary;
+    final Color border = ThemeService.instance.borderColor;
+    final Color inputBg = ThemeService.instance.inputBackground;
     const Color brandOrange = Color(0xFFFF6B00);
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       height: 70,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: borderGrey, width: 1)),
+      decoration: BoxDecoration(
+        color: cardBg,
+        border: Border(bottom: BorderSide(color: border, width: 1)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
@@ -831,48 +851,52 @@ class _EocHeaderState extends State<EocHeader> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.screenTitle,
-                style: const TextStyle(
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: textDark,
+                  color: textPrimary,
                   letterSpacing: -0.5,
                 ),
+                child: Text(widget.screenTitle),
               ),
-              const Text(
-                "Iriga City Emergency Operations Center · Super Admin View",
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
                 style: TextStyle(
                   fontSize: 11,
-                  color: textGrey,
+                  color: textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
+                child: const Text("Iriga City Emergency Operations Center · Super Admin View"),
               ),
             ],
           ),
           const Spacer(),
           // Live Clock
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: inputBg,
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: border),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.access_time_rounded,
                   size: 14,
-                  color: textDark,
+                  color: textPrimary,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   _timeString,
-                  style: const TextStyle(
-                    color: textDark,
+                  style: TextStyle(
+                    color: textPrimary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    fontFeatures: [FontFeature.tabularFigures()],
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -886,21 +910,21 @@ class _EocHeaderState extends State<EocHeader> {
             child: TextField(
               controller: _searchController,
               onChanged: (value) => _searchSubject.add(value),
-              style: const TextStyle(fontSize: 12),
+              style: TextStyle(fontSize: 12, color: textPrimary),
               decoration: InputDecoration(
                 hintText: "Search incidents...",
-                hintStyle: const TextStyle(color: textGrey, fontSize: 12),
-                prefixIcon: const Icon(
+                hintStyle: TextStyle(color: textSecondary, fontSize: 12),
+                prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: textGrey,
+                  color: textSecondary,
                   size: 18,
                 ),
                 filled: true,
-                fillColor: const Color(0xFFF8FAFC),
+                fillColor: inputBg,
                 contentPadding: EdgeInsets.zero,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: borderGrey),
+                  borderSide: BorderSide(color: border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -918,9 +942,9 @@ class _EocHeaderState extends State<EocHeader> {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(
+                Icon(
                   Icons.notifications_outlined,
-                  color: Color(0xFF64748B),
+                  color: textSecondary,
                   size: 20,
                 ),
                 // RED COUNTER BADGE ON UPPER RIGHT (Disappears when unreadCount == 0)
@@ -971,10 +995,15 @@ class _EocHeaderState extends State<EocHeader> {
                     child: Column(
                       children: [
                         // Header
-                        Container(
+                        Builder(builder: (ctx) {
+                          final tsDyn = ThemeService.instance;
+                          final Color popupText = tsDyn.textPrimary;
+                          final Color popupSubText = tsDyn.textSecondary;
+                          final Color popupBorder = tsDyn.borderColor;
+                          return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: borderGrey, width: 1)),
+                            border: Border(bottom: BorderSide(color: popupBorder, width: 1)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -984,7 +1013,7 @@ class _EocHeaderState extends State<EocHeader> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: textDark,
+                                  color: popupText,
                                 ),
                               ),
                               Row(
@@ -993,14 +1022,14 @@ class _EocHeaderState extends State<EocHeader> {
                                     "${notifications.length} total",
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: textGrey,
+                                      color: popupSubText,
                                     ),
                                   ),
                                   if (widget.unreadCount > 0) ...[
                                     const SizedBox(width: 8),
                                     InkWell(
                                       onTap: widget.onClearUnread,
-                                      child: Text(
+                                      child: const Text(
                                         "Mark all read",
                                         style: TextStyle(
                                           fontSize: 11,
@@ -1014,23 +1043,29 @@ class _EocHeaderState extends State<EocHeader> {
                               ),
                             ],
                           ),
-                        ),
+                        );}),
                         // Scrollable content
                         Expanded(
-                          child: notifications.isEmpty
+                          child: Builder(builder: (ctx) {
+                            final tsDyn = ThemeService.instance;
+                            final Color popupText = tsDyn.textPrimary;
+                            final Color popupSubText = tsDyn.textSecondary;
+                            final Color popupBorder = tsDyn.borderColor;
+                            return notifications.isEmpty
                               ? Center(
                                   child: Text(
                                     "No notifications",
-                                    style: TextStyle(color: textGrey, fontSize: 12),
+                                    style: TextStyle(color: popupSubText, fontSize: 12),
                                   ),
                                 )
                               : ListView.separated(
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   itemCount: notifications.length,
-                                  separatorBuilder: (context, index) => const Divider(
+                                  separatorBuilder: (context, index) => Divider(
                                     height: 1,
                                     indent: 16,
                                     endIndent: 16,
+                                    color: popupBorder,
                                   ),
                                   itemBuilder: (context, index) {
                                     final notification = notifications[index];
@@ -1041,7 +1076,6 @@ class _EocHeaderState extends State<EocHeader> {
                                     
                                     return InkWell(
                                       onTap: () {
-                                        // Mark as read if it has a database ID
                                         if (notification['id'] != null && notification['id'] is int) {
                                           widget.onMarkAsRead?.call(notification['id']);
                                         }
@@ -1051,7 +1085,6 @@ class _EocHeaderState extends State<EocHeader> {
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            // Unread indicator
                                             if (isUnread)
                                               Container(
                                                 width: 8,
@@ -1070,7 +1103,7 @@ class _EocHeaderState extends State<EocHeader> {
                                                     notification['message']?.toString() ?? 'No message',
                                                     style: TextStyle(
                                                       fontSize: 12,
-                                                      color: isUnread ? textDark : textGrey,
+                                                      color: isUnread ? popupText : popupSubText,
                                                       fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal,
                                                     ),
                                                   ),
@@ -1079,7 +1112,7 @@ class _EocHeaderState extends State<EocHeader> {
                                                     _formatTimeAgo(timestamp),
                                                     style: TextStyle(
                                                       fontSize: 10,
-                                                      color: textGrey,
+                                                      color: popupSubText,
                                                     ),
                                                   ),
                                                 ],
@@ -1090,7 +1123,8 @@ class _EocHeaderState extends State<EocHeader> {
                                       ),
                                     );
                                   },
-                                ),
+                                );
+                          }),
                         ),
                       ],
                     ),
@@ -1101,16 +1135,16 @@ class _EocHeaderState extends State<EocHeader> {
           ),
           const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: textDark, size: 20),
+            icon: Icon(Icons.refresh_rounded, color: textPrimary, size: 20),
             onPressed: widget.onRefreshPressed,
             tooltip: "Sync Live Records",
           ),
           const SizedBox(width: 12),
-          const VerticalDivider(
+          VerticalDivider(
             width: 1,
             indent: 20,
             endIndent: 20,
-            color: borderGrey,
+            color: border,
           ),
           const SizedBox(width: 12),
           // Admin Chip
@@ -1135,8 +1169,8 @@ class _EocHeaderState extends State<EocHeader> {
                 children: [
                   Text(
                     widget.adminUsername,
-                    style: const TextStyle(
-                      color: textDark,
+                    style: TextStyle(
+                      color: textPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),

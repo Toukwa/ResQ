@@ -7,6 +7,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../services/theme_service.dart';
 
 class AdminVehiclesTab extends StatefulWidget {
   final String searchFilter;
@@ -549,9 +550,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     }
 
     final activeReq = _activeRequest;
+    final ts = ThemeService.instance;
 
     return Container(
-      color: const Color(0xFFFBFBFB),
+      color: ts.pageBackground,
       padding: const EdgeInsets.all(20.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -595,16 +597,18 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Widget _buildEmptyState(String message) {
-    return Container(
+    final ts = ThemeService.instance;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Center(
         child: Text(
           message,
-          style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 13),
+          style: TextStyle(color: ts.textSecondary, fontSize: 13),
         ),
       ),
     );
@@ -614,14 +618,16 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   // COLUMN 1: REQUEST QUEUE (ACTIVE ONLY)
   // ==========================================
   Widget _buildRequestQueueColumn() {
+    final ts = ThemeService.instance;
     final activeList = _activeIncidentsForDept;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,12 +637,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Request Queue',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF212121),
+                      color: ts.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -666,18 +672,19 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           Container(
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F6F8),
+              color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF5F6F8),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: ts.isDark ? const Color(0xFF334155) : Colors.transparent),
             ),
             child: TextField(
               onChanged: (val) => setState(() => _localSearchQuery = val),
-              style: const TextStyle(fontSize: 12),
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 12, color: ts.isDark ? Colors.white : Colors.black87),
+              decoration: InputDecoration(
                 hintText: 'Search requests...',
-                hintStyle: TextStyle(fontSize: 12, color: Color(0xFFA0A0A0)),
-                prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFFA0A0A0)),
+                hintStyle: TextStyle(fontSize: 12, color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFFA0A0A0)),
+                prefixIcon: Icon(Icons.search, size: 18, color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFFA0A0A0)),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
               ),
             ),
           ),
@@ -714,15 +721,29 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   Widget _buildCancelledRequestsColumn() {
     final isCancelledTab = _bottomTabFilter == 'Cancelled';
     final list = isCancelledTab ? _cancelledIncidentsForDept : _completedIncidentsForDept;
+    final ts = ThemeService.instance;
+
+    final containerBg = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF2D1215) : const Color(0xFFFFF5F5))
+        : (ts.isDark ? const Color(0xFF062C19) : const Color(0xFFF0FDF4));
+    final containerBorder = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1))
+        : (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0));
+
+    final cancelledActiveBg = ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1);
+    final cancelledActiveText = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757);
+
+    final completedActiveBg = ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0);
+    final completedActiveText = ts.isDark ? const Color(0xFF86EFAC) : const Color(0xFF16A34A);
+
+    final unselectedText = ts.isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCancelledTab ? const Color(0xFFFFF5F5) : const Color(0xFFF0FDF4),
+        color: containerBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isCancelledTab ? const Color(0xFFFFDDE1) : const Color(0xFFBBF7D0),
-        ),
+        border: Border.all(color: containerBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -736,19 +757,19 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isCancelledTab ? const Color(0xFFFFDDE1) : Colors.transparent,
+                    color: isCancelledTab ? cancelledActiveBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cancel_outlined, size: 13, color: Color(0xFFEB5757)),
+                      Icon(Icons.cancel_outlined, size: 13, color: isCancelledTab ? cancelledActiveText : unselectedText),
                       const SizedBox(width: 4),
                       Text(
                         'Cancelled',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isCancelledTab ? const Color(0xFFEB5757) : Colors.grey.shade600,
+                          color: isCancelledTab ? cancelledActiveText : unselectedText,
                         ),
                       ),
                     ],
@@ -764,19 +785,19 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: !isCancelledTab ? const Color(0xFFBBF7D0) : Colors.transparent,
+                    color: !isCancelledTab ? completedActiveBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, size: 13, color: Color(0xFF16A34A)),
+                      Icon(Icons.check_circle_outline, size: 13, color: !isCancelledTab ? completedActiveText : unselectedText),
                       const SizedBox(width: 4),
                       Text(
                         'Completed',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: !isCancelledTab ? const Color(0xFF16A34A) : Colors.grey.shade600,
+                          color: !isCancelledTab ? completedActiveText : unselectedText,
                         ),
                       ),
                     ],
@@ -788,7 +809,9 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isCancelledTab ? const Color(0xFFFFE5E5) : const Color(0xFFDCFCE7),
+                  color: isCancelledTab
+                      ? (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFE5E5))
+                      : (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7)),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -796,7 +819,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isCancelledTab ? const Color(0xFFEB5757) : const Color(0xFF16A34A),
+                    color: isCancelledTab ? cancelledActiveText : completedActiveText,
                   ),
                 ),
               ),
@@ -832,22 +855,38 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency').toString();
     final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined').toString();
     final isCompleted = status.toLowerCase() == 'completed';
+    final ts = ThemeService.instance;
 
-    final primaryColor = isCompleted ? const Color(0xFF16A34A) : const Color(0xFFEB5757);
-    final selBgColor = isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFFFEAEA);
-    final badgeBgColor = isCompleted ? const Color(0xFFF0FDF4) : const Color(0xFFFFF0F0);
+    final primaryColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
+        : (ts.isDark ? const Color(0xFFF87171) : const Color(0xFFEB5757));
+
+    final selBgColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7))
+        : (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFEAEA));
+
+    final badgeBgColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFF0FDF4))
+        : (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFF0F0));
+
+    final cardBg = isSelected
+        ? selBgColor
+        : (ts.isDark ? const Color(0xFF1E293B) : Colors.white);
+
+    final cardBorder = isSelected
+        ? primaryColor
+        : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
       onTap: () => setState(() => _selectedRequestId = _getReqId(req)),
       borderRadius: BorderRadius.circular(8),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? selBgColor : Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? primaryColor : const Color(0xFFEEEEEE),
-          ),
+          border: Border.all(color: cardBorder),
         ),
         child: Row(
           children: [
@@ -855,17 +894,17 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             const SizedBox(width: 6),
             Text(
               reqIdStr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF212121),
+                color: ts.isDark ? Colors.white : const Color(0xFF212121),
               ),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 type,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF757575)),
+                style: TextStyle(fontSize: 11, color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF757575)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -895,30 +934,35 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   Widget _buildRequestQueueCard(Map<String, dynamic> req, bool isSelected) {
     final reqIdStr = _formatReqIdStr(req);
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency').toString();
-    final priority = (req['Priority_Level'] ?? req['priority'] ?? 'High').toString();
     final location = (req['Barangay'] ?? req['location'] ?? req['location_name'] ?? 'Iriga City').toString();
     final timeStr = _formatTime(req);
     final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString();
-
-    final isHigh = priority.toLowerCase() == 'high';
-
-    Color statusBg = const Color(0xFFFFF3CD);
-    Color statusColor = const Color(0xFF856404);
+    final ts = ThemeService.instance;
 
     final displayStatusText = _displayStatus(status);
+    Color statusBg = ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD);
+    Color statusColor = ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFF856404);
+
     if (displayStatusText == 'Pending') {
-      statusBg = const Color(0xFFFFF3CD);
-      statusColor = const Color(0xFF856404);
+      statusBg = ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD);
+      statusColor = ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFF856404);
     } else if (displayStatusText == 'En Route') {
-      statusBg = const Color(0xFFEBF5FF);
-      statusColor = const Color(0xFF2563EB);
+      statusBg = ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEBF5FF);
+      statusColor = ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
     } else if (displayStatusText == 'Completed') {
-      statusBg = const Color(0xFFDCFCE7);
-      statusColor = const Color(0xFF16A34A);
+      statusBg = ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7);
+      statusColor = ts.isDark ? const Color(0xFF6EE7B7) : const Color(0xFF16A34A);
     } else if (displayStatusText == 'Cancelled') {
-      statusBg = const Color(0xFFFEE2E2);
-      statusColor = const Color(0xFFDC2626);
+      statusBg = ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFEE2E2);
+      statusColor = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626);
     }
+
+    final cardBg = isSelected
+        ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFF2F7FE))
+        : (ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFFBFBFB));
+    final cardBorder = isSelected
+        ? const Color(0xFFFF5C00)
+        : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
       onTap: () => setState(() => _selectedRequestId = _getReqId(req)),
@@ -927,10 +971,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF2F7FE) : const Color(0xFFFBFBFB),
+          color: cardBg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? const Color(0xFFFF5C00) : const Color(0xFFEEEEEE),
+            color: cardBorder,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -943,26 +987,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 const SizedBox(width: 6),
                 Text(
                   reqIdStr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF212121),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isHigh ? const Color(0xFFFFE0D1) : const Color(0xFFFFF3CD),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    priority,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: isHigh ? const Color(0xFFFF5C00) : const Color(0xFF856404),
-                    ),
+                    color: ts.isDark ? Colors.white : const Color(0xFF212121),
                   ),
                 ),
               ],
@@ -970,17 +998,17 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             const SizedBox(height: 6),
             Text(
               type,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF212121),
+                color: ts.isDark ? Colors.white : const Color(0xFF212121),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
               location,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF757575)),
+              style: TextStyle(fontSize: 11, color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF757575)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -991,7 +1019,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 Expanded(
                   child: Text(
                     timeStr,
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF9E9E9E)),
+                    style: TextStyle(fontSize: 10, color: ts.isDark ? Colors.grey.shade500 : const Color(0xFF9E9E9E)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1029,7 +1057,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final reqIdNum = _getReqId(req);
     final reqIdStr = _formatReqIdStr(req);
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency').toString();
-    final priority = (req['Priority_Level'] ?? req['priority'] ?? 'High').toString();
     final location = (req['Barangay'] ?? req['location'] ?? req['location_name'] ?? 'Iriga City').toString();
     final street = (req['Street'] ?? req['street'] ?? 'Main Road').toString();
     final landmark = (req['Landmark'] ?? req['landmark'] ?? 'Near Plaza').toString();
@@ -1048,12 +1075,15 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final isCancelled = statusLow == 'cancelled' || statusLow == 'declined';
     final isCompleted = statusLow == 'completed';
 
-    return Container(
+    final ts = ThemeService.instance;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1073,8 +1103,9 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3EC),
+                  color: ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF3EC),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFE0D1)),
                 ),
                 child: Icon(_getEmergencyIcon(type), color: const Color(0xFFFF5C00), size: 24),
               ),
@@ -1082,41 +1113,21 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        reqIdStr,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF212121),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFE0D1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          priority,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFF5C00),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    reqIdStr,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: ts.isDark ? Colors.white : const Color(0xFF212121),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     type,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF616161),
+                      color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF616161),
                     ),
                   ),
                 ],
@@ -1126,13 +1137,22 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: isPending
-                      ? const Color(0xFFFFF3CD)
+                      ? (ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD))
                       : isAccepted
-                          ? const Color(0xFFEBF5FF)
-                          : isDispatched
-                              ? const Color(0xFFEFFFF4)
-                              : const Color(0xFFFFF0F0),
+                          ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEBF5FF))
+                          : (isDispatched || isCompleted)
+                              ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFEFFFF4))
+                              : (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFF0F0)),
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isPending
+                        ? (ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFFE0B2))
+                        : isAccepted
+                            ? (ts.isDark ? const Color(0xFF1D4ED8) : const Color(0xFFBFDBFE))
+                            : (isDispatched || isCompleted)
+                                ? (ts.isDark ? const Color(0xFF047857) : const Color(0xFFA7F3D0))
+                                : (ts.isDark ? const Color(0xFF991B1B) : const Color(0xFFFECACA)),
+                  ),
                 ),
                 child: Text(
                   status,
@@ -1140,12 +1160,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: isPending
-                        ? const Color(0xFF856404)
+                        ? (ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFF856404))
                         : isAccepted
-                            ? const Color(0xFF0052CC)
-                            : isDispatched
-                                ? const Color(0xFF27AE60)
-                                : const Color(0xFFEB5757),
+                            ? (ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF0052CC))
+                            : (isDispatched || isCompleted)
+                                ? (ts.isDark ? const Color(0xFF6EE7B7) : const Color(0xFF27AE60))
+                                : (ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757)),
                   ),
                 ),
               ),
@@ -1194,27 +1214,27 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
+                      color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF9FAFB),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Incident Description',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF9E9E9E),
+                            color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF9E9E9E),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           description,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF424242),
+                            color: ts.isDark ? Colors.white : const Color(0xFF424242),
                             height: 1.4,
                           ),
                         ),
@@ -1415,18 +1435,18 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFFFF4),
+                color: ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFEFFFF4),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF27AE60)),
+                border: Border.all(color: ts.isDark ? const Color(0xFF059669) : const Color(0xFF27AE60)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.verified_user_outlined, color: Color(0xFF27AE60), size: 20),
-                  SizedBox(width: 8),
+                  Icon(Icons.verified_user_outlined, color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60), size: 20),
+                  const SizedBox(width: 8),
                   Text(
                     'Incident Completed & Vehicle Released',
                     style: TextStyle(
-                      color: Color(0xFF27AE60),
+                      color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1438,18 +1458,18 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF0F0),
+                color: ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFF0F0),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFFDDE1)),
+                border: Border.all(color: ts.isDark ? const Color(0xFFDC2626) : const Color(0xFFFFDDE1)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.cancel_outlined, color: Color(0xFFEB5757), size: 20),
-                  SizedBox(width: 8),
+                  Icon(Icons.cancel_outlined, color: ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757), size: 20),
+                  const SizedBox(width: 8),
                   Text(
                     'This request was cancelled or declined.',
                     style: TextStyle(
-                      color: Color(0xFFEB5757),
+                      color: ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1463,33 +1483,35 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Widget _buildDetailBox(String label, String value, {IconData? icon}) {
+    final ts = ThemeService.instance;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: Color(0xFF9E9E9E)),
+            style: TextStyle(fontSize: 10, color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF9E9E9E)),
           ),
           const SizedBox(height: 4),
           Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 12, color: const Color(0xFF424242)),
+                Icon(icon, size: 12, color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF424242)),
                 const SizedBox(width: 4),
               ],
               Expanded(
                 child: Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF212121),
+                    color: ts.isDark ? Colors.white : const Color(0xFF212121),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1505,15 +1527,17 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   // COLUMN 3: AVAILABLE UNITS
   // ==========================================
   Widget _buildAvailableUnitsColumn(Map<String, dynamic>? activeReq) {
+    final ts = ThemeService.instance;
     final filteredVehicles = _filteredVehicles;
     final readyCount = filteredVehicles.where((v) => _getVehicleStatus(v as Map<String, dynamic>) == 'Available').length;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1521,18 +1545,18 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Available Units',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF212121),
+                  color: ts.textPrimary,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFFFF4),
+                  color: ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFEFFFF4),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1548,15 +1572,13 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           ),
           const SizedBox(height: 12),
 
-
-
           // Units List
           Expanded(
             child: filteredVehicles.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No emergency units found',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                      style: TextStyle(fontSize: 12, color: ts.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -1577,6 +1599,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Widget _buildVehicleCard(Map<String, dynamic> v, {bool isSelected = false}) {
+    final ts = ThemeService.instance;
     final vId = v['Vehicle_ID'] ?? v['vehicle_ID'] ?? v['vehicle_id'] ?? v['id'];
     final rawPlate = (v['plate_no'] ?? v['plateNo'] ?? v['Call_Sign'] ?? v['call_sign'] ?? v['callSign'] ?? v['plate_number'] ?? '').toString().trim();
     final callSign = (rawPlate.isEmpty || rawPlate == 'null' || rawPlate == 'NULL') ? 'Unit #${vId ?? ''}' : rawPlate;
@@ -1592,8 +1615,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final isAvailable = statusStr == 'Available';
     final isDispatched = statusStr == 'Dispatched';
 
-    Color dotColor = const Color(0xFF9E9E9E);
-    Color statusTextColor = const Color(0xFF9E9E9E);
+    Color dotColor = ts.textSecondary;
+    Color statusTextColor = ts.textSecondary;
 
     if (isAvailable) {
       dotColor = const Color(0xFF27AE60);
@@ -1620,12 +1643,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFF3EC) : Colors.white,
+          color: isSelected ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF3EC)) : ts.cardBackground,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFFFF5C00)
-                : const Color(0xFFEEEEEE),
+                : ts.borderColor,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -1638,8 +1661,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFFFE0D1)
-                        : const Color(0xFFF2F6FF),
+                        ? (ts.isDark ? const Color(0xFF9A3412) : const Color(0xFFFFE0D1))
+                        : ts.inputBackground,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(
@@ -1657,12 +1680,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFFFF5C00) : const Color(0xFF0052CC),
+                        color: isSelected ? const Color(0xFFFF5C00) : const Color(0xFF2563EB),
                       ),
                     ),
                     Text(
                       '$type · $deptName',
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF757575)),
+                      style: TextStyle(fontSize: 10, color: ts.textSecondary),
                     ),
                   ],
                 ),
@@ -1693,7 +1716,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             const SizedBox(height: 8),
             Text(
               officer,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF616161)),
+              style: TextStyle(fontSize: 11, color: ts.textSecondary),
             ),
           ],
         ),
@@ -1702,11 +1725,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Widget _buildCustomDropdown() {
+    final ts = ThemeService.instance;
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEDD5),
+        color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFFF6B00), width: 1),
       ),
@@ -1719,7 +1743,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             size: 16,
           ),
           elevation: 3,
-          dropdownColor: Colors.white,
+          dropdownColor: ts.cardBackground,
           borderRadius: BorderRadius.circular(10),
           style: const TextStyle(
             fontSize: 11,

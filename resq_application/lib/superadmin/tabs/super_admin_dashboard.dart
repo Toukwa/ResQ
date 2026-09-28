@@ -10,6 +10,8 @@ import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
+import '../../services/theme_service.dart';
+import '../../shared/image_gallery_widget.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -629,56 +631,58 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
 
   Map<String, dynamic> _getStatusConfig(String? rawStatus) {
+    final ts = ThemeService.instance;
+    final isDark = ts.isDark;
     final s = (rawStatus ?? 'pending').trim().toLowerCase();
     if (s == 'en route' || s == 'en_route') {
       return {
         'label': 'En Route',
-        'textColor': const Color(0xFF2563EB),
-        'bgColor': const Color(0xFFEFF6FF),
-        'borderColor': const Color(0xFFBFDBFE),
+        'textColor': isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+        'bgColor': isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
+        'borderColor': isDark ? const Color(0xFF1D4ED8) : const Color(0xFFBFDBFE),
         'dotColor': const Color(0xFF2563EB),
-        'cardBg': Colors.white,
-        'cardBorder': const Color(0xFFBFDBFE),
+        'cardBg': isDark ? const Color(0xFF1E293B) : Colors.white,
+        'cardBorder': isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE),
       };
     } else if (s == 'declined' || s == 'denied') {
       return {
         'label': 'Declined',
-        'textColor': const Color(0xFFDC2626),
-        'bgColor': const Color(0xFFFEF2F2),
-        'borderColor': const Color(0xFFFECACA),
+        'textColor': isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+        'bgColor': isDark ? const Color(0xFF451212) : const Color(0xFFFEF2F2),
+        'borderColor': isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA),
         'dotColor': const Color(0xFFEF4444),
-        'cardBg': const Color(0xFFFFF5F5),
-        'cardBorder': const Color(0xFFFECACA),
+        'cardBg': isDark ? const Color(0xFF2A1515) : const Color(0xFFFFF5F5),
+        'cardBorder': isDark ? const Color(0xFF451212) : const Color(0xFFFECACA),
       };
     } else if (s == 'active') {
       return {
         'label': 'Active',
-        'textColor': const Color(0xFF059669),
-        'bgColor': const Color(0xFFD1FAE5),
-        'borderColor': const Color(0xFFA7F3D0),
+        'textColor': isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+        'bgColor': isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
+        'borderColor': isDark ? const Color(0xFF047857) : const Color(0xFFA7F3D0),
         'dotColor': const Color(0xFF10B981),
-        'cardBg': Colors.white,
-        'cardBorder': const Color(0xFFA7F3D0),
+        'cardBg': isDark ? const Color(0xFF1E293B) : Colors.white,
+        'cardBorder': isDark ? const Color(0xFF334155) : const Color(0xFFA7F3D0),
       };
     } else if (s == 'completed' || s == 'done') {
       return {
         'label': 'Completed',
-        'textColor': const Color(0xFF475569),
-        'bgColor': const Color(0xFFF1F5F9),
-        'borderColor': const Color(0xFFCBD5E1),
+        'textColor': isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+        'bgColor': isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+        'borderColor': isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
         'dotColor': const Color(0xFF64748B),
-        'cardBg': Colors.white,
-        'cardBorder': const Color(0xFFE2E8F0),
+        'cardBg': isDark ? const Color(0xFF1E293B) : Colors.white,
+        'cardBorder': isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
       };
     } else {
       return {
         'label': 'Pending',
-        'textColor': const Color(0xFFD97706),
-        'bgColor': const Color(0xFFFEF3C7),
-        'borderColor': const Color(0xFFFDE68A),
+        'textColor': isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+        'bgColor': isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
+        'borderColor': isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A),
         'dotColor': const Color(0xFFFF6B00),
-        'cardBg': const Color(0xFFFFFBEB),
-        'cardBorder': const Color(0xFFFDE68A),
+        'cardBg': isDark ? const Color(0xFF2A1C08) : const Color(0xFFFFFBEB),
+        'cardBorder': isDark ? const Color(0xFF451A03) : const Color(0xFFFDE68A),
       };
     }
   }
@@ -793,26 +797,30 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color borderGrey = Color(0xFFE2E8F0);
-    const Color brandOrange = Color(0xFFFF6B00);
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final ts = ThemeService.instance;
+        final borderGrey = ts.borderColor;
+        const brandOrange = Color(0xFFFF6B00);
 
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator(color: brandOrange))
-        : Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // LEFT COLUMN
-                Expanded(
-                  flex: 7,
+        return _isLoading
+            ? const Center(child: CircularProgressIndicator(color: brandOrange))
+            : Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // LEFT COLUMN
+                    Expanded(
+                      flex: 7,
                   child: Column(
                     children: [
                       Expanded(
                         flex: 6,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: ts.cardBackground,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: borderGrey),
                           ),
@@ -833,12 +841,20 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                 ),
                                 children: [
                                   TileLayer(
-                                    urlTemplate:
-                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName:
-                                        'com.resq.admin.dashboard',
-                                    tileProvider:
-                                        CancellableNetworkTileProvider(),
+                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName: 'com.resq.admin.dashboard',
+                                    tileProvider: CancellableNetworkTileProvider(),
+                                    tileBuilder: ts.isDark
+                                        ? (context, tileWidget, tile) => ColorFiltered(
+                                            colorFilter: const ColorFilter.matrix(<double>[
+                                              -0.2126, -0.7152, -0.0722, 0, 255,
+                                              -0.2126, -0.7152, -0.0722, 0, 255,
+                                              -0.2126, -0.7152, -0.0722, 0, 255,
+                                              0,       0,       0,       1, 0,
+                                            ]),
+                                            child: tileWidget,
+                                          )
+                                        : null,
                                   ),
                                   MarkerLayer(
                                     markers: _displayedIncidentQueueList.map((
@@ -883,10 +899,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.92),
+                                    color: ts.cardBackground.withValues(alpha: 0.92),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: const Color(0xFFE2E8F0),
+                                      color: borderGrey,
                                     ),
                                   ),
                                   child: Row(
@@ -898,20 +914,20 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                         size: 16,
                                       ),
                                       const SizedBox(width: 8),
-                                      const Text(
+                                      Text(
                                         'Iriga City Operations Map',
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
-                                          color: Color(0xFF0F172A),
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      const Text(
+                                      Text(
                                         '· Live',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey,
+                                          color: ts.textSecondary,
                                         ),
                                       ),
                                       const SizedBox(width: 4),
@@ -932,7 +948,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                 right: 16,
                                 child: _buildMapHeaderBadge(
                                   '$_activeIncidentsCount Active',
-                                  const Color(0xFFFFEDD5),
+                                  ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
                                   brandOrange,
                                   Icons.warning_amber_rounded,
                                 ),
@@ -983,7 +999,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.9),
+                                    color: ts.cardBackground.withValues(alpha: 0.92),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(color: borderGrey),
                                   ),
@@ -992,22 +1008,23 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFF1F5F9),
+                                        decoration: BoxDecoration(
+                                          color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.near_me_outlined,
                                           size: 14,
-                                          color: Colors.black87,
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         '${((_mapZoom / 15.0) * 100).round()}%',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                     ],
@@ -1102,23 +1119,25 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 // RIGHT COLUMN: PIXEL-PERFECT PANEL & TABS
                 Expanded(
                   flex: 4,
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ts.cardBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: borderGrey),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Exact Figma Top 5 Tabs Component Bar
+                        // Exact Top 5 Tabs Component Bar from Admin
                         Padding(
                           padding: const EdgeInsets.all(12.0),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
                             height: 64,
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFAFAFA),
+                              color: ts.subtleBackground,
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Row(
@@ -1154,7 +1173,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                           ),
                         ),
 
-                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        Divider(height: 1, color: borderGrey),
 
                         // Tab Dynamic Content Stack
                         Expanded(
@@ -1168,12 +1187,12 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                                     child: Row(
                                       children: [
-                                        const Text(
+                                        Text(
                                           "Active Incidents",
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
-                                            color: Color(0xFF0F172A),
+                                            color: ts.textPrimary,
                                           ),
                                         ),
                                         const Spacer(),
@@ -1229,6 +1248,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               ],
             ),
           );
+      },
+    );
   }
 
   // Exact Pixel Top Tab Navigation Item Builder
@@ -1239,8 +1260,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     int badgeCount = 0,
   }) {
     final isSelected = _selectedTabIndex == index;
+    final ts = ThemeService.instance;
     const activeColor = Color(0xFFEA580C);
-    const inactiveColor = Color(0xFF94A3B8);
+    final inactiveColor = ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final selectedBg = ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED);
+    final selectedBorder = ts.isDark ? const Color(0xFF9A3412) : const Color(0xFFFFEDD5);
 
     return Expanded(
       child: InkWell(
@@ -1252,8 +1276,9 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFFF7ED) : Colors.transparent,
+            color: isSelected ? selectedBg : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
+            border: isSelected ? Border.all(color: selectedBorder, width: 1) : null,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1332,6 +1357,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   // Units Tab View — fully dynamic from vehicles-with-dept API
   Widget _buildUnitsTabView() {
+    final ts = ThemeService.instance;
     final filtered = _filteredVehicles;
     return Column(
       children: [
@@ -1341,10 +1367,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             children: [
               Text(
                 'Unit Status (${filtered.length})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: Color(0xFF0F172A),
+                  color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
                 ),
               ),
               const Spacer(),
@@ -1370,6 +1396,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   }
 
   Widget _buildUnitFilterChip(String key, String label) {
+    final ts = ThemeService.instance;
     final isSelected = _selectedUnitFilter == key;
     return GestureDetector(
       onTap: () => setState(() => _selectedUnitFilter = key),
@@ -1377,15 +1404,22 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         margin: const EdgeInsets.only(left: 4),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFEDD5) : Colors.transparent,
+          color: isSelected
+              ? (ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5))
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
+          border: isSelected && ts.isDark
+              ? Border.all(color: const Color(0xFF9A3412), width: 1)
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? const Color(0xFFEA580C) : const Color(0xFF94A3B8),
+            color: isSelected
+                ? const Color(0xFFEA580C)
+                : (ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
           ),
         ),
       ),
@@ -1394,6 +1428,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   /// Dynamic unit card driven by live `response_vehicle` + `department` data.
   Widget _buildDynamicUnitCard(dynamic vehicle) {
+    final ts = ThemeService.instance;
+    final isDark = ts.isDark;
     final dept = vehicle['deptName']?.toString() ?? '';
     final plateNo = vehicle['plate_no']?.toString() ?? 'Unknown';
     final vehicleType = vehicle['vehicle_type']?.toString() ?? 'Vehicle';
@@ -1407,36 +1443,36 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final Color iconColor;
     final IconData deptIcon;
     if (dept.toUpperCase().contains('BFP')) {
-      iconBg = const Color(0xFFFEF2F2);
-      iconColor = const Color(0xFFDC2626);
+      iconBg = isDark ? const Color(0xFF451212) : const Color(0xFFFEF2F2);
+      iconColor = isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626);
       deptIcon = Icons.local_fire_department_outlined;
     } else if (dept.toUpperCase().contains('PNP')) {
-      iconBg = const Color(0xFFEFF6FF);
-      iconColor = const Color(0xFF2563EB);
+      iconBg = isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF);
+      iconColor = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
       deptIcon = Icons.local_police_outlined;
     } else {
-      iconBg = const Color(0xFFECFDF5);
-      iconColor = const Color(0xFF059669);
+      iconBg = isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
+      iconColor = isDark ? const Color(0xFF34D399) : const Color(0xFF059669);
       deptIcon = Icons.health_and_safety_outlined;
     }
 
     final Color statusColor = isAvailable
-        ? const Color(0xFF10B981)
+        ? (isDark ? const Color(0xFF34D399) : const Color(0xFF10B981))
         : isEnRoute
-            ? const Color(0xFF2563EB)
-            : const Color(0xFF64748B);
+            ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
     final Color statusBg = isAvailable
-        ? const Color(0xFFECFDF5)
+        ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5))
         : isEnRoute
-            ? const Color(0xFFEFF6FF)
-            : const Color(0xFFF1F5F9);
+            ? (isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF))
+            : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9));
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         children: [
@@ -1464,7 +1500,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     Expanded(
                       child: Text(
                         vehicleType,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1473,7 +1509,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 const SizedBox(height: 2),
                 Text(
                   dept.isNotEmpty ? dept : 'Unassigned',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+                  style: TextStyle(fontSize: 11, color: ts.textPrimary),
                 ),
               ],
             ),
@@ -1487,6 +1523,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   // Activity Feed Tab View — dynamic from system_logs via getActivityLogs()
   // Activity Feed Tab View — mirrors logs_screen.dart rendering
   Widget _buildActivityTabView() {
+    final ts = ThemeService.instance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1496,8 +1533,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             children: [
               Text(
                 'Live Activity Feed (${_activityLogs.length})',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
+                ),
               ),
               const Spacer(),
               GestureDetector(
@@ -1529,6 +1569,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   /// Renders a single log entry identically to logs_screen.dart's _buildStaticLogTile.
   Widget _buildLogTile(Map<String, dynamic> event, {required bool isLast}) {
+    final ts = ThemeService.instance;
     final iconData = _getLogIconData(event['icon'] as String? ?? 'notifications_none');
     return IntrinsicHeight(
       child: Row(
@@ -1540,7 +1581,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: _parseLogColor(event['iconBg'] as String? ?? '#F1F5F9'),
+                  color: _parseLogColor(event['iconBg'] as String? ?? '#F1F5F9', isBg: true),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _parseLogColor(event['iconColor'] as String? ?? '#64748B')
@@ -1557,7 +1598,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 Expanded(
                   child: Container(
                     width: 1,
-                    color: const Color(0xFFF1F5F9),
+                    color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
                     margin: const EdgeInsets.symmetric(vertical: 2),
                   ),
                 ),
@@ -1575,10 +1616,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                       Flexible(
                         child: Text(
                           event['title'] as String? ?? '',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A)),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: ts.textPrimary,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1586,7 +1628,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _parseLogColor(event['typeBg'] as String? ?? '#E2E8F0'),
+                          color: _parseLogColor(event['typeBg'] as String? ?? '#E2E8F0', isBg: true),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -1601,12 +1643,12 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                       const Spacer(),
                       Row(
                         children: [
-                          const Icon(Icons.access_time_rounded,
-                              size: 10, color: Color(0xFF94A3B8)),
+                          Icon(Icons.access_time_rounded,
+                              size: 10, color: ts.textSecondary),
                           const SizedBox(width: 2),
                           Text(
                             event['time'] as String? ?? '',
-                            style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                            style: TextStyle(fontSize: 10, color: ts.textSecondary),
                           ),
                         ],
                       ),
@@ -1615,18 +1657,18 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   const SizedBox(height: 3),
                   Text(
                     event['description'] as String? ?? '',
-                    style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF64748B), height: 1.2),
+                    style: TextStyle(
+                        fontSize: 11, color: ts.textSecondary, height: 1.2),
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.rss_feed_rounded,
-                          size: 8, color: Color(0xFFCBD5E1)),
+                      Icon(Icons.rss_feed_rounded,
+                          size: 8, color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1)),
                       const SizedBox(width: 2),
                       Text(
                         event['source'] as String? ?? '',
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                        style: TextStyle(fontSize: 10, color: ts.textSecondary),
                       ),
                       const SizedBox(width: 6),
                       ...List.generate(
@@ -1641,7 +1683,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                   horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
                                 color: _parseLogColor(
-                                    tag['bg'] as String? ?? '#E2E8F0'),
+                                    tag['bg'] as String? ?? '#E2E8F0', isBg: true),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                               child: Text(
@@ -1690,20 +1732,37 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   }
 
   /// Converts hex color strings (e.g. '#EFF6FF') to Flutter Color objects.
-  /// Mirrors logs_screen.dart _parseColor exactly.
-  Color _parseLogColor(String colorString) {
+  /// Dynamically transforms backgrounds and text colors when dark mode is enabled.
+  Color _parseLogColor(String colorString, {bool isBg = false}) {
+    final ts = ThemeService.instance;
     try {
       if (colorString.startsWith('#')) {
-        return Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
+        final color = Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
+        if (ts.isDark) {
+          final hsl = HSLColor.fromColor(color);
+          if (isBg) {
+            // For backgrounds in dark mode: if light color, make it dark & subtle
+            if (hsl.lightness > 0.45) {
+              return hsl.withLightness((1.0 - hsl.lightness * 0.75).clamp(0.12, 0.25)).toColor();
+            }
+          } else {
+            // For text/icons in dark mode: if dark color, make it bright & readable
+            if (hsl.lightness < 0.55) {
+              return hsl.withLightness((hsl.lightness + 0.45).clamp(0.65, 0.90)).toColor();
+            }
+          }
+        }
+        return color;
       }
-      return Colors.grey;
+      return ts.isDark ? (isBg ? const Color(0xFF334155) : const Color(0xFF94A3B8)) : Colors.grey;
     } catch (_) {
-      return Colors.grey;
+      return ts.isDark ? (isBg ? const Color(0xFF334155) : const Color(0xFF94A3B8)) : Colors.grey;
     }
   }
 
   // Media Tab View — dynamic from media-gallery API
   Widget _buildMediaTabView() {
+    final ts = ThemeService.instance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1713,8 +1772,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             children: [
               Text(
                 'Recent Evidence (${_mediaItems.length})',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
+                ),
               ),
               const Spacer(),
               GestureDetector(
@@ -1739,6 +1801,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   }
 
   Widget _buildDynamicMediaItem(Map<String, dynamic> item) {
+    final ts = ThemeService.instance;
     final filename = item['filename']?.toString() ?? item['file_name']?.toString() ?? 'Unknown';
     final incidentId = item['incidentId']?.toString() ?? item['Req_ID']?.toString() ?? '';
     final category = item['category']?.toString() ?? '';
@@ -1747,32 +1810,30 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final timeLabel = dt != null ? DateFormat('HH:mm').format(dt) : '--:--';
     final meta = '${incidentId.isNotEmpty ? 'INC-$incidentId' : category} · $timeLabel';
 
-    // Try to display thumbnail from server if path provided
-    final imagePath = item['image_path']?.toString() ?? item['file_path']?.toString();
-    final imageUrl = imagePath != null && imagePath.isNotEmpty
-        ? '${AppConfig.apiBaseUrl.replaceAll('/api', '')}$imagePath'
-        : null;
+    // Display thumbnail from server if path provided
+    final imagePath = item['image_path']?.toString() ?? item['file_path']?.toString() ?? item['imagePath']?.toString();
+    final imageUrl = resolveFirstImageUrl(imagePath);
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFFAFAFA),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: imageUrl != null
+            child: imageUrl != null && imageUrl.isNotEmpty
                 ? Image.network(
                     imageUrl,
                     width: 36,
                     height: 36,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _mediaPlaceholderIcon(),
+                    errorBuilder: (_, _, _) => _mediaPlaceholderIcon(ts),
                   )
-                : _mediaPlaceholderIcon(),
+                : _mediaPlaceholderIcon(ts),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1781,13 +1842,13 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               children: [
                 Text(
                   filename,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(meta,
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                    style: TextStyle(fontSize: 10, color: ts.textSecondary)),
               ],
             ),
           ),
@@ -1796,20 +1857,22 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     );
   }
 
-  Widget _mediaPlaceholderIcon() {
+  Widget _mediaPlaceholderIcon([ThemeService? ts]) {
+    final activeTs = ts ?? ThemeService.instance;
     return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: const Color(0xFFE2E8F0),
+        color: activeTs.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: const Icon(Icons.image_outlined, color: Color(0xFF475569), size: 18),
+      child: Icon(Icons.image_outlined, color: activeTs.textSecondary, size: 18),
     );
   }
 
   // Incoming Requests Tab View — dynamic from active incidents (pending/in_progress)
   Widget _buildRequestsTabView() {
+    final ts = ThemeService.instance;
     final pending = _pendingIncidents;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1818,17 +1881,20 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'Incoming Requests',
                 style: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
+                ),
               ),
               const Spacer(),
               if (pending.isNotEmpty)
                 _buildSmallBadge(
                   '${pending.length} pending',
                   const Color(0xFFDC2626),
-                  const Color(0xFFFEF2F2),
+                  ts.isDark ? const Color(0xFF451212) : const Color(0xFFFEF2F2),
                 ),
             ],
           ),
@@ -1838,13 +1904,17 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFAF5FF),
+            color: ts.isDark ? const Color(0xFF3B0764) : const Color(0xFFFAF5FF),
             borderRadius: BorderRadius.circular(8),
+            border: ts.isDark ? Border.all(color: const Color(0xFF6B21A8)) : null,
           ),
-          child: const Text(
+          child: Text(
             '• Monitoring only — use Incidents screen for dispatcher actions',
             style: TextStyle(
-                fontSize: 11, color: Color(0xFF9333EA), fontWeight: FontWeight.w500),
+              fontSize: 11,
+              color: ts.isDark ? const Color(0xFFC084FC) : const Color(0xFF9333EA),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Expanded(
@@ -1866,6 +1936,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   }
 
   Widget _buildDynamicRequestCard(dynamic incident) {
+    final ts = ThemeService.instance;
     final reqId = _formatRequestId(incident as Map<String, dynamic>);
     final rawType = (incident['incType'] ?? incident['type'] ?? 'General').toString();
     final desc = (incident['description'] ?? '').toString();
@@ -1900,8 +1971,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               const SizedBox(width: 6),
               Text(
                 reqId,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A)),
               ),
               const SizedBox(width: 6),
               Container(
@@ -1952,17 +2025,23 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
           const SizedBox(height: 2),
           Text(
             '${residentName.isNotEmpty ? '$residentName · ' : ''}$location',
-            style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+            style: TextStyle(
+                fontSize: 11,
+                color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
             overflow: TextOverflow.ellipsis,
           ),
-          if (descSnippet.isNotEmpty) ...[  
+          if (descSnippet.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(descSnippet,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B))),
           ],
           const SizedBox(height: 8),
           Text(timeLabel,
-              style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+              style: TextStyle(
+                  fontSize: 10,
+                  color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
         ],
       ),
     );
@@ -1970,22 +2049,33 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   /// Generic empty state widget reused across tabs.
   Widget _buildEmptyState(IconData icon, String title, String subtitle) {
+    final ts = ThemeService.instance;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 36, color: const Color(0xFFCBD5E1)),
+          Icon(
+            icon,
+            size: 36,
+            color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+          ),
           const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF64748B)),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: ts.textSecondary,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+            style: TextStyle(
+              fontSize: 11,
+              color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+            ),
           ),
         ],
       ),
@@ -2034,12 +2124,13 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   }
 
   Widget _buildCustomDropdown() {
+    final ts = ThemeService.instance;
     return Container(
       height: 32,
       width: 120,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEDD5),
+        color: ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFFF6B00), width: 1),
       ),
@@ -2052,7 +2143,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             size: 18,
           ),
           elevation: 3,
-          dropdownColor: Colors.white,
+          dropdownColor: ts.cardBackground,
           borderRadius: BorderRadius.circular(10),
           style: const TextStyle(
             fontSize: 12,
@@ -2078,7 +2169,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? const Color(0xFFFF6B00) : const Color(0xFF334155),
+                  color: isSelected ? const Color(0xFFFF6B00) : ts.textPrimary,
                 ),
               ),
             );
@@ -2124,13 +2215,14 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     VoidCallback onPressed,
     String tooltip,
   ) {
+    final ts = ThemeService.instance;
     return Material(
-      color: Colors.white,
-      shape: const CircleBorder(),
+      color: ts.cardBackground,
+      shape: CircleBorder(side: BorderSide(color: ts.borderColor)),
       elevation: 2,
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: const Color(0xFF475569)),
+        icon: Icon(icon, size: 18, color: ts.textPrimary),
         tooltip: tooltip,
         constraints: const BoxConstraints.tightFor(width: 36, height: 36),
         padding: EdgeInsets.zero,
@@ -2146,13 +2238,19 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     Color accentColor,
     Color bgColor,
   ) {
+    final ts = ThemeService.instance;
+    final cardBg = ts.isDark ? accentColor.withValues(alpha: 0.15) : bgColor;
+    final cardBorder = ts.isDark
+        ? accentColor.withValues(alpha: 0.35)
+        : accentColor.withValues(alpha: 0.2);
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: cardBg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+          border: Border.all(color: cardBorder),
         ),
         child: Row(
           children: [
@@ -2177,7 +2275,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
-                    color: accentColor.withValues(alpha: 0.9),
+                    color: ts.isDark ? accentColor : accentColor.withValues(alpha: 0.9),
                     height: 1.1,
                   ),
                 ),
@@ -2187,7 +2285,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: accentColor.withValues(alpha: 0.8),
+                      color: ts.isDark ? accentColor.withValues(alpha: 0.9) : accentColor.withValues(alpha: 0.8),
                       height: 1.1,
                     ),
                   ),
@@ -2207,13 +2305,19 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     Color accentColor,
     Color bgColor,
   ) {
+    final ts = ThemeService.instance;
+    final cardBg = ts.isDark ? accentColor.withValues(alpha: 0.15) : bgColor;
+    final cardBorder = ts.isDark
+        ? accentColor.withValues(alpha: 0.35)
+        : accentColor.withValues(alpha: 0.2);
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: cardBg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+          border: Border.all(color: cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2235,7 +2339,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     name,
                     style: TextStyle(
                       fontSize: 8,
-                      color: accentColor.withValues(alpha: 0.8),
+                      color: ts.isDark ? accentColor.withValues(alpha: 0.9) : accentColor.withValues(alpha: 0.8),
                       height: 1.1,
                     ),
                   ),
@@ -2259,7 +2363,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     label,
                     style: TextStyle(
                       fontSize: 8,
-                      color: accentColor.withValues(alpha: 0.8),
+                      color: ts.isDark ? accentColor.withValues(alpha: 0.9) : accentColor.withValues(alpha: 0.8),
                     ),
                   ),
               ],
@@ -2274,6 +2378,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     Map<String, dynamic> item,
     Color brandOrange,
   ) {
+    final ts = ThemeService.instance;
     final statusConfig = _getStatusConfig(item['status'] ?? item['reqStatus']);
     final typeStyle = _getEmergencyTypeStyle(
       item['type'] ?? item['incType'] ?? '',
@@ -2336,17 +2441,17 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 const SizedBox(width: 6),
                 Text(
                   reqIdText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: ts.textPrimary,
                   ),
                 ),
                 const SizedBox(width: 6),
                 _buildSmallBadge(
                   priority,
                   const Color(0xFFFF6B00),
-                  const Color(0xFFFFEDD5),
+                  ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
                 ),
                 const Spacer(),
                 _buildSmallBadge(
@@ -2376,10 +2481,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 Expanded(
                   child: Text(
                     "$emergencyType — $residentName",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
+                      color: ts.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2390,18 +2495,18 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.location_on_outlined,
                   size: 13,
-                  color: Color(0xFF94A3B8),
+                  color: ts.textSecondary,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     location,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF64748B),
+                      color: ts.textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2412,31 +2517,31 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.phone_outlined,
                   size: 12,
-                  color: Color(0xFF94A3B8),
+                  color: ts.textSecondary,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   phoneNumber,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
                 ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   "·",
-                  style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 10),
+                  style: TextStyle(color: ts.textSecondary, fontSize: 10),
                 ),
                 const SizedBox(width: 6),
-                const Icon(
+                Icon(
                   Icons.access_time_rounded,
                   size: 12,
-                  color: Color(0xFF94A3B8),
+                  color: ts.textSecondary,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   timeReported,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
                 ),
                 const Spacer(),
                 Container(
@@ -2445,24 +2550,24 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.near_me_outlined,
                         size: 11,
-                        color: Color(0xFF475569),
+                        color: ts.textPrimary,
                       ),
-                      SizedBox(width: 2),
+                      const SizedBox(width: 2),
                       Text(
                         "Map",
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF475569),
+                          color: ts.textPrimary,
                         ),
                       ),
                     ],

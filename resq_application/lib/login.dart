@@ -7,6 +7,7 @@ import 'superadmin/super_admin_shell.dart';
 import 'admin/admin_shell.dart';
 import 'services/firebase_services.dart';
 import 'services/session_service.dart';
+import 'services/theme_service.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -117,12 +118,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final displayEmail = maskedEmail ?? targetEmail;
 
+    final ts = ThemeService.instance;
+
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
+            backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
+            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
@@ -139,9 +144,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
+                Text(
                   'Email MFA Verification',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: ts.isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                 ),
               ],
             ),
@@ -151,7 +160,11 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Text(
                   'A 6-digit security verification code has been sent to your email address:\n$displayEmail',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: ts.isDark ? Colors.grey.shade300 : const Color(0xFF475569),
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 if (testOtpCode != null)
@@ -159,21 +172,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
+                      color: ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFCD34D)),
+                      border: Border.all(color: ts.isDark ? const Color(0xFF92400E) : const Color(0xFFFCD34D)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.info_outline, size: 14, color: Color(0xFFD97706)),
+                        Icon(Icons.info_outline, size: 14, color: ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706)),
                         const SizedBox(width: 6),
                         Text(
                           'Test OTP Code: $testOtpCode',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFB45309),
+                            color: ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
                           ),
                         ),
                       ],
@@ -182,18 +195,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                    border: Border.all(color: ts.isDark ? const Color(0xFF1D4ED8) : const Color(0xFFBFDBFE)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.email_outlined, size: 16, color: Color(0xFF2563EB)),
-                      SizedBox(width: 8),
+                      Icon(Icons.email_outlined, size: 16, color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB)),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Check your terminal log or enter code above (valid for 5 mins).',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF1D4ED8)),
+                          style: TextStyle(fontSize: 12, color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8)),
                         ),
                       ),
                     ],
@@ -206,19 +219,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   maxLength: 6,
                   autofocus: true,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 8,
+                    color: ts.isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                   decoration: InputDecoration(
                     hintText: '000000',
+                    hintStyle: TextStyle(color: ts.isDark ? Colors.grey.shade500 : const Color(0xFF94A3B8)),
                     counterText: '',
                     filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
+                    fillColor: ts.isDark ? const Color(0xFF374151) : const Color(0xFFF8FAFC),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      borderSide: BorderSide(color: ts.isDark ? const Color(0xFF4B5563) : const Color(0xFFE2E8F0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -253,10 +268,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Remember this device for 30 days',
-                            style: TextStyle(fontSize: 13, color: Color(0xFF475569)),
+                            style: TextStyle(fontSize: 13, color: ts.isDark ? Colors.grey.shade300 : const Color(0xFF475569)),
                           ),
                         ),
                       ],
@@ -268,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                child: Text('Cancel', style: TextStyle(color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF64748B))),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -430,11 +445,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ts = ThemeService.instance;
     const Color brandOrange = Color(0xFFFF6B00);
-    const Color textDark = Color(0xFF0F172A);
+    final Color textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
     const Color textGrey = Color(0xFF94A3B8);
-    const Color borderGrey = Color(0xFFE2E8F0);
-    const Color bgWhite = Colors.white;
+    final Color borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+    final Color cardContainerBg = ts.isDark ? const Color(0xFF1F2937) : Colors.white;
+    final Color pageBg = ts.isDark ? const Color(0xFF111827) : const Color(0xFFF3F4F6);
 
     bool isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
@@ -464,7 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   "ResQ",
                   style: TextStyle(
                     fontSize: 28,
@@ -480,13 +497,14 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 40),
-          const Text(
+          Text(
             'Email / Username',
             style: TextStyle(fontWeight: FontWeight.w600, color: textDark),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _emailController,
+            style: TextStyle(color: textDark),
             decoration: _inputDecor(
               'you@example.com',
               Icons.person_outline,
@@ -495,7 +513,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Password',
             style: TextStyle(fontWeight: FontWeight.w600, color: textDark),
           ),
@@ -503,6 +521,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextField(
             controller: _passwordController,
             obscureText: _obscurePassword,
+            style: TextStyle(color: textDark),
             decoration: _inputDecor(
               'Enter your password',
               Icons.lock_outline,
@@ -575,9 +594,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (_checkingTrustedDevice) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF3F4F6),
-        body: Center(
+      return Scaffold(
+        backgroundColor: pageBg,
+        body: const Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -592,13 +611,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDesktop ? const Color(0xFFF3F4F6) : bgWhite,
+      backgroundColor: isDesktop ? pageBg : cardContainerBg,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),
           child: isDesktop
               ? Card(
                   elevation: 8,
+                  color: cardContainerBg,
+                  surfaceTintColor: Colors.transparent,
+                  shadowColor: ts.isDark ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
@@ -618,9 +640,11 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPassword = false,
     VoidCallback? onToggle,
   }) {
+    final ts = ThemeService.instance;
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+      hintStyle: TextStyle(color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8)),
+      prefixIcon: Icon(icon, color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8), size: 20),
       suffixIcon: isPassword
           ? IconButton(
               icon: Icon(
@@ -628,15 +652,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
                 size: 18,
+                color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8),
               ),
               onPressed: onToggle,
             )
           : null,
       filled: true,
-      fillColor: const Color(0xFFF8FAFC),
+      fillColor: ts.isDark ? const Color(0xFF374151) : const Color(0xFFF8FAFC),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: border),
+        borderSide: BorderSide(color: ts.isDark ? const Color(0xFF4B5563) : border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

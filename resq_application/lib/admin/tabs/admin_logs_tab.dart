@@ -8,6 +8,7 @@ import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
+import '../../services/theme_service.dart';
 
 class AdminLogsTab extends StatefulWidget {
   final String searchFilter;
@@ -183,13 +184,14 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
       builder: (BuildContext ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
+            final ts = ThemeService.instance;
             final dateStr = DateFormat('yyyy-MM-dd').format(selectedExportDate);
 
             return Container(
               padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                color: ts.cardBackground,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -206,25 +208,38 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF5200)),
-                      SizedBox(width: 8),
+                      const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF5200)),
+                      const SizedBox(width: 8),
                       Text(
                         'Export Audit Package (PDF + Photos)',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: ts.isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Exports complete full-day activity logs in descending order formatted as a PDF report, packaged together with evidence photos of reported incidents in a ZIP archive.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'SELECT REPORT DATE',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8),
+                      letterSpacing: 0.5,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   InkWell(
@@ -243,9 +258,11 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -256,11 +273,18 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                               const SizedBox(width: 12),
                               Text(
                                 DateFormat('EEEE, MMMM d, yyyy').format(selectedExportDate),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: ts.isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
                               ),
                             ],
                           ),
-                          const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF64748B)),
+                          Icon(
+                            Icons.arrow_drop_down_rounded,
+                            color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                          ),
                         ],
                       ),
                     ),
@@ -780,10 +804,11 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgCanvas = Color(0xFFF8FAFC);
+    final ts = ThemeService.instance;
 
-    return Container(
-      color: bgCanvas,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      color: ts.pageBackground,
       padding: const EdgeInsets.all(24.0),
       child: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
@@ -814,29 +839,31 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   }
 
   Widget _buildSummaryCard() {
+    final ts = ThemeService.instance;
     final stats = _summaryStats;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "AUDIT SUMMARY",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 12),
-          _buildSummaryRow("Total Audit Logs", "${stats['total']}", const Color(0xFF0F172A)),
+          _buildSummaryRow("Total Audit Logs", "${stats['total']}", ts.textPrimary),
           const SizedBox(height: 8),
           _buildSummaryRow("Emergencies Logged", "${stats['emergencies']}", const Color(0xFFEF4444)),
           const SizedBox(height: 8),
@@ -851,10 +878,11 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   }
 
   Widget _buildSummaryRow(String label, String count, Color countColor) {
+    final ts = ThemeService.instance;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        Text(label, style: TextStyle(fontSize: 12, color: ts.isDark ? const Color(0xFFCBD5E1) : ts.textSecondary)),
         Text(count, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: countColor)),
       ],
     );
@@ -889,26 +917,28 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   }
 
   Widget _buildEventTypeCard() {
-    return Container(
+    final ts = ThemeService.instance;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.filter_alt_outlined, size: 12, color: Color(0xFF94A3B8)),
-              SizedBox(width: 4),
+              Icon(Icons.filter_alt_outlined, size: 12, color: ts.textSecondary),
+              const SizedBox(width: 4),
               Text(
                 "ENTITY CATEGORIES",
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF94A3B8),
+                  color: ts.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -916,8 +946,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
           ),
           const SizedBox(height: 12),
           _filters.isEmpty
-              ? const Center(
-                  child: Text("No Categories Available", style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+              ? Center(
+                  child: Text("No Categories Available", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                 )
               : Column(
                   children: List.generate(_filters.length, (index) {
@@ -938,7 +968,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                           duration: const Duration(milliseconds: 150),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFFF7ED) : Colors.transparent,
+                            color: isSelected ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED)) : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
@@ -949,13 +979,13 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFFFF5200) : const Color(0xFF64748B),
+                                  color: isSelected ? const Color(0xFFFF5200) : (ts.isDark ? const Color(0xFFE2E8F0) : ts.textPrimary),
                                 ),
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFFFF5200) : const Color(0xFFF1F5F9),
+                                  color: isSelected ? const Color(0xFFFF5200) : (ts.isDark ? const Color(0xFF334155) : ts.inputBackground),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
@@ -963,7 +993,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                                    color: isSelected ? Colors.white : (ts.isDark ? Colors.white : ts.textSecondary),
                                   ),
                                 ),
                               ),
@@ -980,12 +1010,14 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   }
 
   Widget _buildAdvancedFiltersCard() {
-    return Container(
+    final ts = ThemeService.instance;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -993,16 +1025,16 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.tune, size: 12, color: Color(0xFF94A3B8)),
-                  SizedBox(width: 4),
+                  Icon(Icons.tune, size: 12, color: ts.textSecondary),
+                  const SizedBox(width: 4),
                   Text(
                     "ADVANCED FILTERS",
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF94A3B8),
+                      color: ts.textSecondary,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -1013,7 +1045,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                 child: Icon(
                   _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
                   size: 16,
-                  color: const Color(0xFF94A3B8),
+                  color: ts.textSecondary,
                 ),
               ),
             ],
@@ -1023,25 +1055,27 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Action Type", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                Text("Action Type", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: ts.borderColor),
                     borderRadius: BorderRadius.circular(8),
+                    color: ts.inputBackground,
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
+                      dropdownColor: ts.cardBackground,
                       value: _selectedActionFilter != null && _availableActions.contains(_selectedActionFilter) 
                           ? _selectedActionFilter 
                           : null,
-                      hint: const Text("All Actions", style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                      hint: Text("All Actions", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                       isExpanded: true,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
+                      style: TextStyle(fontSize: 12, color: ts.textPrimary),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text("All Actions")),
-                        ..._availableActions.map((action) => DropdownMenuItem(value: action, child: Text(action))),
+                        DropdownMenuItem(value: null, child: Text("All Actions", style: TextStyle(color: ts.textPrimary))),
+                        ..._availableActions.map((action) => DropdownMenuItem(value: action, child: Text(action, style: TextStyle(color: ts.textPrimary)))),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -1058,25 +1092,27 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Status", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                Text("Status", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: ts.borderColor),
                     borderRadius: BorderRadius.circular(8),
+                    color: ts.inputBackground,
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
+                      dropdownColor: ts.cardBackground,
                       value: _selectedStatusFilter != null && _availableStatuses.contains(_selectedStatusFilter) 
                           ? _selectedStatusFilter 
                           : null,
-                      hint: const Text("All Statuses", style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                      hint: Text("All Statuses", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                       isExpanded: true,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
+                      style: TextStyle(fontSize: 12, color: ts.textPrimary),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text("All Statuses")),
-                        ..._availableStatuses.map((status) => DropdownMenuItem(value: status, child: Text(status))),
+                        DropdownMenuItem(value: null, child: Text("All Statuses", style: TextStyle(color: ts.textPrimary))),
+                        ..._availableStatuses.map((status) => DropdownMenuItem(value: status, child: Text(status, style: TextStyle(color: ts.textPrimary)))),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -1093,7 +1129,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Date Range", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                Text("Date Range", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -1103,12 +1139,13 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(color: ts.borderColor),
                             borderRadius: BorderRadius.circular(8),
+                            color: ts.inputBackground,
                           ),
                           child: Text(
                             _startDate != null ? DateFormat('MM/dd/yyyy').format(_startDate!) : "Start Date",
-                            style: TextStyle(fontSize: 11, color: _startDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8)),
+                            style: TextStyle(fontSize: 11, color: _startDate != null ? ts.textPrimary : ts.textSecondary),
                           ),
                         ),
                       ),
@@ -1120,12 +1157,13 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(color: ts.borderColor),
                             borderRadius: BorderRadius.circular(8),
+                            color: ts.inputBackground,
                           ),
                           child: Text(
                             _endDate != null ? DateFormat('MM/dd/yyyy').format(_endDate!) : "End Date",
-                            style: TextStyle(fontSize: 11, color: _endDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8)),
+                            style: TextStyle(fontSize: 11, color: _endDate != null ? ts.textPrimary : ts.textSecondary),
                           ),
                         ),
                       ),
@@ -1149,16 +1187,16 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: ts.inputBackground,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: ts.borderColor),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.refresh, size: 14, color: Color(0xFF64748B)),
-                    SizedBox(width: 4),
-                    Text("Clear All Filters", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                    Icon(Icons.refresh, size: 14, color: ts.textSecondary),
+                    const SizedBox(width: 4),
+                    Text("Clear All Filters", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
                   ],
                 ),
               ),
@@ -1189,15 +1227,17 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   }
 
   Widget _buildTimelineCard() {
+    final ts = ThemeService.instance;
     final filteredEvents = _filteredEvents;
     final paginatedEvents = _paginatedEvents;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1207,9 +1247,9 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     "System Activity & Audit Timeline",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: ts.textPrimary),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -1229,7 +1269,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
               ),
               Row(
                 children: [
-                  Text("${filteredEvents.length} events logged", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  Text("${filteredEvents.length} events logged", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                   
                   if (_hasActiveFilters && filteredEvents.isNotEmpty) ...[
                     const SizedBox(width: 12),
@@ -1286,6 +1326,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
 
   Widget _buildStaticLogTile(Map<String, dynamic> event, {required bool isLast}) {
     final iconData = _getIconData(event['icon'] as String);
+    final ts = ThemeService.instance;
 
     return IntrinsicHeight(
       child: Row(
@@ -1299,7 +1340,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                 decoration: BoxDecoration(
                   color: _parseColor(event['iconBg'] as String),
                   shape: BoxShape.circle,
-                  border: Border.all(color: _parseColor(event['iconColor'] as String).withValues(alpha: 0.2)),
+                  border: Border.all(color: _parseColor(event['iconColor'] as String).withValues(alpha: 0.3)),
                 ),
                 child: Icon(iconData, size: 14, color: _parseColor(event['iconColor'] as String)),
               ),
@@ -1307,7 +1348,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                 Expanded(
                   child: Container(
                     width: 1,
-                    color: const Color(0xFFF1F5F9),
+                    color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
                     margin: const EdgeInsets.symmetric(vertical: 2),
                   ),
                 ),
@@ -1324,7 +1365,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                     children: [
                       Text(
                         event['title'] as String,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.isDark ? Colors.white : const Color(0xFF0F172A)),
                       ),
                       const SizedBox(width: 6),
                       Container(
@@ -1343,7 +1384,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                         children: [
                           const Icon(Icons.access_time_rounded, size: 10, color: Color(0xFF94A3B8)),
                           const SizedBox(width: 2),
-                          Text(event['time'] as String, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                          Text(event['time'] as String, style: TextStyle(fontSize: 10, color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
                         ],
                       ),
                     ],
@@ -1351,7 +1392,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   const SizedBox(height: 3),
                   Text(
                     event['description'] as String,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.2),
+                    style: TextStyle(fontSize: 11, color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B), height: 1.2),
                   ),
                   const SizedBox(height: 3),
                   Row(
@@ -1531,7 +1572,71 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
 
   Color _parseColor(String colorString) {
     try {
+      final ts = ThemeService.instance;
       if (colorString.startsWith('#')) {
+        final upper = colorString.toUpperCase();
+        if (ts.isDark) {
+          if (upper == '#E2E8F0') {
+            return const Color(0xFF334155);
+          }
+          if (upper == '#475569') {
+            return const Color(0xFFE2E8F0);
+          }
+          if (upper == '#F1F5F9' || upper == '#F8FAFC' || upper == '#FAFAFA' || upper == '#FFFFFF') {
+            return const Color(0xFF1E293B);
+          }
+          if (upper == '#FEF2F2' || upper == '#FFF0F0' || upper == '#FFEAEA') {
+            return const Color(0xFF450A0A);
+          }
+          if (upper == '#FEE2E2') {
+            return const Color(0xFF5F1D24);
+          }
+          if (upper == '#991B1B') {
+            return const Color(0xFFFCA5A5);
+          }
+          if (upper == '#FFF7ED' || upper == '#FFF3CD' || upper == '#FFEDD5') {
+            return const Color(0xFF431407);
+          }
+          if (upper == '#C2410C') {
+            return const Color(0xFFFDBA74);
+          }
+          if (upper == '#EFF6FF' || upper == '#EBF5FF' || upper == '#E0F2FE' || upper == '#DBEAFE') {
+            return const Color(0xFF1E3A8A);
+          }
+          if (upper == '#1E40AF') {
+            return const Color(0xFF93C5FD);
+          }
+          if (upper == '#F0FDF4' || upper == '#ECFDF5' || upper == '#DCFCE7' || upper == '#D1FAE5') {
+            return const Color(0xFF064E3B);
+          }
+          if (upper == '#15803D') {
+            return const Color(0xFF86EFAC);
+          }
+          if (upper == '#F3E8FF' || upper == '#F5F3FF') {
+            return const Color(0xFF3B0764);
+          }
+          if (upper == '#0F172A' || upper == '#1E293B' || upper == '#000000') {
+            return const Color(0xFFF8FAFC);
+          }
+          if (upper == '#334155' || upper == '#64748B') {
+            return const Color(0xFFCBD5E1);
+          }
+          if (upper == '#16A34A' || upper == '#10B981') {
+            return const Color(0xFF6EE7B7);
+          }
+          if (upper == '#2563EB' || upper == '#3B82F6') {
+            return const Color(0xFF93C5FD);
+          }
+          if (upper == '#DC2626' || upper == '#EF4444') {
+            return const Color(0xFFFCA5A5);
+          }
+          if (upper == '#EA580C' || upper == '#D97706') {
+            return const Color(0xFFFDBA74);
+          }
+          if (upper == '#9333EA' || upper == '#8B5CF6') {
+            return const Color(0xFFC084FC);
+          }
+        }
         return Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
       }
       return Colors.grey;

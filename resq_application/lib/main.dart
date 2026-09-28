@@ -5,6 +5,7 @@ import 'citizen/home_screen.dart';
 import 'superadmin/super_admin_shell.dart';
 import 'admin/admin_shell.dart';
 import 'services/session_service.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,12 +32,41 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'ResQ App',
-      home: const SessionInitializer(),
-      routes: {
-        '/login': (context) => const LoginScreen(),
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final isDark = ThemeService.instance.isDark;
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'ResQ App',
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          theme: ThemeData(
+            fontFamily: 'Inter',
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color(0xFFF4F3F0),
+            cardColor: Colors.white,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFFF5C00),
+              brightness: Brightness.light,
+              surface: const Color(0xFFF4F3F0),
+            ),
+          ),
+          darkTheme: ThemeData(
+            fontFamily: 'Inter',
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF111827),
+            cardColor: const Color(0xFF1F2937),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFFF5C00),
+              brightness: Brightness.dark,
+              surface: const Color(0xFF1F2937),
+            ),
+          ),
+          home: const SessionInitializer(),
+          routes: {
+            '/login': (context) => const LoginScreen(),
+          },
+        );
       },
     );
   }

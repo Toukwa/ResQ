@@ -6,6 +6,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../admin/admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../services/theme_service.dart';
 
 // ==========================================
 // DB DATA MODEL (MAPPED EXACTLY TO resq_db)
@@ -397,9 +398,12 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgCanvas = Color(0xFFF8FAFC);
-    const Color textDark = Color(0xFF0F172A);
-    const Color textGrey = Color(0xFF64748B);
+    final ts = ThemeService.instance;
+    final Color bgCanvas = ts.pageBackground;
+    final Color textDark = ts.textPrimary;
+    final Color textGrey = ts.textSecondary;
+    final Color cardBg = ts.cardBackground;
+    final Color borderGrey = ts.borderColor;
 
     return Scaffold(
       backgroundColor: bgCanvas,
@@ -416,12 +420,13 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                     maxHeight: _isRequestsExpanded ? 290 : 80,
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(color: borderGrey),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,7 +439,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                               color: Color(0xFFEF4444),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               "Incoming Requests",
                               style: TextStyle(
                                 fontSize: 14,
@@ -462,7 +467,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
+                            Text(
                               "Pending dispatcher action",
                               style: TextStyle(fontSize: 12, color: textGrey),
                             ),
@@ -544,7 +549,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             height: 200,
                             width: double.infinity,
                             alignment: Alignment.center,
-                            child: const Text(
+                            child: Text(
                               "No matching incidents found.",
                               style: TextStyle(color: textGrey, fontSize: 14),
                             ),
@@ -578,7 +583,8 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
 
   Widget _buildIncomingRequestCard(EmergencyRequestModel req, int index) {
     final isHovered = _hoveredIncomingIndex == index;
-    
+    final ts = ThemeService.instance;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
@@ -586,9 +592,11 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
+          color: ts.isDark ? const Color(0xFF2D2000) : const Color(0xFFFFFBEB),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFFDE68A)),
+          border: Border.all(
+            color: ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A),
+          ),
           boxShadow: isHovered
               ? [
                   BoxShadow(
@@ -618,46 +626,46 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   const SizedBox(width: 6),
                   Text(
                     req.formattedReqId ?? req.formattedIncId,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                      color: ts.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 6),
                   const Spacer(),
                   _buildSmallBadge(
                     "Pending",
-                    const Color(0xFFD97706),
-                    const Color(0xFFFEF3C7),
+                    ts.isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                    ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                "${req.incType} â€” ${req.citizenName}",
-                style: const TextStyle(
+                "${req.incType} — ${req.citizenName}",
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
+                  color: ts.textPrimary,
                 ),
               ),
               Text(
                 req.addressLabel,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 11, color: ts.textSecondary),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.phone_outlined,
                     size: 12,
-                    color: Color(0xFF94A3B8),
+                    color: ts.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    "${req.contactNo} Â· ${req.formattedTime}",
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                    "${req.contactNo} · ${req.formattedTime}",
+                    style: TextStyle(fontSize: 10, color: ts.textSecondary),
                   ),
                 ],
               ),
@@ -671,6 +679,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   Widget _buildStatusPill(String label, int count, int index) {
     final isSelected = _selectedStatus == label;
     final isHovered = _hoveredFilterIndex == index;
+    final ts = ThemeService.instance;
     
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
@@ -687,11 +696,15 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFFFFEDD5)
-                    : (isHovered ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9)),
+                    ? (ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5))
+                    : (isHovered
+                        ? (ts.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))
+                        : (ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9))),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? const Color(0xFFFF6B00) : Colors.transparent,
+                  color: isSelected
+                      ? const Color(0xFFFF6B00)
+                      : (ts.isDark ? const Color(0xFF334155) : Colors.transparent),
                 ),
               ),
               child: Row(
@@ -703,24 +716,24 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
                           ? const Color(0xFFFF6B00)
-                          : const Color(0xFF64748B),
+                          : (ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFFFF6B00)
-                          : const Color(0xFFCBD5E1),
-                      shape: BoxShape.circle,
+                          : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       "$count",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: isSelected ? Colors.white : (ts.isDark ? const Color(0xFF94A3B8) : Colors.white),
                       ),
                     ),
                   ),
@@ -734,6 +747,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   }
 
   Widget _buildIncidentCard(EmergencyRequestModel incident, int index) {
+    final ts = ThemeService.instance;
     final isHovered = _hoveredIncidentIndex == index;
     
     return AnimatedContainer(
@@ -743,12 +757,13 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       child: InkWell(
         onTap: () => _showIncidentRecordModal(incident),
         borderRadius: BorderRadius.circular(16),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: ts.cardBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: ts.borderColor),
             boxShadow: isHovered
                 ? [
                     BoxShadow(
@@ -781,27 +796,27 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   const SizedBox(width: 6),
                   Text(
                     incident.formattedIncId,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                      color: ts.isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
                   const Spacer(),
                   _buildSmallBadge(
                     _displayStatus(incident.reqStatus),
                     _getStatusColor(incident.reqStatus),
-                    _getStatusColor(incident.reqStatus).withValues(alpha: 0.1),
+                    _getStatusBgColor(incident.reqStatus),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
               Text(
                 incident.formattedIncType,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
+                  color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF1E293B),
                 ),
               ),
               const SizedBox(height: 2),
@@ -919,16 +934,18 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
         incidentIcon = Icons.emergency_rounded;
     }
     
+    final ts = ThemeService.instance;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: ts.cardBackground,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
         border: Border(
-          bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+          bottom: BorderSide(color: ts.borderColor, width: 1),
         ),
       ),
       child: Row(
@@ -936,8 +953,8 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFF7ED),
+            decoration: BoxDecoration(
+              color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -954,19 +971,19 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               children: [
                 Text(
                   req.formattedReqId ?? req.formattedIncId,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: ts.textPrimary,
                     letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "${req.incType} Â· ${req.addressLabel}",
-                  style: const TextStyle(
+                  "${req.incType} · ${req.addressLabel}",
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF64748B),
+                    color: ts.textSecondary,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -978,7 +995,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: ts.isDark ? const Color(0xFF581C87) : const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
@@ -999,7 +1016,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               const SizedBox(width: 12),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF94A3B8)),
+                icon: Icon(Icons.close_rounded, size: 20, color: ts.textSecondary),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 splashRadius: 20,
@@ -1016,6 +1033,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (BuildContext context) {
+        final ts = ThemeService.instance;
         return Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -1027,11 +1045,11 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
             child: Container(
               width: 580,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ts.cardBackground,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
+                    color: ts.shadowColor,
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
@@ -1042,22 +1060,22 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      color: ts.cardBackground,
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
                       border: Border(
-                        bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+                        bottom: BorderSide(color: ts.borderColor, width: 1),
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFF7ED),
+                          decoration: BoxDecoration(
+                            color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -1073,19 +1091,19 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             children: [
                               Text(
                                 incident.formattedReqId ?? incident.formattedIncId,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
+                                  color: ts.textPrimary,
                                   letterSpacing: -0.2,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 "${incident.formattedIncType} · ${incident.addressLabel}",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF64748B),
+                                  color: ts.textSecondary,
                                 ),
                               ),
                             ],
@@ -1096,19 +1114,19 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF3E8FF),
+                                color: ts.isDark ? const Color(0xFF581C87) : const Color(0xFFF3E8FF),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.remove_red_eye_outlined, size: 12, color: Color(0xFF9333EA)),
-                                  SizedBox(width: 4),
+                                  Icon(Icons.remove_red_eye_outlined, size: 12, color: ts.isDark ? const Color(0xFFD8B4FE) : const Color(0xFF9333EA)),
+                                  const SizedBox(width: 4),
                                   Text(
                                     "View Only",
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF9333EA),
+                                      color: ts.isDark ? const Color(0xFFD8B4FE) : const Color(0xFF9333EA),
                                     ),
                                   ),
                                 ],
@@ -1117,7 +1135,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             const SizedBox(width: 12),
                             IconButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF94A3B8)),
+                              icon: Icon(Icons.close_rounded, size: 20, color: ts.textSecondary),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               splashRadius: 20,
@@ -1219,7 +1237,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
+                                    color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
@@ -1242,10 +1260,10 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                       const SizedBox(height: 6),
                                       Text(
                                         incident.addressLabel,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF0F172A),
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -1268,7 +1286,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
+                                    color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
@@ -1291,10 +1309,10 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                       const SizedBox(height: 6),
                                       Text(
                                         incident.formattedTime,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF0F172A),
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                     ],
@@ -1310,7 +1328,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
+                                    color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
@@ -1333,10 +1351,10 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                       const SizedBox(height: 6),
                                       Text(
                                         incident.citizenName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF0F172A),
+                                          color: ts.textPrimary,
                                         ),
                                       ),
                                     ],
@@ -1348,7 +1366,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
+                                    color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
@@ -1381,7 +1399,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
+                              color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -1398,9 +1416,9 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 const SizedBox(height: 6),
                                 Text(
                                   incident.description,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF0F172A),
+                                    color: ts.textPrimary,
                                     height: 1.4,
                                   ),
                                 ),
@@ -1412,7 +1430,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(incident.reqStatus).withValues(alpha: 0.1),
+                              color: _getStatusBgColor(incident.reqStatus),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: _getStatusColor(incident.reqStatus).withValues(alpha: 0.3)),
                             ),
@@ -1445,27 +1463,27 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
-                        top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+                        top: BorderSide(color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9), width: 1),
                       ),
                     ),
                     alignment: Alignment.centerRight,
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        side: BorderSide(color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFE2E8F0)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Close",
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF475569),
+                          color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
                         ),
                       ),
                     ),
@@ -1496,14 +1514,15 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   }
 
   Widget _buildProgressStepper(String status) {
+    final ts = ThemeService.instance;
     final int currentIndex = _getStepperStatusIndex(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1549,6 +1568,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
     required bool isFirst,
     required bool isLast,
   }) {
+    final ts = ThemeService.instance;
     const Color activeColor = Color(0xFF10B981);
     const Color inactiveColor = Color(0xFFE2E8F0);
 
@@ -1569,7 +1589,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: isCompleted ? activeColor : Colors.white,
+                  color: isCompleted ? activeColor : ts.cardBackground,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isCompleted || isActive ? activeColor : inactiveColor,
@@ -1588,10 +1608,10 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 shape: BoxShape.circle,
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.add_rounded,
                               size: 13,
-                              color: Color(0xFFCBD5E1),
+                              color: ts.textSecondary,
                             )),
                 ),
               ),
@@ -1612,8 +1632,8 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               fontSize: 11,
               fontWeight: (isCompleted || isActive) ? FontWeight.w700 : FontWeight.w500,
               color: (isCompleted || isActive)
-                  ? const Color(0xFF1E293B)
-                  : const Color(0xFF94A3B8),
+                  ? ts.textPrimary
+                  : ts.textSecondary,
             ),
           ),
         ],
@@ -1643,12 +1663,14 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.3),
       builder: (BuildContext context) {
+        final ts = ThemeService.instance;
         return Dialog(
+          backgroundColor: ts.cardBackground,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Container(
             width: 440,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ts.cardBackground,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -1667,15 +1689,16 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
+                                  color: ts.subtleBackground,
                                   borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: ts.borderColor),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text("REPORTED BY", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                                    Text("REPORTED BY", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary)),
                                     const SizedBox(height: 4),
-                                    Text(req.citizenName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text(req.citizenName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                                   ],
                                 ),
                               ),
@@ -1685,15 +1708,16 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
+                                  color: ts.subtleBackground,
                                   borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: ts.borderColor),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text("CONTACT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                                    Text("CONTACT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary)),
                                     const SizedBox(height: 4),
-                                    Text(req.contactNo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text(req.contactNo, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                                   ],
                                 ),
                               ),
@@ -1705,20 +1729,21 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: ts.subtleBackground,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ts.borderColor),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("LOCATION", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                              Text("LOCATION", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary)),
                               const SizedBox(height: 4),
-                              Text(req.addressLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                              Text(req.addressLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                               Row(
                                 children: [
                                   const Icon(Icons.location_on, size: 12, color: Color(0xFFEF4444)),
                                   const SizedBox(width: 2),
-                                  Text("GPS: ${req.latitude.toStringAsFixed(4)}, ${req.longitude.toStringAsFixed(4)}", style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                                  Text("GPS: ${req.latitude.toStringAsFixed(4)}, ${req.longitude.toStringAsFixed(4)}", style: TextStyle(fontSize: 11, color: ts.textSecondary)),
                                 ],
                               ),
                             ],
@@ -1729,17 +1754,21 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFFBEB),
+                            color: ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFFBEB),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFFDE68A)),
+                            border: Border.all(color: ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A)),
                           ),
                           child: Row(
                             children: [
                               Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFFF5200), shape: BoxShape.circle)),
                               const SizedBox(width: 8),
                               Text(
-                                "${req.reqStatus} â€” Awaiting Dispatcher Action",
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                                "${req.reqStatus} — Awaiting Dispatcher Action",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: ts.isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                                ),
                               ),
                             ],
                           ),
@@ -1749,18 +1778,18 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF7ED),
+                            color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFFFF7ED),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFFFEDD5)),
+                            border: Border.all(color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFFFEDD5)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("REPORT DESCRIPTION", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                              Text("REPORT DESCRIPTION", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary)),
                               const SizedBox(height: 6),
                               Text(
                                 req.description,
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A), height: 1.4),
+                                style: TextStyle(fontSize: 12, color: ts.textPrimary, height: 1.4),
                               ),
                             ],
                           ),
@@ -1780,12 +1809,13 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
+                              color: ts.subtleBackground,
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: ts.borderColor),
                             ),
-                            child: const Text(
+                            child: Text(
                               'No image submitted',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                              style: TextStyle(fontSize: 11, color: ts.textSecondary),
                             ),
                           ),
                         ],
@@ -1888,11 +1918,12 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   }
 
   Color _getStatusColor(String status) {
+    final ts = ThemeService.instance;
     final normalizedStatus = status.toLowerCase().trim();
     switch (normalizedStatus) {
       case 'pending':
       case 'accepted':
-        return const Color(0xFFD97706);
+        return ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706);
       case 'en route':
       case 'en_route':
       case 'active':
@@ -1900,15 +1931,41 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       case 'dispatched':
       case 'in_progress':
       case 'in progress':
-        return const Color(0xFF2563EB);
+        return ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
       case 'completed':
-        return const Color(0xFF10B981);
+        return ts.isDark ? const Color(0xFF6EE7B7) : const Color(0xFF16A34A);
       case 'denied':
       case 'declined':
       case 'cancelled':
-        return const Color(0xFFEF4444);
+        return ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEF4444);
       default:
-        return const Color(0xFF64748B);
+        return ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    }
+  }
+
+  Color _getStatusBgColor(String status) {
+    final ts = ThemeService.instance;
+    final normalizedStatus = status.toLowerCase().trim();
+    switch (normalizedStatus) {
+      case 'pending':
+      case 'accepted':
+        return ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD);
+      case 'en route':
+      case 'en_route':
+      case 'active':
+      case 'arrived':
+      case 'dispatched':
+      case 'in_progress':
+      case 'in progress':
+        return ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEBF5FF);
+      case 'completed':
+        return ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7);
+      case 'denied':
+      case 'declined':
+      case 'cancelled':
+        return ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFEE2E2);
+      default:
+        return ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
     }
   }
 

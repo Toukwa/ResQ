@@ -8,6 +8,7 @@ import 'dart:async';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../services/theme_service.dart';
 
 class MediaScreen extends StatefulWidget {
   // 1. Declare the search parameter variable
@@ -121,15 +122,14 @@ class _MediaScreenState extends State<MediaScreen> {
     if (mounted && showLoading) setState(() => _isLoading = true);
     
     try {
-      // Fetch both media items and filters in parallel with timeout
       final results = await Future.wait([
-        FirebaseService.getMediaGallery().timeout(const Duration(seconds: 10)),
-        FirebaseService.getMediaFilters().timeout(const Duration(seconds: 10)),
-        FirebaseService.getActiveIncidents().timeout(const Duration(seconds: 10)),
+        FirebaseService.getMediaGallery().timeout(const Duration(seconds: 10)).catchError((_) => <dynamic>[]),
+        FirebaseService.getMediaFilters().timeout(const Duration(seconds: 10)).catchError((_) => <dynamic>[]),
+        FirebaseService.getActiveIncidents().timeout(const Duration(seconds: 10)).catchError((_) => <dynamic>[]),
       ]);
 
       final rawItems = results[0].map((item) => item as Map<String, dynamic>).toList();
-      final newIncidentFilters = results[1].map((item) => item as Map<String, dynamic>).toList();
+      final fetchedFilters = results[1].map((item) => item as Map<String, dynamic>).toList();
       final incidentsData = results[2];
 
       // Expand comma-separated image paths into individual media items
@@ -150,10 +150,30 @@ class _MediaScreenState extends State<MediaScreen> {
         }
       }
 
+      // Generate dynamic filters if fetchedFilters is empty
+      final List<Map<String, dynamic>> finalFilters;
+      if (fetchedFilters.isNotEmpty) {
+        finalFilters = fetchedFilters;
+      } else {
+        final Map<String, int> categoryCounts = {};
+        for (var m in newMediaItems) {
+          final cat = (m['category'] ?? m['Incident_Type'] ?? m['type'] ?? 'General').toString();
+          categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+        }
+        finalFilters = [
+          {'label': 'All Incidents', 'count': newMediaItems.length, 'color': null},
+          ...categoryCounts.entries.map((e) => {
+            'label': e.key,
+            'count': e.value,
+            'color': null,
+          }),
+        ];
+      }
+
       if (mounted) {
         setState(() {
           _mediaItems = newMediaItems;
-          _incidentFilters = newIncidentFilters;
+          _incidentFilters = finalFilters;
           _allIncidents = incidentsData;
           _isLoading = false;
         });
@@ -201,16 +221,24 @@ class _MediaScreenState extends State<MediaScreen> {
     final filteredList = _filteredMedia;
 
     if (_isLoading) {
-      return Container(
-        color: const Color(0xFFF8FAFC),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+      return ListenableBuilder(
+        listenable: ThemeService.instance,
+        builder: (context, _) {
+          final ts = ThemeService.instance;
+          return Container(
+            color: ts.pageBackground,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        },
       );
     }
 
-    return Container(
-      color: const Color(0xFFF8FAFC),
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final ts = ThemeService.instance;
+        return Container(
+      color: ts.pageBackground,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Row(
@@ -242,17 +270,17 @@ class _MediaScreenState extends State<MediaScreen> {
                     children: [
                       Text(
                         "${filteredList.length} photos found",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
+                          color: ts.textSecondary,
                         ),
                       ),
                       // GRID / LIST VIEW TOGGLE
                       Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color: ts.subtleBackground,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -325,13 +353,15 @@ class _MediaScreenState extends State<MediaScreen> {
         ),
       ),
     );
+      },
+    );
   }
 
   // ==========================================
   // GALLERY SUMMARY CARD
   // ==========================================
   Widget _buildGallerySummaryCard() {
-    // Calculate dynamic statistics
+    final ts = ThemeService.instance;
     final photoCount = _mediaItems.length;
     final uniqueIncidents = _mediaItems.map((item) => item['incidentId']).toSet().length;
     final latestUpload = _mediaItems.isNotEmpty ? (_mediaItems.first['time']?.toString() ?? '--:--') : '--:--';
@@ -339,19 +369,19 @@ class _MediaScreenState extends State<MediaScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "GALLERY SUMMARY",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textMuted,
               letterSpacing: 0.5,
             ),
           ),
@@ -359,11 +389,11 @@ class _MediaScreenState extends State<MediaScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.insert_photo_outlined, size: 14, color: Color(0xFF94A3B8)),
-                  SizedBox(width: 6),
-                  Text("Photo Evidence", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Icon(Icons.insert_photo_outlined, size: 14, color: ts.textMuted),
+                  const SizedBox(width: 6),
+                  Text("Photo Evidence", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                 ],
               ),
               Text("$photoCount", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF5200))),
@@ -373,16 +403,16 @@ class _MediaScreenState extends State<MediaScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Active Incidents", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              Text("$uniqueIncidents", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              Text("Active Incidents", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+              Text("$uniqueIncidents", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Latest Upload", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              Text(latestUpload, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              Text("Latest Upload", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+              Text(latestUpload, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
             ],
           ),
         ],
@@ -394,22 +424,23 @@ class _MediaScreenState extends State<MediaScreen> {
   // BY INCIDENT FILTER CARD
   // ==========================================
   Widget _buildByIncidentCard() {
+    final ts = ThemeService.instance;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "BY INCIDENT",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textMuted,
               letterSpacing: 0.5,
             ),
           ),
@@ -429,7 +460,9 @@ class _MediaScreenState extends State<MediaScreen> {
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFFFF7ED) : Colors.transparent,
+                      color: isSelected
+                          ? (ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED))
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -453,7 +486,7 @@ class _MediaScreenState extends State<MediaScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? const Color(0xFFFF5200) : const Color(0xFF64748B),
+                                color: isSelected ? const Color(0xFFFF5200) : ts.textSecondary,
                               ),
                             ),
                           ],
@@ -461,7 +494,7 @@ class _MediaScreenState extends State<MediaScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFF5200) : const Color(0xFFF1F5F9),
+                            color: isSelected ? const Color(0xFFFF5200) : ts.subtleBackground,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -469,7 +502,7 @@ class _MediaScreenState extends State<MediaScreen> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              color: isSelected ? Colors.white : ts.textMuted,
                             ),
                           ),
                         ),
@@ -489,15 +522,15 @@ class _MediaScreenState extends State<MediaScreen> {
   // PIXEL ACCURATE MEDIA CARD (GRID)
   // ==========================================
   Widget _buildMediaCard(Map<String, dynamic> item) {
-    // Parse color strings to Color objects
+    final ts = ThemeService.instance;
     final categoryColor = _parseColor(item['categoryColor']);
     final bgColor = _parseColor(item['bgColor']);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+        border: Border.all(color: ts.borderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,10 +640,10 @@ class _MediaScreenState extends State<MediaScreen> {
                         item['filename']?.toString() ?? 'Unknown',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          color: ts.textPrimary,
                           letterSpacing: -0.1,
                         ),
                       ),
@@ -695,12 +728,7 @@ class _MediaScreenState extends State<MediaScreen> {
 
   // Helper method to get full image URL (same as incident_screen)
   String _getFullImageUrl(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) return '';
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-    final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    return '${AppConfig.baseUrl}/$cleanPath';
+    return resolveFirstImageUrl(imagePath) ?? '';
   }
 
   // ==========================================
@@ -711,14 +739,19 @@ class _MediaScreenState extends State<MediaScreen> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (BuildContext context) {
+        final ts = ThemeService.instance;
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Container(
             width: 480,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ts.cardBackground,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: ts.borderColor,
+                width: ts.isDark ? 1 : 0,
+              ),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
@@ -779,14 +812,14 @@ class _MediaScreenState extends State<MediaScreen> {
                             child: Container(
                               width: 28,
                               height: 28,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(
+                                color: ts.isDark ? const Color(0xFF1E293B) : Colors.white,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.close_rounded,
                                 size: 16,
-                                color: Color(0xFF64748B),
+                                color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                               ),
                             ),
                           ),
@@ -801,15 +834,18 @@ class _MediaScreenState extends State<MediaScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.85),
+                              color: ts.isDark
+                                  ? const Color(0xFF1E293B).withValues(alpha: 0.92)
+                                  : Colors.white.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(12),
+                              border: ts.isDark ? Border.all(color: ts.borderColor) : null,
                             ),
                             child: Text(
                               "${item['ext']?.toString() ?? 'JPG'} · ${item['size']?.toString() ?? 'Photo'}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF475569),
+                                color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF475569),
                               ),
                             ),
                           ),
@@ -827,19 +863,19 @@ class _MediaScreenState extends State<MediaScreen> {
                         // Filename Title
                         Text(
                           item['filename']?.toString() ?? 'Unknown',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                            color: ts.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         // Subtitle Timestamp & Address
                         Text(
                           "Uploaded ${item['time']?.toString() ?? '--:--'} · ${item['location']?.toString() ?? 'Iriga City'}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF94A3B8),
+                            color: ts.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -848,8 +884,9 @@ class _MediaScreenState extends State<MediaScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: ts.subtleBackground,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ts.borderColor),
                           ),
                           child: Column(
                             children: [
@@ -893,16 +930,16 @@ class _MediaScreenState extends State<MediaScreen> {
 
                         // TAGS HEADER
                         Row(
-                          children: const [
+                          children: [
                             Icon(Icons.sell_outlined,
-                                size: 14, color: Color(0xFF94A3B8)),
-                            SizedBox(width: 6),
+                                size: 14, color: ts.textSecondary),
+                            const SizedBox(width: 6),
                             Text(
                               "TAGS",
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF94A3B8),
+                                color: ts.textSecondary,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -921,15 +958,16 @@ class _MediaScreenState extends State<MediaScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFF7ED),
+                                color: ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED),
                                 borderRadius: BorderRadius.circular(12),
+                                border: ts.isDark ? Border.all(color: const Color(0xFF9A3412)) : null,
                               ),
                               child: Text(
                                 tag,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFFEA580C),
+                                  color: ts.isDark ? const Color(0xFFFB923C) : const Color(0xFFEA580C),
                                 ),
                               ),
                             );
@@ -1002,14 +1040,15 @@ class _MediaScreenState extends State<MediaScreen> {
   }
 
   Widget _buildModalInfoItem(String label, String? value) {
+    final ts = ThemeService.instance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: Color(0xFF94A3B8),
+            color: ts.textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1018,10 +1057,10 @@ class _MediaScreenState extends State<MediaScreen> {
           value ?? 'N/A',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0F172A),
+            color: ts.textPrimary,
           ),
         ),
       ],
@@ -1032,14 +1071,15 @@ class _MediaScreenState extends State<MediaScreen> {
   // MEDIA LIST ITEM (ALTERNATIVE VIEW)
   // ==========================================
   Widget _buildMediaListItem(Map<String, dynamic> item) {
+    final ts = ThemeService.instance;
     final bgColor = _parseColor(item['bgColor']);
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         children: [
@@ -1072,12 +1112,12 @@ class _MediaScreenState extends State<MediaScreen> {
               children: [
                 Text(
                   item['filename']?.toString() ?? 'Unknown',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   "${item['incidentId']?.toString() ?? ''} · ${(item['tags'] as List? ?? []).join(' ')}",
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                  style: TextStyle(fontSize: 11, color: ts.textMuted),
                 ),
               ],
             ),
@@ -1262,16 +1302,30 @@ class _MediaScreenState extends State<MediaScreen> {
   }
 
   Widget _buildCancelledRequestsColumn() {
+    final ts = ThemeService.instance;
     final isCancelledTab = _bottomTabFilter == 'Cancelled';
     final list = isCancelledTab ? _cancelledIncidents : _completedIncidents;
+
+    final containerBg = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF2D1215) : const Color(0xFFFFF5F5))
+        : (ts.isDark ? const Color(0xFF062C19) : const Color(0xFFF0FDF4));
+    final containerBorder = isCancelledTab
+        ? (ts.isDark ? const Color(0xFF451A1D) : const Color(0xFFFFDDE1))
+        : (ts.isDark ? const Color(0xFF0D4728) : const Color(0xFFBBF7D0));
+
+    final cancelledActiveBg = ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1);
+    final cancelledActiveText = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757);
+    final completedActiveBg = ts.isDark ? const Color(0xFF0F522E) : const Color(0xFFBBF7D0);
+    final completedActiveText = ts.isDark ? const Color(0xFF86EFAC) : const Color(0xFF16A34A);
+    final unselectedText = ts.isDark ? Colors.grey.shade400 : Colors.grey.shade600;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCancelledTab ? const Color(0xFFFFF5F5) : const Color(0xFFF0FDF4),
+        color: containerBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCancelledTab ? const Color(0xFFFFDDE1) : const Color(0xFFBBF7D0),
+          color: containerBorder,
         ),
       ),
       child: Column(
@@ -1286,19 +1340,19 @@ class _MediaScreenState extends State<MediaScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isCancelledTab ? const Color(0xFFFFDDE1) : Colors.transparent,
+                    color: isCancelledTab ? cancelledActiveBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cancel_outlined, size: 13, color: Color(0xFFEB5757)),
+                      Icon(Icons.cancel_outlined, size: 13, color: isCancelledTab ? cancelledActiveText : unselectedText),
                       const SizedBox(width: 4),
                       Text(
                         'Cancelled',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isCancelledTab ? const Color(0xFFEB5757) : Colors.grey.shade600,
+                          color: isCancelledTab ? cancelledActiveText : unselectedText,
                         ),
                       ),
                     ],
@@ -1314,19 +1368,19 @@ class _MediaScreenState extends State<MediaScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: !isCancelledTab ? const Color(0xFFBBF7D0) : Colors.transparent,
+                    color: !isCancelledTab ? completedActiveBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, size: 13, color: Color(0xFF16A34A)),
+                      Icon(Icons.check_circle_outline, size: 13, color: !isCancelledTab ? completedActiveText : unselectedText),
                       const SizedBox(width: 4),
                       Text(
                         'Completed',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: !isCancelledTab ? const Color(0xFF16A34A) : Colors.grey.shade600,
+                          color: !isCancelledTab ? completedActiveText : unselectedText,
                         ),
                       ),
                     ],
@@ -1338,7 +1392,9 @@ class _MediaScreenState extends State<MediaScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isCancelledTab ? const Color(0xFFFFE5E5) : const Color(0xFFDCFCE7),
+                  color: isCancelledTab
+                      ? (ts.isDark ? const Color(0xFF451A1D) : const Color(0xFFFFE5E5))
+                      : (ts.isDark ? const Color(0xFF0D4728) : const Color(0xFFDCFCE7)),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -1346,7 +1402,7 @@ class _MediaScreenState extends State<MediaScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isCancelledTab ? const Color(0xFFEB5757) : const Color(0xFF16A34A),
+                    color: isCancelledTab ? cancelledActiveText : completedActiveText,
                   ),
                 ),
               ),
@@ -1359,7 +1415,7 @@ class _MediaScreenState extends State<MediaScreen> {
                   child: Center(
                     child: Text(
                       isCancelledTab ? 'No cancelled requests' : 'No completed incidents',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFA0A0A0)),
+                      style: TextStyle(fontSize: 11, color: ts.isDark ? Colors.grey.shade400 : const Color(0xFFA0A0A0)),
                     ),
                   ),
                 )
@@ -1380,6 +1436,7 @@ class _MediaScreenState extends State<MediaScreen> {
 
   Widget _buildCancelledCard(dynamic req) {
     if (req is! Map) return const SizedBox.shrink();
+    final ts = ThemeService.instance;
 
     final reqId = req['Request_ID'] ?? req['Req_ID'] ?? req['reqId'] ?? req['id'] ?? req['emergency_id'];
     final reqIdStr = reqId != null ? (reqId.toString().startsWith('REQ-') ? reqId.toString() : 'REQ-${reqId.toString().padLeft(4, '0')}') : 'REQ-000';
@@ -1387,11 +1444,24 @@ class _MediaScreenState extends State<MediaScreen> {
     final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined').toString();
     final isCompleted = status.toLowerCase() == 'completed';
 
-    final primaryColor = isCompleted ? const Color(0xFF16A34A) : const Color(0xFFEB5757);
-    final badgeBgColor = isCompleted ? const Color(0xFFF0FDF4) : const Color(0xFFFFF0F0);
+    final primaryColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF86EFAC) : const Color(0xFF16A34A))
+        : (ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757));
+    final badgeBgColor = isCompleted
+        ? (ts.isDark ? const Color(0xFF0F522E) : const Color(0xFFF0FDF4))
+        : (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFF0F0));
 
     final filterText = reqId != null ? 'INC-$reqId' : type;
     final isSelected = _searchController.text.toLowerCase().trim() == filterText.toLowerCase().trim();
+
+    final cardBg = isSelected
+        ? (isCompleted
+            ? (ts.isDark ? const Color(0xFF0F522E) : const Color(0xFFDCFCE7))
+            : (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFEAEA)))
+        : (ts.isDark ? const Color(0xFF1E293B) : Colors.white);
+    final cardBorder = isSelected
+        ? primaryColor
+        : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
       onTap: () {
@@ -1408,10 +1478,10 @@ class _MediaScreenState extends State<MediaScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? (isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFFFEAEA)) : Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? primaryColor : const Color(0xFFEEEEEE),
+            color: cardBorder,
           ),
         ),
         child: Row(
@@ -1424,17 +1494,17 @@ class _MediaScreenState extends State<MediaScreen> {
             const SizedBox(width: 6),
             Text(
               reqIdStr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF212121),
+                color: ts.isDark ? Colors.white : const Color(0xFF212121),
               ),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 type,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF757575)),
+                style: TextStyle(fontSize: 11, color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF757575)),
                 overflow: TextOverflow.ellipsis,
               ),
             ),

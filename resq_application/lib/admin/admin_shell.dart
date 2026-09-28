@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'admin_service.dart';
 import '../../config.dart';
 import '../../services/session_service.dart';
+import '../../services/theme_service.dart';
 
 // Dedicated Admin Submodules in lib/admin/tabs/
 import 'tabs/admin_header.dart';
@@ -30,18 +31,37 @@ class ResQDashboardApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ResQ Admin Dashboard',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Inter',
-        scaffoldBackgroundColor: const Color(0xFFFBFBFB),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF5C00),
-          surface: const Color(0xFFFBFBFB),
-        ),
-      ),
-      home: const AdminShell(),
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final isDark = ThemeService.instance.isDark;
+        return MaterialApp(
+          title: 'ResQ Admin Dashboard',
+          debugShowCheckedModeBanner: false,
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          theme: ThemeData(
+            fontFamily: 'Inter',
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color(0xFFF4F3F0),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFFF5C00),
+              surface: const Color(0xFFF4F3F0),
+            ),
+          ),
+          darkTheme: ThemeData(
+            fontFamily: 'Inter',
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF111827),
+            cardColor: const Color(0xFF1F2937),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFFF5C00),
+              brightness: Brightness.dark,
+              surface: const Color(0xFF1F2937),
+            ),
+          ),
+          home: const AdminShell(),
+        );
+      },
     );
   }
 }
@@ -140,6 +160,10 @@ class _AdminShellState extends State<AdminShell> {
         if (dbName.isNotEmpty) {
           _effectiveUserName = dbName;
         }
+      }
+      final settings = await AdminService.getUserSettings(_effectiveUserId);
+      if (settings != null && settings['theme_mode'] != null) {
+        ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
       }
     } catch (_) {
       // Non-critical background fallback

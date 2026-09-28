@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import '../config.dart';
 import '../services/firebase_services.dart';
+import '../services/theme_service.dart';
 import 'citizen_header.dart';
 
 class IncidentStatusScreen extends StatefulWidget {
@@ -197,8 +198,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     final int currentIndex = _getStatusIndex(_currentStatus);
     final List<String> photoUrls = _extractPhotoUrls(_currentIncidentData?['image_path']);
 
+    final ts = ThemeService.instance;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: ts.pageBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -225,9 +227,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ts.cardBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: ts.borderColor),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.03),
@@ -261,10 +263,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                             children: [
                               Text(
                                 _displayEmergency,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
+                                  color: ts.isDark ? Colors.white : const Color(0xFF0F172A),
                                 ),
                               ),
                               if (_description.isNotEmpty) ...[
@@ -339,9 +341,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                       ),
                     ],
 
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Divider(color: Color(0xFFF1F5F9), height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(color: ts.borderColor, height: 1),
                     ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -394,12 +396,12 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               const SizedBox(height: 20),
 
               // 3. DYNAMIC RESPONSE PROGRESS TIMELINE
-              const Text(
+              Text(
                 "RESPONSE PROGRESS",
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF94A3B8),
+                  color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   letterSpacing: 1.1,
                 ),
               ),
@@ -490,6 +492,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
   }
 
   Widget _buildStatusHeaderCard(String ticketId, int currentIndex) {
+    final ts = ThemeService.instance;
     Color bg = const Color(0xFFECFDF5);
     Color border = const Color(0xFFA7F3D0);
     Color badgeColor = const Color(0xFF10B981);
@@ -575,7 +578,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: ts.isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: border),
             ),
@@ -596,7 +601,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: titleColor,
+                    color: ts.isDark ? Colors.white : titleColor,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -617,6 +622,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
   }) {
     const Color activeColor = Color(0xFF10B981);
     const Color inactiveColor = Color(0xFFE2E8F0);
+    final ts = ThemeService.instance;
 
     return Expanded(
       child: Column(
@@ -635,7 +641,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: isCompleted ? activeColor : Colors.white,
+                  color: isCompleted
+                      ? activeColor
+                      : (ts.isDark ? const Color(0xFF374151) : Colors.white),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color:
@@ -681,7 +689,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               fontWeight:
                   (isCompleted || isActive) ? FontWeight.w700 : FontWeight.w500,
               color: (isCompleted || isActive)
-                  ? const Color(0xFF1E293B)
+                  ? (ts.isDark ? Colors.white : const Color(0xFF1E293B))
                   : const Color(0xFF94A3B8),
             ),
           ),
@@ -716,12 +724,13 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     final bool isMultiDept = deptStatuses.length > 1;
     final bool allResponded = deptStatuses.every((d) => (d['status'] ?? '').toString().toLowerCase() != 'pending');
 
+    final ts = ThemeService.instance;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: ts.borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -739,10 +748,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               const SizedBox(width: 8),
               Text(
                 isMultiDept ? "INVOLVED DEPARTMENTS (${deptStatuses.length})" : "ASSIGNED DEPARTMENT",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF64748B),
+                  color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   letterSpacing: 0.5,
                 ),
               ),
@@ -757,25 +766,25 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               final status = (dept['status'] ?? 'Pending').toString();
               final sLow = status.toLowerCase();
 
-              Color badgeBg = const Color(0xFFFFF3CD);
-              Color badgeText = const Color(0xFF856404);
+              Color badgeBg = ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFFF3CD);
+              Color badgeText = ts.isDark ? const Color(0xFFFCD34D) : const Color(0xFF856404);
               IconData statusIcon = Icons.access_time_rounded;
 
               if (sLow == 'accepted') {
-                badgeBg = const Color(0xFFEBF5FF);
-                badgeText = const Color(0xFF2563EB);
+                badgeBg = ts.isDark ? const Color(0xFF1E3A5F) : const Color(0xFFEBF5FF);
+                badgeText = ts.isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
                 statusIcon = Icons.check_circle_outline_rounded;
               } else if (sLow == 'en route' || sLow == 'dispatched' || sLow == 'en_route') {
-                badgeBg = const Color(0xFFECFDF5);
-                badgeText = const Color(0xFF10B981);
+                badgeBg = ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
+                badgeText = ts.isDark ? const Color(0xFF34D399) : const Color(0xFF10B981);
                 statusIcon = Icons.navigation_rounded;
               } else if (sLow == 'completed') {
-                badgeBg = const Color(0xFFDCFCE7);
-                badgeText = const Color(0xFF15803D);
+                badgeBg = ts.isDark ? const Color(0xFF14532D) : const Color(0xFFDCFCE7);
+                badgeText = ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D);
                 statusIcon = Icons.check_circle_rounded;
               } else if (sLow == 'declined' || sLow == 'cancelled') {
-                badgeBg = const Color(0xFFFEE2E2);
-                badgeText = const Color(0xFFDC2626);
+                badgeBg = ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2);
+                badgeText = ts.isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626);
                 statusIcon = Icons.cancel_outlined;
               }
 
@@ -927,12 +936,13 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
       );
     }
 
+    final ts = ThemeService.instance;
     return Container(
       height: 210,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: ts.borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -956,6 +966,17 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.resq',
+                tileBuilder: ts.isDark
+                    ? (context, tileWidget, tile) => ColorFiltered(
+                        colorFilter: const ColorFilter.matrix(<double>[
+                          -0.2126, -0.7152, -0.0722, 0, 255,
+                          -0.2126, -0.7152, -0.0722, 0, 255,
+                          -0.2126, -0.7152, -0.0722, 0, 255,
+                          0,       0,       0,       1, 0,
+                        ]),
+                        child: tileWidget,
+                      )
+                    : null,
               ),
               MarkerLayer(
                 markers: [

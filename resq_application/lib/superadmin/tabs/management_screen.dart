@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../config.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/theme_service.dart';
 
 class ManagementScreen extends StatefulWidget {
   final String searchFilter;
@@ -35,13 +36,6 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // Real-time updates
   Timer? _refreshTimer;
   io.Socket? _socket;
-
-  static const TextStyle _tableHeaderStyle = TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: Color(0xFF94A3B8),
-    letterSpacing: 0.5,
-  );
 
   @override
   void initState() {
@@ -241,11 +235,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ts = ThemeService.instance;
     final filteredAccounts = _filteredAccounts;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Padding(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      color: ts.pageBackground,
+      child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,18 +292,18 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       height: 48,
                       child: OutlinedButton.icon(
                         onPressed: () => _showEditAgencyModal(),
-                        icon: const Icon(Icons.edit_location_alt_outlined, size: 20, color: Color(0xFF0F172A)),
-                        label: const Text(
+                        icon: Icon(Icons.edit_location_alt_outlined, size: 20, color: ts.textPrimary),
+                        label: Text(
                           "Edit Agency",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                            color: ts.textPrimary,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          backgroundColor: ts.cardBackground,
+                          side: BorderSide(color: ts.borderColor),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
                           ),
@@ -324,11 +320,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
             // RIGHT PANEL: DATA TABLES
             // ==========================================
             Expanded(
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ts.cardBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFF1F5F9)),
+                  border: Border.all(color: ts.borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,27 +336,27 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           horizontal: 20, vertical: 16),
                       child: Row(
                         children: [
-                          const Text(
+                          Text(
                             "All Accounts",
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
+                              color: ts.textPrimary,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             "(${filteredAccounts.length} results)",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF94A3B8),
+                              color: ts.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    Divider(height: 1, color: ts.borderColor),
 
                     // TABLE CONTENT
                     Expanded(
@@ -379,29 +376,38 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // ACCOUNTS TABLE
   // ==========================================
   Widget _buildAccountsTable(List<Map<String, dynamic>> accounts) {
+    final ts = ThemeService.instance;
+
     if (_isLoadingAccounts) {
       return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5200)));
     }
+
+    final tableHeaderStyle = TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.bold,
+      color: ts.textSecondary,
+      letterSpacing: 0.5,
+    );
 
     return Column(
       children: [
         // TABLE COLUMN HEADERS (Always visible)
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          color: const Color(0xFFFAFAFA),
+          color: ts.isDark ? const Color(0xFF111827) : const Color(0xFFFAFAFA),
           child: Row(
-            children: const [
-              Expanded(flex: 3, child: Text("NAME / EMAIL", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("AGENCY", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("ROLE", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("STATUS", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("LAST ACTIVE", style: _tableHeaderStyle)),
-              Expanded(flex: 2, child: Text("CREATED", style: _tableHeaderStyle)),
-              SizedBox(width: 80, child: Align(alignment: Alignment.centerRight, child: Text("ACTIONS", style: _tableHeaderStyle))),
+            children: [
+              Expanded(flex: 3, child: Text("NAME / EMAIL", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("AGENCY", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("ROLE", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("STATUS", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("LAST ACTIVE", style: tableHeaderStyle)),
+              Expanded(flex: 2, child: Text("CREATED", style: tableHeaderStyle)),
+              SizedBox(width: 80, child: Align(alignment: Alignment.centerRight, child: Text("ACTIONS", style: tableHeaderStyle))),
             ],
           ),
         ),
-        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+        Divider(height: 1, color: ts.borderColor),
 
         // TABLE CONTENT OR EMPTY STATE
         Expanded(
@@ -412,28 +418,28 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.search_off,
                         size: 48,
-                        color: Color(0xFFCBD5E1),
+                        color: ts.textSecondary,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         (_selectedAgency != 'All' || _selectedRole != 'All Roles' || _searchController.text.isNotEmpty)
                             ? "No accounts match your filters"
                             : "No accounts found",
-                        style: const TextStyle(
-                          color: Color(0xFF64748B), 
+                        style: TextStyle(
+                          color: ts.textSecondary, 
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       if (_selectedAgency != 'All' || _selectedRole != 'All Roles' || _searchController.text.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           "Try adjusting your filters or search term",
                           style: TextStyle(
-                            color: Color(0xFF94A3B8), 
+                            color: ts.textSecondary, 
                             fontSize: 12,
                           ),
                         ),
@@ -457,7 +463,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   children: accounts.map((account) => Column(
                     children: [
                       _buildAccountRow(account),
-                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      Divider(height: 1, color: ts.borderColor),
                     ],
                   )).toList(),
                 ),
@@ -470,24 +476,26 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // FILTER BY AGENCY CARD
   // ==========================================
   Widget _buildFilterByAgencyCard() {
+    final ts = ThemeService.instance;
     final agencies = ['All', 'PNP', 'BFP', 'CDRRMO'];
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "FILTER BY AGENCY",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -508,7 +516,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFFFF5200)
-                            : const Color(0xFFF1F5F9),
+                            : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -521,7 +529,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               fontWeight: FontWeight.bold,
                               color: isSelected
                                   ? Colors.white
-                                  : const Color(0xFF64748B),
+                                  : ts.textSecondary,
                             ),
                           ),
                           if (count > 0) ...[
@@ -531,7 +539,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? Colors.white.withValues(alpha: 0.3)
-                                    : const Color(0xFFE2E8F0),
+                                    : ts.borderColor,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
@@ -541,7 +549,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                   fontWeight: FontWeight.bold,
                                   color: isSelected
                                       ? Colors.white
-                                      : const Color(0xFF64748B),
+                                      : ts.textSecondary,
                                 ),
                               ),
                             ),
@@ -563,24 +571,26 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // FILTER BY ROLE CARD
   // ==========================================
   Widget _buildFilterByRoleCard() {
+    final ts = ThemeService.instance;
     final roles = ['All Roles', 'Admin', 'Responder'];
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "FILTER BY ROLE",
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: ts.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -600,7 +610,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFFF7ED)
+                          ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -616,7 +626,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 : FontWeight.w500,
                             color: isSelected
                                 ? const Color(0xFFFF5200)
-                                : const Color(0xFF64748B),
+                                : ts.textSecondary,
                           ),
                         ),
                         Container(
@@ -625,7 +635,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? const Color(0xFFFF5200)
-                                : const Color(0xFFF1F5F9),
+                                : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -635,7 +645,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               fontWeight: FontWeight.bold,
                               color: isSelected
                                   ? Colors.white
-                                  : const Color(0xFF94A3B8),
+                                  : ts.textSecondary,
                             ),
                           ),
                         ),
@@ -655,6 +665,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // TABLE ROW BUILDER
   // ==========================================
   Widget _buildAccountRow(Map<String, dynamic> acc) {
+    final ts = ThemeService.instance;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
@@ -685,19 +697,19 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         acc['name'] ?? 'Unknown User',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          color: ts.textPrimary,
                         ),
                       ),
                       Text(
                         acc['email'] ?? 'N/A',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF94A3B8),
+                          color: ts.textSecondary,
                         ),
                       ),
                     ],
@@ -730,10 +742,10 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 const SizedBox(width: 8),
                 Text(
                   acc['agency'] ?? 'Unassigned',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF334155),
+                    color: ts.textPrimary,
                   ),
                 ),
               ],
@@ -797,9 +809,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
             flex: 2,
             child: Text(
               acc['lastActive'] ?? 'Unknown',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF64748B),
+                color: ts.textSecondary,
               ),
             ),
           ),
@@ -809,9 +821,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
             flex: 2,
             child: Text(
               acc['created'] ?? 'Unknown',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF94A3B8),
+                color: ts.textSecondary,
               ),
             ),
           ),

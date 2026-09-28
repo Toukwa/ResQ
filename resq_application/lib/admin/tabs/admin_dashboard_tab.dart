@@ -10,6 +10,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/firebase_services.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../services/theme_service.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
 
@@ -494,56 +495,57 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Map<String, dynamic> _getStatusConfig(dynamic rawStatus) {
+    final ts = ThemeService.instance;
     final s = (rawStatus ?? 'pending').toString().trim().toLowerCase();
     if (s == 'en route' || s == 'en_route') {
       return {
         'label': 'En Route',
         'textColor': const Color(0xFF2563EB),
-        'bgColor': const Color(0xFFEFF6FF),
+        'bgColor': ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
         'borderColor': const Color(0xFFBFDBFE),
         'dotColor': const Color(0xFF2563EB),
-        'cardBg': Colors.white,
-        'cardBorder': const Color(0xFFBFDBFE),
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
       };
     } else if (s == 'declined' || s == 'denied' || s == 'cancelled') {
       return {
         'label': 'Declined',
         'textColor': const Color(0xFFDC2626),
-        'bgColor': const Color(0xFFFEF2F2),
+        'bgColor': ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2),
         'borderColor': const Color(0xFFFECACA),
         'dotColor': const Color(0xFFEF4444),
-        'cardBg': const Color(0xFFFFF5F5),
-        'cardBorder': const Color(0xFFFECACA),
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
       };
     } else if (s == 'active' || s == 'in_progress' || s == 'in progress') {
       return {
         'label': 'Active',
         'textColor': const Color(0xFF059669),
-        'bgColor': const Color(0xFFD1FAE5),
+        'bgColor': ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
         'borderColor': const Color(0xFFA7F3D0),
         'dotColor': const Color(0xFF10B981),
-        'cardBg': Colors.white,
-        'cardBorder': const Color(0xFFA7F3D0),
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
       };
     } else if (s == 'completed' || s == 'done' || s == 'resolved') {
       return {
         'label': 'Completed',
-        'textColor': const Color(0xFF475569),
-        'bgColor': const Color(0xFFF1F5F9),
-        'borderColor': const Color(0xFFCBD5E1),
-        'dotColor': const Color(0xFF64748B),
-        'cardBg': Colors.white,
-        'cardBorder': const Color(0xFFE2E8F0),
+        'textColor': ts.textSecondary,
+        'bgColor': ts.inputBackground,
+        'borderColor': ts.borderColor,
+        'dotColor': ts.textSecondary,
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
       };
     } else {
       return {
         'label': 'Pending',
         'textColor': const Color(0xFFD97706),
-        'bgColor': const Color(0xFFFEF3C7),
+        'bgColor': ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
         'borderColor': const Color(0xFFFDE68A),
         'dotColor': const Color(0xFFFF6B00),
-        'cardBg': const Color(0xFFFFFBEB),
-        'cardBorder': const Color(0xFFFDE68A),
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
       };
     }
   }
@@ -785,7 +787,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    const Color borderGrey = Color(0xFFE2E8F0);
+    final ts = ThemeService.instance;
+    final Color borderGrey = ts.borderColor;
     const Color brandOrange = Color(0xFFFF6B00);
 
     if (_isLoading) {
@@ -847,10 +850,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         Widget mapSection = Column(
           children: [
             Expanded(
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ts.cardBackground,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: borderGrey),
                 ),
@@ -871,6 +875,17 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.resq.admin.dashboard',
+                          tileBuilder: ts.isDark
+                              ? (context, tileWidget, tile) => ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix(<double>[
+                                    -0.2126, -0.7152, -0.0722, 0, 255,
+                                    -0.2126, -0.7152, -0.0722, 0, 255,
+                                    -0.2126, -0.7152, -0.0722, 0, 255,
+                                    0,       0,       0,       1, 0,
+                                  ]),
+                                  child: tileWidget,
+                                )
+                              : null,
                         ),
                         MarkerLayer(
                           markers: _buildMapMarkers(),
@@ -881,10 +896,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     Positioned(
                       top: 16,
                       left: 16,
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.92),
+                          color: ts.cardBackground.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: borderGrey),
                         ),
@@ -893,12 +909,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           children: [
                             const Icon(Icons.warning_amber_rounded, color: brandOrange, size: 16),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Iriga City Operations Map',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ts.textPrimary),
                             ),
                             const SizedBox(width: 8),
-                            const Text('· Live', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text('· Live', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                             const SizedBox(width: 4),
                             Container(
                               width: 8,
@@ -915,7 +931,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       right: 16,
                       child: _buildMapHeaderBadge(
                         '${_metrics['activeIncidents']} Active',
-                        const Color(0xFFFFEDD5),
+                        ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5),
                         brandOrange,
                         Icons.warning_amber_rounded,
                       ),
@@ -956,10 +972,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     Positioned(
                       left: 16,
                       bottom: 16,
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: ts.cardBackground.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: borderGrey),
                         ),
@@ -968,13 +985,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           children: [
                             Container(
                               padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-                              child: const Icon(Icons.near_me_outlined, size: 14, color: Colors.black87),
+                              decoration: BoxDecoration(color: ts.inputBackground, shape: BoxShape.circle),
+                              child: Icon(Icons.near_me_outlined, size: 14, color: ts.textPrimary),
                             ),
                             const SizedBox(width: 6),
                             Text(
                               '${((_mapZoom / 15.0) * 100).round()}%',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ts.textPrimary),
                             ),
                           ],
                         ),
@@ -990,9 +1007,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         );
 
         // RIGHT COLUMN: PIXEL-PERFECT PANEL & TABS (Identical to SuperAdmin)
-        Widget sidePanelSection = Container(
+        Widget sidePanelSection = AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: ts.cardBackground,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: borderGrey),
           ),
@@ -1002,11 +1020,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               // Exact Top 5 Tabs Component Bar from SuperAdmin
               Padding(
                 padding: const EdgeInsets.all(12.0),
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
                   height: 64,
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
+                    color: ts.subtleBackground,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -1037,7 +1056,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 ),
               ),
 
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              Divider(height: 1, color: ts.borderColor),
 
               // Dynamic Tab Content Stack
               Expanded(
@@ -1101,8 +1120,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     int badgeCount = 0,
   }) {
     final isSelected = _selectedTabIndex == index;
+    final ts = ThemeService.instance;
     const activeColor = Color(0xFFEA580C);
-    const inactiveColor = Color(0xFF94A3B8);
+    final inactiveColor = ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final selectedBg = ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED);
+    final selectedBorder = ts.isDark ? const Color(0xFF9A3412) : const Color(0xFFFFEDD5);
 
     return Expanded(
       child: InkWell(
@@ -1114,8 +1136,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFFF7ED) : Colors.transparent,
+            color: isSelected ? selectedBg : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
+            border: isSelected ? Border.all(color: selectedBorder, width: 1) : null,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1186,10 +1209,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             children: [
               Text(
                 'Unit Status (${filtered.length})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: Color(0xFF0F172A),
+                  color: ThemeService.instance.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
                 ),
               ),
               const Spacer(),
@@ -1238,7 +1261,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             children: [
               Text(
                 'Live Activity Feed (${logs.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: ThemeService.instance.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A)),
               ),
               const Spacer(),
               InkWell(
@@ -1292,7 +1315,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             children: [
               Text(
                 'Recent Evidence (${media.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: ThemeService.instance.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A)),
               ),
               const Spacer(),
               InkWell(
@@ -1339,9 +1362,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'Incoming Requests',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: ThemeService.instance.isDark ? Colors.white : const Color(0xFF0F172A)),
               ),
               const Spacer(),
               _buildCustomDropdown(),
@@ -1456,21 +1479,24 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final imagePath = incident['image_path']?.toString() ?? incident['photo']?.toString();
     final bannerUrl = parseImageUrls(imagePath).firstOrNull;
 
+    final ts = ThemeService.instance;
+
     return InkWell(
       onTap: () {
         widget.onSwitchTab?.call(1);
       },
       borderRadius: BorderRadius.circular(16),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ts.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-          boxShadow: const [
+          border: Border.all(color: ts.borderColor, width: 1),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x08000000),
+              color: ts.shadowColor,
               blurRadius: 10,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -1654,11 +1680,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.access_time_rounded, size: 11, color: Color(0xFF94A3B8)),
+                            Icon(Icons.access_time_rounded, size: 11, color: ts.textSecondary),
                             const SizedBox(width: 3),
                             Text(
                               timeReported.length > 8 ? timeReported.substring(timeReported.length - 8) : timeReported,
-                              style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                              style: TextStyle(fontSize: 10, color: ts.textSecondary),
                             ),
                           ],
                         ),
@@ -1669,22 +1695,22 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   // Caller info row
                   Row(
                     children: [
-                      const Icon(Icons.person_outline_rounded, size: 13, color: Color(0xFF64748B)),
+                      Icon(Icons.person_outline_rounded, size: 13, color: ts.textSecondary),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
                           callerName,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ts.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (phoneNumber.isNotEmpty) ...[
-                        const Icon(Icons.phone_outlined, size: 11, color: Color(0xFF94A3B8)),
+                        Icon(Icons.phone_outlined, size: 11, color: ts.textSecondary),
                         const SizedBox(width: 3),
                         Text(
                           phoneNumber,
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                          style: TextStyle(fontSize: 10, color: ts.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1696,12 +1722,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   // Location row
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 13, color: Color(0xFF94A3B8)),
+                      Icon(Icons.location_on_outlined, size: 13, color: ts.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           location,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF475569), height: 1.3),
+                          style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.3),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1714,7 +1740,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     const SizedBox(height: 6),
                     Text(
                       descSnippet,
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.4),
+                      style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.4),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1742,6 +1768,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildDynamicUnitCard(dynamic vehicle) {
+    final ts = ThemeService.instance;
     final v = Map<String, dynamic>.from(vehicle as Map);
     final dept = (v['Department_Name'] ?? v['deptName'] ?? v['department_name'] ?? '').toString();
     final plateNo = (v['Call_Sign'] ?? v['call_sign'] ?? v['plate_no'] ?? 'Unknown').toString();
@@ -1754,15 +1781,15 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final Color iconColor;
     final IconData deptIcon;
     if (dept.toUpperCase().contains('BFP')) {
-      iconBg = const Color(0xFFFEF2F2);
+      iconBg = ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2);
       iconColor = const Color(0xFFDC2626);
       deptIcon = Icons.local_fire_department_outlined;
     } else if (dept.toUpperCase().contains('PNP')) {
-      iconBg = const Color(0xFFEFF6FF);
+      iconBg = ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF);
       iconColor = const Color(0xFF2563EB);
       deptIcon = Icons.local_police_outlined;
     } else {
-      iconBg = const Color(0xFFECFDF5);
+      iconBg = ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
       iconColor = const Color(0xFF059669);
       deptIcon = Icons.health_and_safety_outlined;
     }
@@ -1771,19 +1798,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         ? const Color(0xFF10B981)
         : isEnRoute
             ? const Color(0xFF2563EB)
-            : const Color(0xFF64748B);
+            : ts.textSecondary;
     final Color statusBg = isAvailable
-        ? const Color(0xFFECFDF5)
+        ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5))
         : isEnRoute
-            ? const Color(0xFFEFF6FF)
-            : const Color(0xFFF1F5F9);
+            ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF))
+            : ts.inputBackground;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         children: [
@@ -1807,7 +1835,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     Expanded(
                       child: Text(
                         vehicleType,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1816,7 +1844,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 const SizedBox(height: 2),
                 Text(
                   dept.isNotEmpty ? dept : 'Unassigned',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+                  style: TextStyle(fontSize: 11, color: ts.textPrimary),
                 ),
               ],
             ),
@@ -1828,6 +1856,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildLogTile(Map<String, dynamic> event, {required bool isLast}) {
+    final ts = ThemeService.instance;
     final action = event['action']?.toString() ?? 'SYSTEM_EVENT';
     final actor = event['actor_display'] ?? event['user_role'] ?? event['userName'] ?? 'Admin';
     final details = event['details'] ?? event['entity_type'] ?? '';
@@ -1843,7 +1872,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.2)),
                 ),
@@ -1853,7 +1882,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 Expanded(
                   child: Container(
                     width: 1,
-                    color: const Color(0xFFF1F5F9),
+                    color: ts.borderColor,
                     margin: const EdgeInsets.symmetric(vertical: 2),
                   ),
                 ),
@@ -1871,7 +1900,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       Flexible(
                         child: Text(
                           action,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1879,26 +1908,26 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE2E8F0),
+                          color: ts.inputBackground,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           actor.toString(),
-                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: ts.textSecondary),
                         ),
                       ),
                       const Spacer(),
                       if (created.isNotEmpty)
                         Text(
                           created.length > 5 ? created.substring(created.length - 5) : created,
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                          style: TextStyle(fontSize: 10, color: ts.textSecondary),
                         ),
                     ],
                   ),
                   const SizedBox(height: 3),
                   Text(
                     details.toString(),
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.2),
+                    style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.2),
                   ),
                 ],
               ),
@@ -1910,18 +1939,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildDynamicMediaItem(Map<String, dynamic> item) {
+    final ts = ThemeService.instance;
     final filename = item['filename']?.toString() ?? item['file_name']?.toString() ?? 'Media Evidence';
     final incidentId = item['incidentId']?.toString() ?? item['Req_ID']?.toString() ?? '';
     final category = item['category']?.toString() ?? item['incident_type']?.toString() ?? 'Evidence';
     final imagePath = item['image_path']?.toString() ?? item['file_path']?.toString() ?? item['photo']?.toString();
     final imageUrl = _resolveImageUrl(imagePath);
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: ts.subtleBackground,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         children: [
@@ -1944,13 +1975,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               children: [
                 Text(
                   filename,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${incidentId.isNotEmpty ? 'INC-$incidentId · ' : ''}$category',
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
                 ),
               ],
             ),
@@ -1961,33 +1992,35 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _mediaPlaceholderIcon() {
+    final ts = ThemeService.instance;
     return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: const Color(0xFFE2E8F0),
+        color: ts.inputBackground,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: const Icon(Icons.image_outlined, color: Color(0xFF475569), size: 18),
+      child: Icon(Icons.image_outlined, color: ts.textSecondary, size: 18),
     );
   }
 
   Widget _buildEmptyState(IconData icon, String title, String subtitle) {
+    final ts = ThemeService.instance;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 36, color: const Color(0xFFCBD5E1)),
+          Icon(icon, size: 36, color: ts.textSecondary.withValues(alpha: 0.5)),
           const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF64748B)),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: ts.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+            style: TextStyle(fontSize: 11, color: ts.textSecondary),
           ),
         ],
       ),
@@ -1995,11 +2028,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildCustomDropdown() {
+    final ts = ThemeService.instance;
     return Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEDD5),
+        color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFFF6B00), width: 1),
       ),
@@ -2012,7 +2046,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             size: 18,
           ),
           elevation: 3,
-          dropdownColor: Colors.white,
+          dropdownColor: ts.cardBackground,
           borderRadius: BorderRadius.circular(10),
           style: const TextStyle(
             fontSize: 12,
@@ -2038,8 +2072,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       ),
     );
   }
-
-
 
   Widget _buildSmallBadge(String text, Color textColor, Color bgColor) {
     return Container(
@@ -2115,13 +2147,14 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildMapControlBtn(IconData icon, VoidCallback onPressed, String tooltip) {
+    final ts = ThemeService.instance;
     return Material(
-      color: Colors.white,
+      color: ts.cardBackground,
       shape: const CircleBorder(),
       elevation: 2,
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: const Color(0xFF475569)),
+        icon: Icon(icon, size: 18, color: ts.textPrimary),
         tooltip: tooltip,
         constraints: const BoxConstraints.tightFor(width: 36, height: 36),
         padding: EdgeInsets.zero,
@@ -2130,6 +2163,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildAgencyStatusSection() {
+    final ts = ThemeService.instance;
     final pnpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('PNP') && ((v['Status'] ?? v['status']) == 'Available')).length;
     final bfpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('BFP') && ((v['Status'] ?? v['status']) == 'Available')).length;
     final cdrrmoAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('CDRRMO') && ((v['Status'] ?? v['status']) == 'Available')).length;
@@ -2145,12 +2179,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       items.add(_buildAgencyStatusItem('CDRRMO City', const Color(0xFF27AE60), '$cdrrmoAvail', '0', '0'));
     }
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ts.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -2160,11 +2195,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildAgencyStatusItem(String name, Color color, String avail, String route, String busy) {
+    final ts = ThemeService.instance;
     return Row(
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 8),
-        Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+        Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
         const SizedBox(width: 12),
         _statusBadge(avail, 'avail', const Color(0xFF27AE60)),
         const SizedBox(width: 6),
@@ -2176,11 +2212,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _statusBadge(String count, String label, Color clr) {
+    final ts = ThemeService.instance;
     return Row(
       children: [
         Text(count, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: clr)),
         const SizedBox(width: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF828282))),
+        Text(label, style: TextStyle(fontSize: 10, color: ts.textSecondary)),
       ],
     );
   }
@@ -2194,6 +2231,7 @@ class CustomPinMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ts = ThemeService.instance;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -2201,7 +2239,7 @@ class CustomPinMarker extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: ts.cardBackground,
             shape: BoxShape.circle,
             border: Border.all(color: color, width: 2),
             boxShadow: [
@@ -2258,19 +2296,26 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final ts = ThemeService.instance;
+    final bg = ts.isDark ? ts.cardBackground : backgroundColor;
+    final bColor = ts.isDark ? ts.borderColor : borderColor;
+    final iconBg = ts.isDark ? ts.inputBackground : Colors.white;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: bColor),
       ),
       child: Row(
         children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: iconBg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: accentColor, size: 20),
@@ -2286,7 +2331,7 @@ class MetricCard extends StatelessWidget {
               ),
               Text(
                 title,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF616161), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 11, color: ts.textSecondary, fontWeight: FontWeight.w500),
               ),
             ],
           ),

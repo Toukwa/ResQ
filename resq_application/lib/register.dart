@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import 'services/theme_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -99,11 +100,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ts = ThemeService.instance;
     const Color brandOrange = Color(0xFFFF6B00);
-    const Color textDark = Color(0xFF0F172A);
+    final Color textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
     const Color textGrey = Color(0xFF94A3B8);
-    const Color borderGrey = Color(0xFFE2E8F0);
-    const Color bgWhite = Colors.white;
+    final Color borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
 
     bool isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
@@ -122,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   border: Border.all(color: borderGrey),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.arrow_back, size: 18, color: textDark),
+                child: Icon(Icons.arrow_back, size: 18, color: textDark),
               ),
             ),
             Container(
@@ -141,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Create Account',
           style: TextStyle(
             fontSize: 22,
@@ -246,8 +247,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ],
     );
 
+    final cardContainerBg = ts.isDark ? const Color(0xFF1F2937) : Colors.white;
+    final pageBg = ts.isDark ? const Color(0xFF111827) : const Color(0xFFF9FAFB);
+
     return Scaffold(
-      backgroundColor: isDesktop ? const Color(0xFFF9FAFB) : bgWhite,
+      backgroundColor: isDesktop ? pageBg : cardContainerBg,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),
@@ -255,11 +259,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ? Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: bgWhite,
+                    color: cardContainerBg,
                     borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: ts.isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                       ),
                     ],
