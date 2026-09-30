@@ -1,8 +1,8 @@
-﻿name: resq_application
+name: resq_application
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.1.0+2
+version: 1.1.1+3
 
 environment:
   sdk: ^3.11.1
