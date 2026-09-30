@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/live_socket.dart' as io;
 import '../../admin/admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';

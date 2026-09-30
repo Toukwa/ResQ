@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../services/live_socket.dart' as io;
 import './tabs/eoc_header.dart'; // Make sure this import path matches your project file layout
 import '../admin/admin_service.dart'; // Import AdminService for notification methods
 import '../../config.dart';

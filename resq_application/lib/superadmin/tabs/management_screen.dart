@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../config.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
 
 class ManagementScreen extends StatefulWidget {

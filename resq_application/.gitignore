@@ -12,6 +12,15 @@
 .swiftpm/
 migrate_working_dir/
 
+# Environment and Secrets
+*.env
+**/.env
+.env*
+
+# Node server uploads
+**/lib/server/uploads/
+**/uploads/
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -43,3 +52,18 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+!.env.example
+
+# ESP32 tracker WiFi password and device key
+hardware/esp32_resq_tracker/secrets.h
+
+# Photos from the old Node server (kept locally, not in git)
+old_server_backup/
+
+# Release builds (published on GitHub Releases) and Firebase deploy cache
+installer/*.zip
+installer/*.apk
+installer/*.exe
+installer/output/
+.firebase/

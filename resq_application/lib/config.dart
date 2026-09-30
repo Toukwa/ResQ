@@ -1,22 +1,23 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
-
 class AppConfig {
-  // Use 127.0.0.1:3000 with ADB reverse port forwarding over USB (adb reverse tcp:3000 tcp:3000),
-  // or computer LAN IP (192.168.1.9) when purely over Wi-Fi.
-  static String get apiBaseUrl {
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      return 'http://127.0.0.1:3000/api';
-    }
-    // Use localhost for desktop/web
-    return 'http://localhost:3000/api';
-  }
+  static const String rtdbUrl = 'https://resq-db-41ff8-default-rtdb.asia-southeast1.firebasedatabase.app';
 
-  // Get the base URL for serving static files (images, etc.)
-  static String get baseUrl {
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      return 'http://127.0.0.1:3000';
-    }
-    return 'http://localhost:3000';
-  }
+  /// Cloudinary (cloudinary.com) - stores incident photos; Firebase Storage needs the paid plan.
+  static const String cloudinaryCloudName = 'qcvccs2i';
+  static const String cloudinaryUploadPreset = 'qxpfltyg';
+
+  /// Firebase Console > Project settings > General > "Web API Key".
+  /// This key is meant to be public; the database rules are what protect data.
+  static const String firebaseApiKey = 'AIzaSyDHBxLSpKSbICYzLekvrysNP7dobVZFK6s';
+
+  /// EmailJS (emailjs.com) - sends the 6-digit login code.
+  static const String emailJsServiceId = 'service_faiiwt3';
+  static const String emailJsTemplateId = 'template_nj03kkh';
+  static const String emailJsPublicKey = 'EMdj1dF4OgoUOMggo';
+
+  /// The hosted web app. Only used to resolve old relative photo paths; all data
+  /// now goes to Firebase directly (there is no API server anymore).
+  static const String baseUrl = 'https://resq-db-41ff8.web.app';
+
+  /// Kept because screens still pass it to the live-update socket, which ignores it.
+  static const String apiBaseUrl = '$baseUrl/api';
 }

@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'dart:math';
-import '../config.dart';
+import 'firebase_services.dart';
 
 class SessionService {
   static const String _keyIsLoggedIn = 'session_is_logged_in';
@@ -61,10 +60,8 @@ class SessionService {
     final userId = prefs.getInt(_keyUserId);
     if (userId != null) {
       await clearDeviceToken(userId);
-      try {
-        await http.delete(Uri.parse('${AppConfig.apiBaseUrl}/api/trust-device/$userId')).timeout(const Duration(seconds: 3));
-      } catch (_) {}
     }
+    await FirebaseService.signOut();
     await prefs.clear();
   }
 

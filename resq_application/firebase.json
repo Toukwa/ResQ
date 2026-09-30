@@ -1,1 +1,62 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"resq-db-41ff8","appId":"1:898676150569:android:46790b4c01a821372e2738","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"resq-db-41ff8","configurations":{"android":"1:898676150569:android:46790b4c01a821372e2738","ios":"1:898676150569:ios:6cf1857bdc06c05e2e2738","macos":"1:898676150569:ios:6cf1857bdc06c05e2e2738","web":"1:898676150569:web:19fbf06841315be42e2738","windows":"1:898676150569:web:0b3a436c1c29afaf2e2738"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "resq-db-41ff8",
+          "appId": "1:898676150569:android:46790b4c01a821372e2738",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "resq-db-41ff8",
+          "configurations": {
+            "android": "1:898676150569:android:46790b4c01a821372e2738",
+            "ios": "1:898676150569:ios:6cf1857bdc06c05e2e2738",
+            "macos": "1:898676150569:ios:6cf1857bdc06c05e2e2738",
+            "web": "1:898676150569:web:19fbf06841315be42e2738",
+            "windows": "1:898676150569:web:0b3a436c1c29afaf2e2738"
+          }
+        }
+      }
+    }
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**/*.exe",
+        "headers": [
+          { "key": "Content-Type", "value": "application/octet-stream" },
+          { "key": "Content-Disposition", "value": "attachment" }
+        ]
+      },
+      {
+        "source": "**/*.zip",
+        "headers": [
+          { "key": "Content-Type", "value": "application/zip" },
+          { "key": "Content-Disposition", "value": "attachment" }
+        ]
+      },
+      {
+        "source": "**/*.apk",
+        "headers": [
+          { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+          { "key": "Content-Disposition", "value": "attachment" }
+        ]
+      }
+    ]
+  }
+}

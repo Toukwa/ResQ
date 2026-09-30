@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
 import '../../config.dart';

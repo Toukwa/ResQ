@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/live_socket.dart' as io;
 import 'package:path_provider/path_provider.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';

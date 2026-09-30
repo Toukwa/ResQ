@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/live_socket.dart' as io;
 import '../../admin/admin_service.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';

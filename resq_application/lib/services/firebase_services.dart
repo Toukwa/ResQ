@@ -1,60 +1,69 @@
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
 import 'dart:convert';
-import '../config.dart';
-
-/// Default timeout applied to all HTTP requests to prevent UI hangs
-/// when the local Node.js server is unreachable or slow.
-const Duration _kTimeout = Duration(seconds: 15);
+import 'package:crypto/crypto.dart';
+import 'email_otp_service.dart';
+import 'admin_data.dart';
+import 'firebase_rest.dart';
+import 'incident_data.dart';
+import 'vehicle_data.dart';
 
 class FirebaseService {
-  static Uri _uri(String route) => Uri.parse('${AppConfig.apiBaseUrl}$route');
+  // ─── AUTH (Firebase Auth + Realtime Database) ───────────────────────────
 
-  static dynamic _decode(http.Response response) {
-    final body = response.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(response.body);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException(
-        body is Map && body['error'] != null
-            ? body['error'].toString()
-            : 'Local server returned ${response.statusCode}.',
-      );
+  /// Profile stored at users/{uid}, in the shape the screens already expect.
+  static Future<Map<String, dynamic>> _profile(String uid) async {
+    final data = await Rtdb.get('users/$uid');
+    if (data == null) throw const HttpException('Account profile not found.');
+    final user = Map<String, dynamic>.from(data as Map);
+    if (user['disabled'] == true) {
+      await FirebaseAuthRest.signOut();
+      throw const HttpException('This account has been disabled.');
     }
-    return body;
+    user['uid'] = uid;
+    return user;
   }
 
+  static Future<void> _logEvent(Map<String, dynamic> user, String action, Map<String, dynamic> details) =>
+      IncidentData.log(action, 'USER', user['id'], details);
   static Future<Map<String, dynamic>?> login({
     required String email,
     required String password,
   }) async {
-    final response = await http
-        .post(
-          _uri('/login'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': email, 'password': password}),
-        )
-        .timeout(_kTimeout);
-    final decoded = _decode(response);
-    return Map<String, dynamic>.from(decoded as Map);
+    final uid = await FirebaseAuthRest.signIn(email, password);
+    final user = await _profile(uid);
+
+    final settings = await Rtdb.get('user_settings/$uid');
+    final mfaSetting = settings is Map ? settings['mfa_enabled'] : null;
+    final mfaEnabled = mfaSetting != false && mfaSetting != 0;
+
+    if (mfaEnabled) {
+      await EmailOtpService.sendCode(email: user['email'], userName: user['fullName'] ?? 'User');
+      return {
+        'success': true,
+        'mfaRequired': true,
+        'userId': user['id'],
+        'targetEmail': user['email'],
+        'maskedEmail': EmailOtpService.maskEmail(user['email']),
+      };
+    }
+
+    await _logEvent(user, 'LOGIN', {'email': user['email'], 'mfa': false});
+    return {'success': true, 'mfaRequired': false, 'user': user};
   }
 
   static Future<Map<String, dynamic>?> verifyMfa({
     required int userId,
     required String otpCode,
   }) async {
-    final response = await http
-        .post(
-          _uri('/verify-mfa'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'userId': userId, 'otpCode': otpCode}),
-        )
-        .timeout(_kTimeout);
-    final decoded = _decode(response);
-    return Map<String, dynamic>.from(decoded as Map);
+    final ok = await EmailOtpService.verify(otpCode);
+    if (!ok) return {'success': false, 'error': 'Incorrect 6-digit verification code'};
+    final user = await _profile(FirebaseAuthRest.uid!);
+    await _logEvent(user, 'LOGIN_MFA_VERIFIED', {'email': user['email'], 'mfa': true});
+    return {'success': true, 'user': user};
   }
+
+  static String _hashToken(String token) => sha256.convert(utf8.encode(token)).toString();
 
   /// Register this device as trusted so future logins skip MFA for 30 days.
   static Future<bool> trustDevice({
@@ -63,47 +72,47 @@ class FirebaseService {
     String deviceLabel = 'ResQ App',
   }) async {
     try {
-      final response = await http
-          .post(
-            _uri('/trust-device'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'userId': userId,
-              'deviceToken': deviceToken,
-              'deviceLabel': deviceLabel,
-            }),
-          )
-          .timeout(_kTimeout);
-      final decoded = _decode(response);
-      return decoded['success'] == true;
+      await Rtdb.set('trusted_devices/${FirebaseAuthRest.uid}/${_hashToken(deviceToken)}', {
+        'label': deviceLabel,
+        'expiresAt': DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch,
+      });
+      return true;
     } catch (_) {
       return false;
     }
   }
 
-  /// Check if this device is trusted for [userId]. Returns user data if trusted,
-  /// or null if the device is not recognized / token is expired.
+  /// Returns the user if this device holds a saved login and is still trusted.
   static Future<Map<String, dynamic>?> checkTrustedDevice({
     required int userId,
     required String deviceToken,
   }) async {
     try {
-      final response = await http
-          .post(
-            _uri('/check-trusted-device'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'userId': userId, 'deviceToken': deviceToken}),
-          )
-          .timeout(_kTimeout);
-      final decoded = _decode(response);
-      if (decoded['trusted'] == true && decoded['user'] != null) {
-        return Map<String, dynamic>.from(decoded['user'] as Map);
+      final uid = await FirebaseAuthRest.restore();
+      if (uid == null) return null;
+      final device = await Rtdb.get('trusted_devices/$uid/${_hashToken(deviceToken)}');
+      if (device == null || DateTime.now().millisecondsSinceEpoch > (device['expiresAt'] as int)) {
+        return null;
       }
-      return null;
+      final user = await _profile(uid);
+      await _logEvent(user, 'LOGIN_TRUSTED_DEVICE', {'email': user['email'], 'mfa': 'skipped_trusted_device'});
+      return user;
     } catch (_) {
       return null;
     }
   }
+
+  /// Forget trusted devices and the saved login (on logout).
+  static Future<void> signOut() async {
+    try {
+      if (FirebaseAuthRest.uid != null) {
+        await Rtdb.remove('trusted_devices/${FirebaseAuthRest.uid}');
+      }
+    } catch (_) {}
+    await FirebaseAuthRest.signOut();
+  }
+
+  static Future<void> sendPasswordReset(String email) => FirebaseAuthRest.sendPasswordReset(email);
 
   static Future<void> register({
     required String fullName,
@@ -112,20 +121,20 @@ class FirebaseService {
     required String password,
     String? fcmToken,
   }) async {
-    final response = await http
-        .post(
-          _uri('/register'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'fullName': fullName,
-            'contactNo': contactNo,
-            'email': email,
-            'password': password,
-            'fcmToken': fcmToken,
-          }),
-        )
-        .timeout(_kTimeout);
-    _decode(response);
+    final uid = await FirebaseAuthRest.signUp(email, password);
+    final id = await Rtdb.nextId('counters/users');
+    final user = {
+      'id': id,
+      'fullName': fullName.trim(),
+      'email': email.trim().toLowerCase(),
+      'contactNo': contactNo.trim(),
+      'role': 'Citizen',
+      'createdAt': {'.sv': 'timestamp'},
+    };
+    await Rtdb.set('users/$uid', user);
+    await Rtdb.set('user_ids/$id', uid);
+    await _logEvent(user, 'REGISTER', {'email': email});
+    await FirebaseAuthRest.signOut();
   }
 
   static Future<String?> uploadImage(File file) async {
@@ -140,105 +149,50 @@ class FirebaseService {
     required double longitude,
     File? image,
     List<File>? images,
-  }) async {
-    final request = http.MultipartRequest('POST', _uri('/emergency-requests'))
-      ..fields.addAll({
-        'resident_id': citizenId,
-        'type': incidentType,
-        'description': description,
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-      });
-
-    final allImages = <File>[];
-    if (images != null && images.isNotEmpty) {
-      allImages.addAll(images);
-    } else if (image != null) {
-      allImages.add(image);
-    }
-
-    for (var img in allImages) {
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'images',
-          img.path,
-          filename: path.basename(img.path),
-        ),
-      );
-    }
-
-    final streamedResponse = await request.send().timeout(_kTimeout);
-    final result = _decode(await http.Response.fromStream(streamedResponse));
-    return result['emergency_id'].toString();
+  }) {
+    final allImages = <File>[
+      if (images != null && images.isNotEmpty) ...images else ?image,
+    ];
+    return IncidentData.createIncident(
+      citizenId: citizenId,
+      incidentType: incidentType,
+      description: description,
+      latitude: latitude,
+      longitude: longitude,
+      images: allImages,
+    );
   }
 
   static Future<Map<String, dynamic>?> getEmergencyRequest(String reqId) async {
     try {
-      final response = await http.get(_uri('/emergency-requests/$reqId')).timeout(_kTimeout);
-      final body = _decode(response);
-      if (body['success'] == true && body['data'] != null) {
-        return Map<String, dynamic>.from(body['data']);
-      }
-    } catch (_) {}
-    return null;
+      return await IncidentData.getIncident(reqId);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getCitizenEmergencyRequests(String citizenId) async {
     try {
-      final response = await http.get(_uri('/citizen-emergency-requests/$citizenId')).timeout(_kTimeout);
-      final body = _decode(response);
-      if (body['success'] == true && body['data'] != null) {
-        return List<Map<String, dynamic>>.from(body['data']);
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  static Future<List<dynamic>> getVehicles() async {
-    final response =
-        await http.get(_uri('/admin/vehicles-with-dept')).timeout(_kTimeout);
-    final body = _decode(response);
-    return List<dynamic>.from(body['data'] ?? []);
-  }
-
-  static Future<Map<String, dynamic>> getDashboardMetrics() async {
-    final response =
-        await http.get(_uri('/admin/dashboard-metrics')).timeout(_kTimeout);
-    final body = _decode(response);
-    return Map<String, dynamic>.from(body['data'] ?? {});
-  }
-
-  static Future<List<dynamic>> getActiveIncidents() async {
-    final response = await http
-        .get(_uri('/admin/active-incidents-list'))
-        .timeout(_kTimeout);
-    final body = _decode(response);
-    return List<dynamic>.from(body['data'] ?? []);
-  }
-
-  static Future<List<dynamic>> getDispatchedVehicles(dynamic reqId) async {
-    try {
-      final response = await http
-          .get(_uri('/citizen/dispatched-vehicles/$reqId'))
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return List<dynamic>.from(body['data'] ?? []);
+      return await IncidentData.getMyIncidents();
     } catch (_) {
       return [];
     }
   }
 
-  static Future<List<dynamic>> searchIncidents(String query) async {
-    final response = await http
-        .get(
-          _uri(
-            '/admin/incidents/search?q=${Uri.encodeQueryComponent(query)}',
-          ),
-        )
-        .timeout(_kTimeout);
-    final body = _decode(response);
-    return List<dynamic>.from(body['data'] ?? []);
+  static Future<List<dynamic>> getVehicles() => VehicleData.getVehicles();
+
+  static Future<Map<String, dynamic>> getDashboardMetrics() => AdminData.dashboardMetrics();
+  static Future<List<dynamic>> getActiveIncidents() => IncidentData.getAllIncidents();
+
+  static Future<List<dynamic>> getDispatchedVehicles(dynamic reqId) async {
+    try {
+      return await IncidentData.getDispatchedVehicles(int.parse(reqId.toString()));
+    } catch (_) {
+      return [];
+    }
   }
+
+  static Future<List<dynamic>> searchIncidents(String query) => IncidentData.searchIncidents(query);
 
   static Future<String> dispatchVehicle({
     required int reqId,
@@ -246,44 +200,20 @@ class FirebaseService {
     required int adminId,
     String? department,
   }) async {
-    final payload = <String, dynamic>{
-      'emergency_id': reqId,
-      'vehicle_id': vehicleId,
-      'admin_id': adminId,
-    };
-    if (department != null) payload['department'] = department;
-
-    final response = await http
-        .post(
-          _uri('/admin/dispatch'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(payload),
-        )
-        .timeout(_kTimeout);
-    final result = _decode(response);
-    return 'Dispatch #${result['dispatch_id']} created successfully';
+    final id = await IncidentData.dispatchVehicle(
+      reqId: reqId,
+      vehicleId: vehicleId,
+      adminId: adminId,
+      department: department,
+    );
+    return 'Dispatch #$id created successfully';
   }
 
   static Future<void> updateIncidentStatus({
     required int reqId,
     required String status,
     String? department,
-  }) async {
-    final payload = <String, dynamic>{
-      'reqId': reqId,
-      'status': status,
-    };
-    if (department != null) payload['department'] = department;
-
-    final response = await http
-        .post(
-          _uri('/admin/update-status'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(payload),
-        )
-        .timeout(_kTimeout);
-    _decode(response);
-  }
+  }) => IncidentData.updateIncidentStatus(reqId, status, department);
 
   static DateTime getStartOfCurrentWeekMonday() {
     final now = DateTime.now();
@@ -291,102 +221,42 @@ class FirebaseService {
     return DateTime(now.year, now.month, now.day - daysFromMonday, 0, 0, 0);
   }
 
-  static Future<List<dynamic>> getActivityLogs({int limit = 50}) async {
-    final url = _uri('/admin/activity-logs?limit=$limit');
-    final response = await http.get(url).timeout(_kTimeout);
-    final body = _decode(response);
-    final rawList = List<dynamic>.from(body['data'] ?? []);
-    final weekStart = getStartOfCurrentWeekMonday();
-
-    return rawList.where((raw) {
-      if (raw is! Map) return true;
-      final tsStr = raw['timestamp']?.toString() ??
-                    raw['created_at']?.toString() ??
-                    raw['createdAt']?.toString() ?? '';
-      if (tsStr.isEmpty) return true;
-      final ts = DateTime.tryParse(tsStr)?.toLocal();
-      if (ts == null) return true;
-      return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
-    }).toList();
-  }
+  static Future<List<dynamic>> getActivityLogs({int limit = 50}) =>
+      AdminData.logs(limit: limit, from: getStartOfCurrentWeekMonday());
 
   static Future<List<int>?> downloadAuditLogPackageZip(String targetDate) async {
     try {
-      final url = _uri('/admin/export-audit-logs-zip?date=$targetDate');
-      final response = await http.get(url).timeout(const Duration(minutes: 2));
-      if (response.statusCode >= 200 && response.statusCode < 300 && response.bodyBytes.isNotEmpty) {
-        return response.bodyBytes;
-      }
-      return null;
+      return await AdminData.auditZip(targetDate);
     } catch (_) {
       return null;
     }
   }
-
   static Future<List<dynamic>> getMediaGallery() async {
-    final url = _uri('/admin/media-gallery');
-    final response = await http.get(url).timeout(const Duration(seconds: 10));
-    final body = _decode(response);
-    final rawList = List<dynamic>.from(body['data'] ?? []);
+    final rawList = await IncidentData.getMediaGallery();
     final weekStart = getStartOfCurrentWeekMonday();
 
     return rawList.where((raw) {
-      if (raw is! Map) return true;
-      final tsStr = raw['uploadedAt']?.toString() ??
-                    raw['uploaded_at']?.toString() ??
-                    raw['SOS_timeStamp']?.toString() ??
-                    raw['timestamp']?.toString() ??
-                    raw['created_at']?.toString() ?? '';
-      if (tsStr.isEmpty) return true;
-      final ts = DateTime.tryParse(tsStr)?.toLocal();
+      final ts = DateTime.tryParse(raw['uploadedAt']?.toString() ?? '')?.toLocal();
       if (ts == null) return true;
       return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
     }).toList();
   }
 
-  static Future<List<dynamic>> getMediaFilters() async {
-    final url = _uri('/admin/media-filters');
-    final response = await http.get(url).timeout(const Duration(seconds: 10));
-    final body = _decode(response);
-    return List<dynamic>.from(body['data'] ?? []);
-  }
+  static Future<List<dynamic>> getMediaFilters() => IncidentData.getMediaFilters();
 
   static Future<Map<String, dynamic>?> getIncidentDispatch(int reqId) async {
-    final url = _uri('/admin/incident-dispatch/$reqId');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : null;
-    } catch (e) {
+      return await IncidentData.getIncidentDispatch(reqId);
+    } catch (_) {
       return null;
     }
   }
 
   // Notification API methods
   static Future<List<dynamic>> getNotifications(int userId) async {
-    final url = _uri('/notifications/$userId');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      if (body['success'] == true && body['data'] != null) {
-        final mappedData = (body['data'] as List).map((notification) {
-          return {
-            'notificationId': notification['notification_ID'],
-            'recipientId': notification['recipient_ID'],
-            'title': notification['title'],
-            'message': notification['message'],
-            'notificationType': notification['notification_type'],
-            'reqId': notification['req_ID'],
-            'dispId': notification['disp_ID'],
-            'isRead': notification['is_read'] == 1,
-            'readAt': notification['read_at'],
-            'timestamp': notification['timestamp'] ?? notification['created_at'],
-          };
-        }).toList();
-        return mappedData;
-      }
-      return [];
-    } catch (e) {
+      return await IncidentData.getNotifications(userId);
+    } catch (_) {
       return [];
     }
   }
@@ -398,109 +268,71 @@ class FirebaseService {
     int? reqId,
     int? dispId,
   }) async {
-    final url = _uri('/notifications');
-    try {
-      final payload = {
-        'recipientId': recipientId,
-        'title': title,
-        'message': message,
-        'reqId': reqId,
-        'dispId': dispId,
-      };
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(payload),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
-      return false;
-    }
+    await IncidentData.addNotification(
+      recipientId: recipientId,
+      message: message,
+      title: title,
+      reqId: reqId,
+      dispId: dispId,
+    );
+    return true;
   }
 
   static Future<bool> markNotificationAsRead(int notificationId) async {
-    final url = _uri('/notifications/$notificationId/read');
     try {
-      final response = await http.put(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await IncidentData.markNotificationRead(notificationId);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
   static Future<bool> markAllNotificationsAsRead(int userId) async {
-    final url = _uri('/notifications/$userId/read-all');
     try {
-      final response = await http.put(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await IncidentData.markAllNotificationsRead(userId);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
   static Future<int> getUnreadNotificationCount(int userId) async {
-    final url = _uri('/notifications/$userId/unread-count');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['count'] : 0;
-    } catch (e) {
+      return await IncidentData.unreadNotificationCount(userId);
+    } catch (_) {
       return 0;
     }
   }
 
   // Management screen methods
   static Future<List<dynamic>> getAccounts() async {
-    final url = _uri('/admin/accounts');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
+      return await AdminData.accounts();
+    } catch (_) {
       return [];
     }
   }
-
   static Future<List<dynamic>> getVehiclesForManagement() async {
-    final url = _uri('/admin/vehicles-manage');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
+      return await VehicleData.getVehicles();
+    } catch (_) {
       return [];
     }
   }
 
   static Future<List<dynamic>> getDepartments() async {
-    final url = _uri('/admin/departments');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
+      return await VehicleData.getDepartments();
+    } catch (_) {
       return [];
     }
   }
 
   static Future<bool> createAccount(Map<String, dynamic> accountData) async {
-    final url = _uri('/admin/accounts');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(accountData),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await AdminData.createAccount(accountData);
+      return true;
+    } catch (_) {
       return false;
     }
   }
@@ -509,46 +341,28 @@ class FirebaseService {
     int accountId,
     Map<String, dynamic> accountData,
   ) async {
-    final url = _uri('/admin/accounts/$accountId');
     try {
-      final response = await http
-          .put(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(accountData),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await AdminData.updateAccount(accountId, accountData);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
+  /// Disables the account (deleting another user's login needs a server).
   static Future<bool> deleteAccount(int accountId) async {
-    final url = _uri('/admin/accounts/$accountId');
     try {
-      final response = await http.delete(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await AdminData.disableAccount(accountId);
+      return true;
+    } catch (_) {
       return false;
     }
   }
-
   static Future<bool> createVehicle(Map<String, dynamic> vehicleData) async {
-    final url = _uri('/admin/vehicles');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(vehicleData),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await VehicleData.createVehicle(vehicleData);
+      return true;
+    } catch (_) {
       return false;
     }
   }
@@ -557,89 +371,46 @@ class FirebaseService {
     int vehicleId,
     Map<String, dynamic> vehicleData,
   ) async {
-    final url = _uri('/admin/vehicles/$vehicleId');
     try {
-      final response = await http
-          .put(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(vehicleData),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await VehicleData.updateVehicle(vehicleId, vehicleData);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
   static Future<bool> deleteVehicle(int vehicleId) async {
-    final url = _uri('/admin/vehicles/$vehicleId');
     try {
-      final response = await http.delete(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await VehicleData.deleteVehicle(vehicleId);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
-
   static Future<bool> updateDepartment(
     Map<String, dynamic> departmentData,
   ) async {
-    final deptId = departmentData['dept_ID'] ?? departmentData['id'];
-    final url = _uri('/admin/departments/$deptId');
     try {
-      final response = await http
-          .put(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(departmentData),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await VehicleData.updateDepartment(departmentData);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
   // Dispatch status management
   static Future<bool> updateDispatchStatus(int dispId, String status) async {
-    final url = _uri('/admin/dispatch/$dispId/status');
     try {
-      final response = await http
-          .put(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'status': status}),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
+      await IncidentData.updateDispatchStatus(dispId, status);
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
-  // FCM token management
-  static Future<bool> updateFcmToken(int userId, String fcmToken) async {
-    final url = _uri('/user/$userId/fcm-token');
-    try {
-      final response = await http
-          .put(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'fcmToken': fcmToken}),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
-      return false;
-    }
-  }
+  // Push tokens are only useful with a server to send pushes; nothing to store on the free plan.
+  static Future<bool> updateFcmToken(int userId, String fcmToken) async => true;
 
   // System logs
   static Future<List<dynamic>> getSystemLogs({
@@ -648,19 +419,9 @@ class FirebaseService {
     String? entityType,
     int limit = 100,
   }) async {
-    final queryParams = <String, String>{
-      if (userId != null) 'userId': userId.toString(),
-      'action': ?action,
-      'entityType': ?entityType,
-      'limit': limit.toString(),
-    };
-    final url =
-        _uri('/admin/system-logs').replace(queryParameters: queryParams);
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
+      return await AdminData.filteredLogs(userId: userId, action: action, entityType: entityType, limit: limit);
+    } catch (_) {
       return [];
     }
   }
@@ -673,39 +434,11 @@ class FirebaseService {
     String? details,
     String? ipAddress,
   }) async {
-    final url = _uri('/admin/system-logs');
-    try {
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'userId': userId,
-              'action': action,
-              'entityType': entityType,
-              'entityId': entityId,
-              'details': details,
-              'ipAddress': ipAddress,
-            }),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
-    } catch (e) {
-      return false;
-    }
+    await IncidentData.log(action, entityType ?? 'SYSTEM', entityId, {'details': details});
+    return true;
   }
 
-  static Future<List<dynamic>> getSystemLogStats() async {
-    final url = _uri('/admin/system-logs/stats');
-    try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
-      return [];
-    }
-  }
+  static Future<List<dynamic>> getSystemLogStats() async => [];
 
   // Enhanced system log methods
   static Future<List<dynamic>> getSystemLogsEnhanced({
@@ -716,35 +449,15 @@ class FirebaseService {
     String? startDate,
     String? endDate,
   }) async {
-    final queryParams = <String, String>{
-      if (userId != null) 'userId': userId.toString(),
-      'action': ?action,
-      'entityType': ?entityType,
-      'limit': limit.toString(),
-      'startDate': ?startDate,
-      'endDate': ?endDate,
-    };
-    final url =
-        _uri('/admin/system-logs').replace(queryParameters: queryParams);
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
+      return await AdminData.filteredLogs(
+          userId: userId, action: action, entityType: entityType, limit: limit, startDate: startDate, endDate: endDate);
+    } catch (_) {
       return [];
     }
   }
 
-  static Future<List<dynamic>> getSystemLogSummary() async {
-    final url = _uri('/admin/system-logs/summary');
-    try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true ? body['data'] : [];
-    } catch (e) {
-      return [];
-    }
-  }
+  static Future<List<dynamic>> getSystemLogSummary() async => [];
 
   static Future<String> exportSystemLogs({
     String? startDate,
@@ -752,53 +465,23 @@ class FirebaseService {
     String? entityType,
     String? action,
   }) async {
-    final queryParams = <String, String>{
-      'startDate': ?startDate,
-      'endDate': ?endDate,
-      'entityType': ?entityType,
-      'action': ?action,
-    };
-    final url = _uri('/admin/system-logs/export')
-        .replace(queryParameters: queryParams);
-    try {
-      final response = await http.get(url).timeout(_kTimeout);
-      if (response.statusCode == 200) {
-        return response.body; // CSV content
-      } else {
-        throw Exception('Failed to export system logs');
-      }
-    } catch (e) {
-      rethrow;
-    }
+    final rows = await AdminData.filteredLogs(
+        action: action, entityType: entityType, limit: 1 << 30, startDate: startDate, endDate: endDate);
+    return AdminData.exportCsv(rows);
   }
 
   static Future<Map<String, dynamic>?> getUserSettings(int userId) async {
-    final url = _uri('/user/$userId/settings');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      final rawSettings = body['settings'] ?? body['data'];
-      if (body['success'] == true && rawSettings != null) {
-        return Map<String, dynamic>.from(rawSettings as Map);
-      }
-      return null;
+      return await AdminData.getSettings(userId);
     } catch (_) {
       return null;
     }
   }
 
   static Future<bool> updateUserSettings(int userId, Map<String, dynamic> settings) async {
-    final url = _uri('/user/$userId/settings');
     try {
-      final response = await http
-          .put(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(settings),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      return body['success'] == true;
+      await AdminData.updateSettings(userId, settings);
+      return true;
     } catch (_) {
       return false;
     }
@@ -809,40 +492,17 @@ class FirebaseService {
     required String currentPassword,
     required String newPassword,
   }) async {
-    final url = _uri('/user/$userId/change-password');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'currentPassword': currentPassword,
-              'newPassword': newPassword,
-            }),
-          )
-          .timeout(_kTimeout);
-      final body = _decode(response);
-      if (body['success'] == true) {
-        return (success: true, message: body['message']?.toString() ?? 'Password changed successfully.');
-      } else {
-        return (success: false, message: body['error']?.toString() ?? 'Failed to change password.');
-      }
+      return await AdminData.changePassword(currentPassword, newPassword);
     } catch (e) {
-      return (success: false, message: e is HttpException ? e.message : 'Server error occurred.');
+      return (success: false, message: e is HttpException ? e.message : 'Could not change password.');
     }
   }
 
   static Future<Map<String, dynamic>?> getUserProfile(int userId) async {
-    final url = _uri('/user/$userId/profile');
     try {
-      final response = await http.get(url).timeout(_kTimeout);
-      final body = _decode(response);
-      if (body['success'] == true && body['user'] != null) {
-        return Map<String, dynamic>.from(body['user'] as Map);
-      }
-      return null;
+      return await AdminData.getProfile(userId);
     } catch (_) {
       return null;
     }
-  }
-}
+  }}

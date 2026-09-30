@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResQ EOC - Download</title>
+  <meta name="description" content="Download the ResQ Emergency Operations Center app for Windows and Android." />
+  <link rel="icon" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #ff6b00; --accent2: #ff9a3c;
+      --bg: #0b0f1a; --card: #131929; --border: #1e2d45;
+      --text: #f0f4ff; --muted: #7a8aaa;
+    }
+    body {
+      font-family: "Inter", sans-serif; background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 40px 20px;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(255,107,0,.04) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,107,0,.04) 1px,transparent 1px);
+      background-size: 40px 40px; pointer-events: none;
+    }
+    .hero { text-align: center; margin-bottom: 48px; animation: fadeUp .6s ease both; }
+    .logo-badge {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: linear-gradient(135deg,var(--accent),var(--accent2));
+      border-radius: 16px; padding: 14px 24px; margin-bottom: 28px;
+      box-shadow: 0 0 40px rgba(255,107,0,.35);
+    }
+    .logo-badge svg { width: 36px; height: 36px; fill: #fff; }
+    .logo-badge span { font-size: 22px; font-weight: 700; color: #fff; }
+    h1 { font-size: clamp(28px,5vw,48px); font-weight: 700; margin-bottom: 14px; }
+    h1 span { background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { font-size: 17px; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+    .cards { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 560px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+      padding: 32px 36px; width: 100%;
+      animation: fadeUp .7s .1s ease both; box-shadow: 0 8px 48px rgba(0,0,0,.5);
+    }
+    .card:nth-child(2) { animation-delay: .18s; }
+    .platform-row { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+    .platform-icon {
+      width: 52px; height: 52px; background: rgba(255,107,0,.12);
+      border-radius: 14px; display: grid; place-items: center; flex-shrink: 0;
+    }
+    .platform-icon svg { width: 28px; height: 28px; fill: var(--accent); }
+    .platform-info h2 { font-size: 19px; font-weight: 600; margin-bottom: 4px; }
+    .platform-info p { font-size: 13px; color: var(--muted); }
+    .version-badge {
+      display: inline-block; background: rgba(255,107,0,.15); color: var(--accent2);
+      border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin-top: 6px;
+    }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .requirements {
+      background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;
+    }
+    .requirements h3 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+    .req-item { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); margin-bottom: 7px; }
+    .req-item:last-child { margin-bottom: 0; }
+    .req-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
+    .btn-download {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      width: 100%; padding: 15px 24px;
+      background: linear-gradient(135deg,var(--accent),var(--accent2));
+      color: #fff; font-family: "Inter",sans-serif; font-size: 15px; font-weight: 600;
+      border: none; border-radius: 13px; cursor: pointer; text-decoration: none;
+      transition: transform .15s,box-shadow .15s; box-shadow: 0 4px 24px rgba(255,107,0,.4);
+    }
+    .btn-download:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255,107,0,.55); }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download svg { width: 20px; height: 20px; fill: #fff; flex-shrink: 0; }
+    .note { text-align: center; font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
+    .note a { color: var(--accent2); text-decoration: none; }
+    .note a:hover { text-decoration: underline; }
+    footer { margin-top: 48px; font-size: 13px; color: var(--muted); text-align: center; animation: fadeUp .8s .25s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="logo-badge">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      <span>ResQ EOC</span>
+    </div>
+    <h1>Download <span>ResQ EOC</span></h1>
+    <p class="subtitle">Emergency Operations Center app for real-time incident monitoring and response management.</p>
+  </div>
+
+  <div class="cards">
+
+    <!-- Windows Card -->
+    <div class="card">
+      <div class="platform-row">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+        </div>
+        <div class="platform-info">
+          <h2>Windows Desktop</h2>
+          <p>64-bit for Windows 10 / 11</p>
+          <span class="version-badge" data-latest-version>Latest version</span>
+        </div>
+      </div>
+      <hr class="divider" />
+      <div class="requirements">
+        <h3>Requirements</h3>
+        <div class="req-item"><span class="req-dot"></span>Windows 10 or Windows 11 (64-bit)</div>
+        <div class="req-item"><span class="req-dot"></span>Internet connection required</div>
+        <div class="req-item"><span class="req-dot"></span>~120 MB free disk space</div>
+      </div>
+      <a class="btn-download" href="https://github.com/Toukwa/ResQ/releases/latest/download/ResQ_EOC_Windows.zip" download>
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        Download for Windows (.zip)
+      </a>
+      <p class="note">
+        Extract the ZIP, then run <strong>resq_application.exe</strong> inside.<br/>
+        Issues? <a href="mailto:resq.cspc@gmail.com">resq.cspc@gmail.com</a>
+      </p>
+    </div>
+
+    <!-- Android Card -->
+    <div class="card">
+      <div class="platform-row">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24"><path d="M17.523 15.341a5.98 5.98 0 0 1-5.52 3.66 5.98 5.98 0 0 1-5.521-3.66H17.523zM7.5 2.5l1.5 2.598a5.964 5.964 0 0 0-2.473 2.151L4.5 5.5 7.5 2.5zm9 0l3 3-2.027 1.749A5.964 5.964 0 0 0 15 4.848L16.5 2.5zM12.003 5.5A5.5 5.5 0 1 1 6.5 11a5.5 5.5 0 0 1 5.503-5.5zM9.5 9.5a.5.5 0 1 0 .5.5.5.5 0 0 0-.5-.5zm5 0a.5.5 0 1 0 .5.5.5.5 0 0 0-.5-.5z"/></svg>
+        </div>
+        <div class="platform-info">
+          <h2>Android Mobile</h2>
+          <p>For Android 6.0 (Marshmallow) and above</p>
+          <span class="version-badge" data-latest-version>Latest version</span>
+        </div>
+      </div>
+      <hr class="divider" />
+      <div class="requirements">
+        <h3>Requirements</h3>
+        <div class="req-item"><span class="req-dot"></span>Android 6.0 or later (API 23+)</div>
+        <div class="req-item"><span class="req-dot"></span>Internet connection required</div>
+        <div class="req-item"><span class="req-dot"></span>~56 MB free storage</div>
+      </div>
+      <a class="btn-download" href="https://github.com/Toukwa/ResQ/releases/latest/download/ResQ_EOC.apk" download="ResQ_EOC.apk">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        Download for Android (.apk)
+      </a>
+      <p class="note">
+        Enable <strong>Install from unknown sources</strong> in Android settings before installing.<br/>
+        Issues? <a href="mailto:resq.cspc@gmail.com">resq.cspc@gmail.com</a>
+      </p>
+    </div>
+
+  </div>
+
+  <footer>&copy; 2026 ResQ EOC &mdash; Emergency Operations Center</footer>
+  <script>
+    // Download links use GitHub's /releases/latest/ URLs, so they always serve the newest
+    // release as long as it contains ResQ_EOC_Windows.zip and ResQ_EOC.apk.
+    // This only fills in the version label.
+    fetch('https://api.github.com/repos/Toukwa/ResQ/releases/latest')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (release) {
+        if (!release || !release.tag_name) return;
+        var tag = release.tag_name.charAt(0) === 'v' ? release.tag_name : 'v' + release.tag_name;
+        document.querySelectorAll('[data-latest-version]').forEach(function (el) { el.textContent = tag; });
+      })
+      .catch(function () {});
+  </script>
+</body>
+</html>

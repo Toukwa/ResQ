@@ -4,6 +4,7 @@ import 'login.dart';
 import 'citizen/home_screen.dart';
 import 'superadmin/super_admin_shell.dart';
 import 'admin/admin_shell.dart';
+import 'services/firebase_rest.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
 
@@ -87,7 +88,12 @@ class _SessionInitializerState extends State<SessionInitializer> {
   }
 
   Future<void> _checkSession() async {
-    final session = await SessionService.getSession();
+    var session = await SessionService.getSession();
+    // A saved session is only usable if the Firebase login can be restored too
+    if (session != null && await FirebaseAuthRest.restore() == null) {
+      await SessionService.clearSession();
+      session = null;
+    }
 
     if (!mounted) return;
 

@@ -1,0 +1,131 @@
+{
+  "rules": {
+    // Everything is private unless a rule below allows it.
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      // Admins list all accounts (management screen, dashboard, log names)
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      "$uid": {
+        // Yourself, admins and superadmins can see a profile
+        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        // Sign-up creates your own profile as a Citizen; only a Superadmin can write anyone's profile
+        ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.child('role').val() === 'Citizen') || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".validate": "newData.hasChildren(['id', 'fullName', 'email', 'role'])",
+        "role": { ".validate": "newData.val() === 'Citizen' || newData.val() === 'Admin' || newData.val() === 'Superadmin'" },
+        "id": { ".validate": "newData.isNumber()" },
+        // You may edit your own name and phone number
+        "fullName": { ".write": "auth != null && auth.uid === $uid && data.exists()", ".validate": "newData.isString() && newData.val().length > 0" },
+        "contactNo": { ".write": "auth != null && auth.uid === $uid && data.exists()", ".validate": "newData.isString()" }
+      },
+      ".indexOn": ["id", "email", "role", "deptID"]
+    },
+
+    "user_ids": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+      }
+    },
+
+    "counters": {
+      "$counter": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+      }
+    },
+
+    "user_settings": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+      }
+    },
+
+    "otp": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "trusted_devices": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "system_logs": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".indexOn": ["timestamp", "user_ID", "action"],
+      "$logId": {
+        // Anyone signed in can add a log entry about themselves; nobody can edit or delete logs
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+      }
+    },
+
+    "incidents": {
+      // Staff see everything; a citizen may only run the "my incidents" query
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin' || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
+      ".indexOn": ["citizenUid", "Req_ID", "reqStatus"],
+      "$reqId": {
+        ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        // Citizens can only file a new Pending report as themselves; staff update it afterwards
+        ".write": "auth != null && ((!data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('reqStatus').val() === 'Pending') || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".validate": "newData.hasChildren(['Req_ID', 'citizenUid', 'incType', 'latitude', 'longitude', 'reqStatus'])"
+      }
+    },
+
+    "dispatches": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin' || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
+      ".indexOn": ["Req_ID", "citizenUid", "Vehicle_ID", "status"],
+      "$dispId": {
+        ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+      }
+    },
+
+    "vehicles": {
+      ".read": "auth != null",
+      ".indexOn": ["dept_ID", "status", "plate_no", "HardwareID_mapping"],
+      "$vehicleId": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
+    },
+
+    "trackers": {
+      // Written by the ESP32 trackers; everyone signed in can see vehicle positions
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app')",
+        ".validate": "newData.hasChild('hardwareId')",
+        "hardwareId": { ".validate": "newData.isString() && newData.val().length <= 32" },
+        "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+        "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" }
+      }
+    },
+
+    "departments": {
+      ".read": "auth != null",
+      "$deptId": { ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'" }
+    },
+
+    "staff_notifications": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".indexOn": ["timestamp", "recipient_ID"],
+      "$notifId": {
+        // Anyone signed in can raise a notification (e.g. a citizen's new report); nobody edits it afterwards
+        ".write": "auth != null && !data.exists() && newData.child('createdBy').val() === auth.uid",
+        "readBy": {
+          "$uid": { ".write": "auth != null && auth.uid === $uid && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
+        }
+      }
+    },
+
+    "live": {
+      ".read": "auth != null",
+      "$event": { ".write": "auth != null" }
+    }
+  }
+}

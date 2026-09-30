@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
 import '../../config.dart';
@@ -1347,7 +1347,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF5C00),
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
+                      disabledBackgroundColor: ts.isDark ? const Color(0xFF1E293B) : Colors.grey.shade200,
+                      disabledForegroundColor: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -1385,19 +1386,19 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFFFF4),
+                      color: ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFEFFFF4),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF27AE60)),
+                      border: Border.all(color: ts.isDark ? const Color(0xFF047857) : const Color(0xFF27AE60)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline, color: Color(0xFF27AE60), size: 20),
-                        SizedBox(width: 8),
+                        Icon(Icons.check_circle_outline, color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60), size: 20),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Unit Dispatched (En Route)',
                             style: TextStyle(
-                              color: Color(0xFF27AE60),
+                              color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60),
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                             ),

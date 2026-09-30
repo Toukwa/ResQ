@@ -194,14 +194,17 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String ticketId = _formatTicketId(widget.emergencyId, _currentIncidentData);
-    final int currentIndex = _getStatusIndex(_currentStatus);
-    final List<String> photoUrls = _extractPhotoUrls(_currentIncidentData?['image_path']);
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        final String ticketId = _formatTicketId(widget.emergencyId, _currentIncidentData);
+        final int currentIndex = _getStatusIndex(_currentStatus);
+        final List<String> photoUrls = _extractPhotoUrls(_currentIncidentData?['image_path']);
 
-    final ts = ThemeService.instance;
-    return Scaffold(
-      backgroundColor: ts.pageBackground,
-      body: SafeArea(
+        final ts = ThemeService.instance;
+        return Scaffold(
+          backgroundColor: ts.pageBackground,
+          body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -273,10 +276,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   _description,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
-                                    color: Color(0xFF64748B),
+                                    color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
                                   ),
                                 ),
                               ],
@@ -288,9 +291,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
                     // ATTACHED EVIDENCE PHOTOS GALLERY
                     if (photoUrls.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Divider(color: Color(0xFFF1F5F9), height: 1),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Divider(color: ts.borderColor, height: 1),
                       ),
                       Row(
                         children: [
@@ -298,10 +301,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                           const SizedBox(width: 6),
                           Text(
                             "EVIDENCE PHOTOS (${photoUrls.length})",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
+                              color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -323,14 +326,14 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                                 margin: const EdgeInsets.only(right: 8),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  border: Border.all(color: ts.borderColor),
                                 ),
                                 clipBehavior: Clip.antiAlias,
                                 child: Image.network(
                                   url,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) => Container(
-                                    color: const Color(0xFFF1F5F9),
+                                    color: ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9),
                                     child: const Icon(Icons.broken_image_rounded, size: 24, color: Color(0xFFCBD5E1)),
                                   ),
                                 ),
@@ -358,9 +361,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                             const SizedBox(width: 4),
                             Text(
                               _formatReportedTime(_currentIncidentData),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF64748B),
+                                color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -376,9 +379,9 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                             const SizedBox(width: 4),
                             Text(
                               _locationText,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF64748B),
+                                color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -488,6 +491,8 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
           ),
         ),
       ),
+        );
+      },
     );
   }
 
@@ -857,8 +862,8 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     for (int i = 0; i < _dispatchedVehicles.length; i++) {
       final v = _dispatchedVehicles[i];
       if (v is! Map) continue;
-      final vRawLat = double.tryParse((v['latitude'] ?? '').toString());
-      final vRawLng = double.tryParse((v['longitude'] ?? '').toString());
+      final vRawLat = double.tryParse((v['latitude'] ?? v['current_lat'] ?? v['lat'] ?? v['y'] ?? '').toString());
+      final vRawLng = double.tryParse((v['longitude'] ?? v['current_lng'] ?? v['lng'] ?? v['x'] ?? '').toString());
 
       double vLat = (vRawLat != null && vRawLat.isFinite && !vRawLat.isNaN)
           ? vRawLat
@@ -869,8 +874,11 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
       if (!vLat.isFinite || !vLng.isFinite || vLat.isNaN || vLng.isNaN) continue;
 
-      final plate = (v['plate_no'] ?? v['vehicle_type'] ?? 'Unit').toString();
-      final type = (v['vehicle_type'] ?? v['deptName'] ?? '').toString().toUpperCase();
+      final plate = (v['plate_no'] ?? v['plateNo'] ?? v['vehicle_type'] ?? 'Unit').toString();
+      final type = (v['vehicle_type'] ?? v['deptName'] ?? v['agencyType'] ?? '').toString().toUpperCase();
+      final speedVal = double.tryParse((v['speed_kph'] ?? v['speedKph'] ?? v['speed'] ?? '').toString());
+      final speedLabel = (speedVal != null && speedVal > 0) ? ' · ${speedVal.toStringAsFixed(0)}km/h' : '';
+      final labelText = '$plate$speedLabel';
 
       Color color = const Color(0xFFEF4444);
       IconData icon = Icons.local_fire_department_rounded;
@@ -885,7 +893,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
       vehicleMarkers.add(
         Marker(
           point: LatLng(vLat, vLng),
-          width: 90,
+          width: 100,
           height: 65,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -904,7 +912,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                   border: Border.all(color: color, width: 1.5),
                 ),
                 child: Text(
-                  plate,
+                  labelText,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 9,
