@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1660" viewBox="0 0 1320 1660" font-family="Segoe UI, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+<rect width="1320" height="1660" fill="#FFFFFF"/>
+<text font-size="22" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="660.0" y="26.0">Process Design of ResQ (Proposed Emergency Response)</tspan></text>
+<rect x="0" y="50" width="330" height="1610" fill="#FFF7ED" stroke="#CBD5E1"/>
+<rect x="0" y="50" width="330" height="70" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="76.2">Citizen</tspan><tspan x="165.0" y="93.8">(ResQ Mobile App)</tspan></text>
+<rect x="330" y="50" width="330" height="1610" fill="#FFFFFF" stroke="#CBD5E1"/>
+<rect x="330" y="50" width="330" height="70" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="76.2">ResQ System</tspan><tspan x="495.0" y="93.8">(automatic)</tspan></text>
+<rect x="660" y="50" width="330" height="1610" fill="#FFF7ED" stroke="#CBD5E1"/>
+<rect x="660" y="50" width="330" height="70" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="76.2">Department Admin</tspan><tspan x="825.0" y="93.8">(EOC / BFP / PNP / CDRRMO)</tspan></text>
+<rect x="990" y="50" width="330" height="1610" fill="#FFFFFF" stroke="#CBD5E1"/>
+<rect x="990" y="50" width="330" height="70" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="1155.0" y="76.2">Response Unit</tspan><tspan x="1155.0" y="93.8">(vehicle with GPS tracker)</tspan></text>
+<path d="M165.0,212.0 L165.0,248.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M165.0,312.0 L165.0,348.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M290.0,380.0 L495.0,380.0 L495.0,448.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M495.0,512.0 L495.0,548.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M495.0,612.0 L495.0,648.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M620.0,680.0 L700.0,680.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M825.0,712.0 L825.0,734.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M720.0,780.0 L620.0,780.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/><text x="670.0" y="771.0" font-size="12" font-weight="700" fill="#FF6B00" text-anchor="middle">No</text>
+<path d="M370.0,780.0 L290.0,780.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M165.0,812.0 L165.0,848.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M825.0,826.0 L825.0,848.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/><text x="835.0" y="840.0" font-size="12" font-weight="700" fill="#FF6B00" text-anchor="start">Yes</text>
+<path d="M825.0,912.0 L825.0,948.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M700.0,980.0 L620.0,980.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M370.0,980.0 L290.0,980.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M950.0,980.0 L1030.0,980.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1155.0,1012.0 L1155.0,1048.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1030.0,1080.0 L620.0,1080.0" fill="none" stroke="#334155" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#arrow)"/><text x="825.0" y="1071.0" font-size="12" font-weight="700" fill="#FF6B00" text-anchor="middle">GPS location</text>
+<path d="M1155.0,1112.0 L1155.0,1148.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1030.0,1180.0 L825.0,1180.0 L825.0,1234.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M720.0,1280.0 L678.0,1280.0 L678.0,880.0 L700.0,880.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/><text x="714.0" y="1272.0" font-size="12" font-weight="700" fill="#FF6B00" text-anchor="end">Yes</text>
+<path d="M825.0,1326.0 L825.0,1348.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/><text x="835.0" y="1340.0" font-size="12" font-weight="700" fill="#FF6B00" text-anchor="start">No</text>
+<path d="M700.0,1380.0 L620.0,1380.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M495.0,1412.0 L495.0,1448.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M370.0,1480.0 L290.0,1480.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M165.0,1512.0 L165.0,1548.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="75.0" y="156.0" width="180" height="48" rx="24" fill="#FF6B00" stroke="none"/><text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="180.0">Emergency occurs</tspan></text>
+<rect x="40.0" y="248.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="280.0">Open ResQ app and log in</tspan></text>
+<polygon points="56.0,348.0 306.0,348.0 274.0,412.0 24.0,412.0" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="371.6">Submit report: type, GPS</tspan><tspan x="165.0" y="388.4">location, description, photos</tspan></text>
+<rect x="370.0" y="448.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="471.6">Save incident and</tspan><tspan x="495.0" y="488.4">upload photos</tspan></text>
+<rect x="370.0" y="548.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="571.6">Identify involved departments</tspan><tspan x="495.0" y="588.4">from the emergency type</tspan></text>
+<rect x="370.0" y="648.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="671.6">Send real-time alert</tspan><tspan x="495.0" y="688.4">to department admins</tspan></text>
+<rect x="700.0" y="648.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="671.6">Review details, photos</tspan><tspan x="825.0" y="688.4">and location on map</tspan></text>
+<polygon points="825.0,734.0 930.0,780.0 825.0,826.0 720.0,780.0" fill="#FFEDD5" stroke="#334155" stroke-width="1.6"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="772.2">Accept the</tspan><tspan x="825.0" y="787.8">incident?</tspan></text>
+<rect x="370.0" y="748.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="771.6">Record decline and</tspan><tspan x="495.0" y="788.4">notify citizen</tspan></text>
+<rect x="40.0" y="748.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="771.6">Citizen sees request</tspan><tspan x="165.0" y="788.4">status: Declined</tspan></text>
+<rect x="75.0" y="856.0" width="180" height="48" rx="24" fill="#FF6B00" stroke="none"/><text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="880.0">End</tspan></text>
+<rect x="700.0" y="848.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="871.6">Select available unit</tspan><tspan x="825.0" y="888.4">on the live map</tspan></text>
+<rect x="700.0" y="948.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="980.0">Dispatch unit</tspan></text>
+<rect x="370.0" y="948.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="971.6">Record dispatch, set unit</tspan><tspan x="495.0" y="988.4">En Route, notify citizen</tspan></text>
+<rect x="40.0" y="948.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="971.6">See dispatched unit</tspan><tspan x="165.0" y="988.4">and its live location</tspan></text>
+<rect x="1030.0" y="948.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1155.0" y="971.6">Unit receives dispatch</tspan><tspan x="1155.0" y="988.4">order</tspan></text>
+<rect x="1030.0" y="1048.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1155.0" y="1071.6">Travel to scene; tracker</tspan><tspan x="1155.0" y="1088.4">sends GPS every 3 seconds</tspan></text>
+<rect x="370.0" y="1048.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="1071.6">Update live vehicle map</tspan><tspan x="495.0" y="1088.4">for admin and citizen</tspan></text>
+<rect x="1030.0" y="1148.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1155.0" y="1180.0">Respond on scene</tspan></text>
+<polygon points="825.0,1234.0 930.0,1280.0 825.0,1326.0 720.0,1280.0" fill="#FFEDD5" stroke="#334155" stroke-width="1.6"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="1272.2">Additional units</tspan><tspan x="825.0" y="1287.8">needed?</tspan></text>
+<rect x="700.0" y="1348.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="825.0" y="1371.6">Mark incident</tspan><tspan x="825.0" y="1388.4">Completed</tspan></text>
+<rect x="370.0" y="1348.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="1371.6">Set units Available;</tspan><tspan x="495.0" y="1388.4">update overall status</tspan></text>
+<path d="M370.0,1448.0 H620.0 V1506.0 C557.5,1520.0 495.0,1494.0 445.0,1508.0 S390.0,1516.0 370.0,1506.0 Z" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="495.0" y="1468.6">Save incident record and</tspan><tspan x="495.0" y="1485.4">audit log automatically</tspan></text>
+<rect x="40.0" y="1448.0" width="250" height="64" rx="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.6"/><text font-size="13.5" font-weight="500" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="1471.6">Citizen notified:</tspan><tspan x="165.0" y="1488.4">incident resolved</tspan></text>
+<rect x="75.0" y="1556.0" width="180" height="48" rx="24" fill="#FF6B00" stroke="none"/><text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="1580.0">End</tspan></text>
+</svg>

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2020" height="1560" viewBox="0 0 2020 1560" font-family="Segoe UI, Arial, sans-serif">
+<defs><marker id="open" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#FF6B00" stroke-width="1.6"/></marker><marker id="triangle" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.4"/></marker></defs>
+<rect width="2020" height="1560" fill="#FFFFFF"/>
+<text font-size="24" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="680.0" y="30.0">Use Case Diagram of ResQ</tspan></text>
+<rect x="470" y="190" width="1110" height="1310" rx="10" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.2"/>
+<text font-size="16" font-weight="800" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="490.0" y="214.0">ResQ Emergency Response System</tspan></text>
+<path d="M185,680 H90 V84 H981" fill="none" stroke="#1E293B" stroke-width="1.8" marker-end="url(#triangle)"/>
+<path d="M1839,1015 H1945 V84 H1049" fill="none" stroke="#1E293B" stroke-width="1.8" marker-end="url(#triangle)"/>
+<path d="M1805,650 V963" fill="none" stroke="#1E293B" stroke-width="1.8" marker-end="url(#triangle)"/>
+<path d="M1805,1285 V1093" fill="none" stroke="#1E293B" stroke-width="1.8" marker-end="url(#triangle)"/>
+<line x1="1015.0" y1="142.0" x2="787.8" y2="232.9" stroke="#475569" stroke-width="1.5"/>
+<line x1="1015.0" y1="142.0" x2="1015.0" y2="229.0" stroke="#475569" stroke-width="1.5"/>
+<line x1="1015.0" y1="142.0" x2="1242.2" y2="232.9" stroke="#475569" stroke-width="1.5"/>
+<line x1="249.0" y1="380.0" x2="580.0" y2="380.0" stroke="#475569" stroke-width="1.5"/>
+<line x1="249.0" y1="680.0" x2="643.6" y2="546.0" stroke="#475569" stroke-width="1.5"/>
+<line x1="249.0" y1="680.0" x2="593.8" y2="643.4" stroke="#475569" stroke-width="1.5"/>
+<line x1="249.0" y1="680.0" x2="598.6" y2="724.5" stroke="#475569" stroke-width="1.5"/>
+<line x1="249.0" y1="680.0" x2="646.8" y2="823.6" stroke="#475569" stroke-width="1.5"/>
+<line x1="249.0" y1="1160.0" x2="580.0" y2="1160.0" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="560.0" x2="1385.3" y2="426.1" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="560.0" x2="1425.5" y2="507.5" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="560.0" x2="1447.4" y2="574.0" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="560.0" x2="1405.2" y2="647.3" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="560.0" x2="1373.6" y2="732.4" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1015.0" x2="1394.4" y2="904.7" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1015.0" x2="1438.1" y2="982.5" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1015.0" x2="1438.1" y2="1047.5" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1015.0" x2="1394.4" y2="1125.3" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1335.0" x2="1428.1" y2="1286.7" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1335.0" x2="1446.0" y2="1352.6" stroke="#475569" stroke-width="1.5"/>
+<line x1="1771.0" y1="1335.0" x2="1402.9" y2="1426.8" stroke="#475569" stroke-width="1.5"/>
+<ellipse cx="720" cy="260" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="260.0">Log In</tspan></text>
+<ellipse cx="720" cy="380" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="371.8">Verify Email Code</tspan><tspan x="720.0" y="388.2">(OTP)</tspan></text>
+<ellipse cx="1015" cy="260" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1015.0" y="260.0">Reset Password</tspan></text>
+<ellipse cx="1310" cy="260" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="251.8">Update Profile &amp;</tspan><tspan x="1310.0" y="268.2">Settings</tspan></text>
+<ellipse cx="720" cy="520" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="520.0">Register Account</tspan></text>
+<ellipse cx="720" cy="630" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="630.0">Report Emergency</tspan></text>
+<ellipse cx="1010" cy="715" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1010.0" y="715.0">Attach Photos</tspan></text>
+<ellipse cx="720" cy="740" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="740.0">Track Request Status</tspan></text>
+<ellipse cx="720" cy="850" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="841.8">View Dispatched</tspan><tspan x="720.0" y="858.2">Unit Location</tspan></text>
+<ellipse cx="1310" cy="400" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="400.0">View Incident Queue</tspan></text>
+<ellipse cx="1310" cy="490" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="481.8">Accept / Decline</tspan><tspan x="1310.0" y="498.2">Incident</tspan></text>
+<ellipse cx="1310" cy="580" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="580.0">Dispatch Response Unit</tspan></text>
+<ellipse cx="1310" cy="670" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="670.0">Update Incident Status</tspan></text>
+<ellipse cx="1310" cy="760" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="760.0">Manage Vehicles</tspan></text>
+<ellipse cx="1310" cy="880" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="880.0">View Dashboard</tspan></text>
+<ellipse cx="1310" cy="970" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="961.8">Monitor Live</tspan><tspan x="1310.0" y="978.2">Vehicle Map</tspan></text>
+<ellipse cx="1310" cy="1060" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="1060.0">View Evidence Photos</tspan></text>
+<ellipse cx="1310" cy="1150" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="1150.0">View Activity Logs</tspan></text>
+<ellipse cx="1310" cy="1270" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="1270.0">Manage User Accounts</tspan></text>
+<ellipse cx="1310" cy="1360" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="1360.0">Manage Agencies</tspan></text>
+<ellipse cx="1310" cy="1450" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1310.0" y="1441.8">Export Audit Reports</tspan><tspan x="1310.0" y="1458.2">(PDF / ZIP / CSV)</tspan></text>
+<ellipse cx="720" cy="1160" rx="140.0" ry="31.0" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/><text font-size="13.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="720.0" y="1160.0">Send Vehicle Location</tspan></text>
+<line x1="720.0" y1="291.0" x2="720.0" y2="349.0" stroke="#FF6B00" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#open)"/>
+<text font-size="12.5" font-weight="700" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="730.0" y="320.0">«include»</tspan></text>
+<line x1="925.6" y1="690.3" x2="804.4" y2="654.7" stroke="#FF6B00" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#open)"/>
+<text font-size="12.5" font-weight="700" fill="#FF6B00" text-anchor="middle" dominant-baseline="middle"><tspan x="865.0" y="660.5">«extend»</tspan></text>
+<line x1="1230.7" y1="995.5" x2="799.3" y2="1134.5" stroke="#FF6B00" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#open)"/>
+<text font-size="12.5" font-weight="700" fill="#FF6B00" text-anchor="middle" dominant-baseline="middle"><tspan x="1015.0" y="1053.0">«include»</tspan></text>
+<circle cx="1015" cy="54" r="11" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M1015,65 V90 M997,75 H1033 M1015,90 L1001,110 M1015,90 L1029,110" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1015.0" y="119.5">User</tspan><tspan x="1015.0" y="136.5">(all roles)</tspan></text>
+<circle cx="215" cy="346" r="13" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M215,359 V390 M193,370 H237 M215,390 L198,416 M215,390 L232,416" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14.5" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="215.0" y="439.2">Email Service</tspan><tspan x="215.0" y="456.8">(EmailJS)</tspan></text>
+<circle cx="215" cy="646" r="13" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M215,659 V690 M193,670 H237 M215,690 L198,716 M215,690 L232,716" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14.5" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="215.0" y="739.2">Citizen /</tspan><tspan x="215.0" y="756.8">Resident</tspan></text>
+<circle cx="215" cy="1126" r="13" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M215,1139 V1170 M193,1150 H237 M215,1170 L198,1196 M215,1170 L232,1196" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14.5" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="215.0" y="1219.2">GPS Tracker</tspan><tspan x="215.0" y="1236.8">(ESP32)</tspan></text>
+<circle cx="1805" cy="526" r="13" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M1805,539 V570 M1783,550 H1827 M1805,570 L1788,596 M1805,570 L1822,596" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14.5" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1805.0" y="619.2">Department Admin</tspan><tspan x="1805.0" y="636.8">(BFP / PNP / CDRRMO)</tspan></text>
+<circle cx="1805" cy="981" r="13" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M1805,994 V1025 M1783,1005 H1827 M1805,1025 L1788,1051 M1805,1025 L1822,1051" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14.5" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1805.0" y="1075.0">Admin Staff</tspan></text>
+<circle cx="1805" cy="1301" r="13" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M1805,1314 V1345 M1783,1325 H1827 M1805,1345 L1788,1371 M1805,1345 L1822,1371" stroke="#1E293B" stroke-width="2.6" fill="none" stroke-linecap="round"/><text font-size="14.5" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1805.0" y="1394.2">Super Admin</tspan><tspan x="1805.0" y="1411.8">(EOC)</tspan></text>
+<rect x="40" y="1320" width="340" height="170" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+<text font-size="14" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="210.0" y="1340.0">Legend</tspan></text>
+<line x1="56" y1="1370" x2="120" y2="1370" stroke="#475569" stroke-width="1.5"/>
+<text x="134" y="1374" font-size="12.5" fill="#1E293B">Actor uses the function</text>
+<line x1="56" y1="1402" x2="120" y2="1402" stroke="#FF6B00" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#open)"/>
+<text x="134" y="1406" font-size="12.5" fill="#1E293B">«include» / «extend»</text>
+<path d="M56,1436 H120" fill="none" stroke="#1E293B" stroke-width="1.8" marker-end="url(#triangle)"/>
+<text x="134" y="1440" font-size="12.5" fill="#1E293B">Is a kind of (generalization)</text>
+<text x="56" y="1472" font-size="11.5" fill="#64748B">«include»: always part of it  «extend»: optional</text>
+</svg>

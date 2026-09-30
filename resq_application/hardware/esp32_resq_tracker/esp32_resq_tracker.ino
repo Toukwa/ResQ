@@ -40,13 +40,13 @@ const char* TOKEN_HOST = "securetoken.googleapis.com";
 
 // ---------- Pins ----------
 // NEO-M8L GPS on UART1
-constexpr int GPS_RX_PIN = 16; // ESP32 RX <- GPS TX
-constexpr int GPS_TX_PIN = 17; // ESP32 TX -> GPS RX (optional)
+constexpr int GPS_RX_PIN = 4; // ESP32 RX <- GPS TX
+constexpr int GPS_TX_PIN = 2; // ESP32 TX -> GPS RX (optional)
 constexpr uint32_t GPS_BAUD = 9600;
 
 // SIM7600 on UART2. Must be different pins from the GPS.
-constexpr int MODEM_RX_PIN = 26;     // ESP32 RX <- SIM7600 TX
-constexpr int MODEM_TX_PIN = 27;     // ESP32 TX -> SIM7600 RX
+constexpr int MODEM_RX_PIN = 16;     // ESP32 RX <- SIM7600 TX
+constexpr int MODEM_TX_PIN = 17;     // ESP32 TX -> SIM7600 RX
 constexpr int MODEM_PWRKEY_PIN = -1; // GPIO wired to the module's PWRKEY, or -1 if it powers on by itself
 constexpr uint32_t MODEM_BAUD = 115200;
 

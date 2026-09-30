@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1300" viewBox="0 0 1700 1300" font-family="Segoe UI, Arial, sans-serif">
+<defs><marker id="arrow-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#FF6B00"/></marker><marker id="arrow-out" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2563EB"/></marker></defs>
+<rect width="1700" height="1300" fill="#FFFFFF"/>
+<text font-size="26" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="850.0" y="40.0">Context Diagram of ResQ</tspan></text>
+<line x1="315.0" y1="654.0" x2="685.0" y2="654.0" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text font-size="12.5" font-weight="600" fill="#FF6B00" text-anchor="middle" dominant-baseline="middle"><tspan x="500.0" y="584.4">Registration &amp; login details</tspan><tspan x="500.0" y="600.0">Emergency report (type, location,</tspan><tspan x="500.0" y="615.6">description, photos)</tspan></text>
+<line x1="685.0" y1="686.0" x2="315.0" y2="686.0" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text font-size="12.5" font-weight="600" fill="#2563EB" text-anchor="middle" dominant-baseline="middle"><tspan x="500.0" y="724.4">Incident status updates</tspan><tspan x="500.0" y="740.0">Dispatched unit &amp; live location</tspan><tspan x="500.0" y="755.6">Notifications</tspan></text>
+<line x1="1385.0" y1="686.0" x2="1015.0" y2="686.0" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text font-size="12.5" font-weight="600" fill="#FF6B00" text-anchor="middle" dominant-baseline="middle"><tspan x="1200.0" y="722.2">Accept / dispatch / complete incident</tspan><tspan x="1200.0" y="737.8">Vehicle assignments, settings</tspan></text>
+<line x1="1015.0" y1="654.0" x2="1385.0" y2="654.0" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text font-size="12.5" font-weight="600" fill="#2563EB" text-anchor="middle" dominant-baseline="middle"><tspan x="1200.0" y="584.4">Incident alerts &amp; queue</tspan><tspan x="1200.0" y="600.0">Live vehicle locations</tspan><tspan x="1200.0" y="615.6">Dashboard &amp; activity logs</tspan></text>
+<line x1="866.0" y1="193.0" x2="866.0" y2="505.0" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text font-size="12.5" font-weight="600" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="880.0" y="322.2">Account &amp; department</tspan><tspan x="880.0" y="337.8">management, settings</tspan></text>
+<line x1="834.0" y1="505.0" x2="834.0" y2="193.0" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text font-size="12.5" font-weight="600" fill="#2563EB" text-anchor="end" dominant-baseline="middle"><tspan x="815.0" y="322.2">All incidents, dashboard metrics</tspan><tspan x="815.0" y="337.8">Audit logs &amp; reports (PDF/ZIP/CSV)</tspan></text>
+<line x1="850.0" y1="1147.0" x2="850.0" y2="835.0" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text font-size="12.5" font-weight="600" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="868.0" y="952.2">GPS location (latitude, longitude,</tspan><tspan x="868.0" y="967.8">speed, satellites), tracker ID</tspan></text>
+<line x1="721.8" y1="566.1" x2="323.1" y2="243.0" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text font-size="12.5" font-weight="600" fill="#2563EB" text-anchor="end" dominant-baseline="middle"><tspan x="480.0" y="402.2">Login code (OTP)</tspan><tspan x="480.0" y="417.8">to send to user</tspan></text>
+<line x1="708.9" y1="757.0" x2="317.0" y2="1054.3" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text font-size="12.5" font-weight="600" fill="#2563EB" text-anchor="end" dominant-baseline="middle"><tspan x="470.0" y="830.0">Incident photos</tspan></text>
+<line x1="336.4" y1="1079.7" x2="728.2" y2="782.5" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text font-size="12.5" font-weight="600" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="585.0" y="930.0">Photo links (URLs)</tspan></text>
+<line x1="1373.3" y1="1067.0" x2="981.5" y2="769.7" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text font-size="12.5" font-weight="600" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="1180.0" y="860.0">Map tiles</tspan></text>
+<line x1="978.2" y1="566.1" x2="1376.9" y2="243.0" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text font-size="12.5" font-weight="600" fill="#2563EB" text-anchor="start" dominant-baseline="middle"><tspan x="1200.0" y="430.0">Password reset request</tspan></text>
+<circle cx="850.0" cy="670.0" r="165" fill="#FF6B00" stroke="#C2410C" stroke-width="3"/>
+<text font-size="20" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="850.0" y="582.0">0</tspan></text>
+<line x1="730.0" y1="608.0" x2="970.0" y2="608.0" stroke="#FFFFFF" stroke-width="2" opacity="0.8"/>
+<text font-size="20" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="850.0" y="655.0">ResQ</tspan><tspan x="850.0" y="680.0">Emergency Response</tspan><tspan x="850.0" y="705.0">System</tspan></text>
+<rect x="725.0" y="107.0" width="250" height="86" rx="4" fill="#FFFFFF" stroke="#1E293B" stroke-width="2"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="850.0" y="140.6">Super Admin</tspan><tspan x="850.0" y="159.4">(EOC)</tspan></text>
+<rect x="65.0" y="627.0" width="250" height="86" rx="4" fill="#FFFFFF" stroke="#1E293B" stroke-width="2"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="190.0" y="660.6">Citizen /</tspan><tspan x="190.0" y="679.4">Resident</tspan></text>
+<rect x="1385.0" y="627.0" width="250" height="86" rx="4" fill="#FFFFFF" stroke="#1E293B" stroke-width="2"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1510.0" y="660.6">Department Admin</tspan><tspan x="1510.0" y="679.4">(BFP / PNP / CDRRMO)</tspan></text>
+<rect x="725.0" y="1147.0" width="250" height="86" rx="4" fill="#FFF7ED" stroke="#1E293B" stroke-width="2"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="850.0" y="1180.6">GPS Tracker</tspan><tspan x="850.0" y="1199.4">(ESP32 in response vehicle)</tspan></text>
+<rect x="145.0" y="157.0" width="250" height="86" rx="4" fill="#F1F5F9" stroke="#1E293B" stroke-width="2" stroke-dasharray="6 4"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="270.0" y="190.6">Email Service</tspan><tspan x="270.0" y="209.4">(EmailJS)</tspan></text>
+<rect x="145.0" y="1067.0" width="250" height="86" rx="4" fill="#F1F5F9" stroke="#1E293B" stroke-width="2" stroke-dasharray="6 4"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="270.0" y="1100.6">Photo Storage</tspan><tspan x="270.0" y="1119.4">(Cloudinary)</tspan></text>
+<rect x="1305.0" y="1067.0" width="250" height="86" rx="4" fill="#F1F5F9" stroke="#1E293B" stroke-width="2" stroke-dasharray="6 4"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1430.0" y="1100.6">Map Provider</tspan><tspan x="1430.0" y="1119.4">(OpenStreetMap)</tspan></text>
+<rect x="1305.0" y="157.0" width="250" height="86" rx="4" fill="#F1F5F9" stroke="#1E293B" stroke-width="2" stroke-dasharray="6 4"/><text font-size="15" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1430.0" y="190.6">Firebase Auth</tspan><tspan x="1430.0" y="209.4">Email</tspan></text>
+<rect x="40" y="1180" width="330" height="96" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+<line x1="56" y1="1204" x2="106" y2="1204" stroke="#FF6B00" stroke-width="2.2" marker-end="url(#arrow-in)"/>
+<text x="118" y="1208" font-size="13" fill="#1E293B">Data going into ResQ</text>
+<line x1="56" y1="1230" x2="106" y2="1230" stroke="#2563EB" stroke-width="2.2" marker-end="url(#arrow-out)"/>
+<text x="118" y="1234" font-size="13" fill="#1E293B">Data coming out of ResQ</text>
+<rect x="56" y="1246" width="50" height="18" fill="#F1F5F9" stroke="#1E293B" stroke-dasharray="6 4"/>
+<text x="118" y="1260" font-size="13" fill="#1E293B">External service</text>
+</svg>

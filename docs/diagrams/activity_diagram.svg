@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1490" height="2082" viewBox="0 0 1490 2082" font-family="Segoe UI, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+<rect width="1490" height="2082" fill="#FFFFFF"/>
+<text font-size="22" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="28.0">Activity Diagram of ResQ</tspan></text>
+<rect x="20" y="56" width="290" height="2012" fill="#FFF7ED" stroke="#CBD5E1"/>
+<rect x="20" y="56" width="290" height="62" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="78.8">Citizen</tspan><tspan x="165.0" y="95.2">(ResQ Mobile App)</tspan></text>
+<rect x="310" y="56" width="290" height="2012" fill="#FFFFFF" stroke="#CBD5E1"/>
+<rect x="310" y="56" width="290" height="62" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="87.0">ResQ System</tspan></text>
+<rect x="600" y="56" width="290" height="2012" fill="#FFF7ED" stroke="#CBD5E1"/>
+<rect x="600" y="56" width="290" height="62" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="78.8">Department Admin</tspan><tspan x="745.0" y="95.2">(BFP / PNP / CDRRMO)</tspan></text>
+<rect x="890" y="56" width="290" height="2012" fill="#FFFFFF" stroke="#CBD5E1"/>
+<rect x="890" y="56" width="290" height="62" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="1035.0" y="78.8">Response Unit</tspan><tspan x="1035.0" y="95.2">(vehicle + GPS tracker)</tspan></text>
+<rect x="1180" y="56" width="290" height="2012" fill="#FFF7ED" stroke="#CBD5E1"/>
+<rect x="1180" y="56" width="290" height="62" fill="#1E293B" stroke="#CBD5E1"/>
+<text font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="1325.0" y="78.8">Super Admin</tspan><tspan x="1325.0" y="95.2">(EOC)</tspan></text>
+<path d="M165.0,203.0 L165.0,240.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,292.0 L165.0,316.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,368.0 L165.0,392.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,444.0 L165.0,464.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M70.0,494.0 L29.0,494.0 L29.0,342.0 L49.0,342.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/><text font-size="12" font-weight="700" fill="#C2410C" text-anchor="end" dominant-baseline="middle"><tspan x="64.0" y="484.0">[No]</tspan></text>
+<path d="M165.0,524.0 L165.0,544.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/><text font-size="12" font-weight="700" fill="#C2410C" text-anchor="start" dominant-baseline="middle"><tspan x="173.0" y="534.0">[Yes]</tspan></text>
+<path d="M281.0,570.0 L455.0,570.0 L455.0,620.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,672.0 L455.0,696.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,748.0 L455.0,772.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,824.0 L455.0,870.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,878.0 L165.0,924.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M745.0,878.0 L745.0,924.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M745.0,976.0 L745.0,996.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M650.0,1026.0 L571.0,1026.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/><text font-size="12" font-weight="700" fill="#C2410C" text-anchor="middle" dominant-baseline="middle"><tspan x="610.5" y="1016.0">[No]</tspan></text>
+<path d="M339.0,1026.0 L281.0,1026.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,1052.0 L165.0,1087.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M745.0,1056.0 L745.0,1076.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/><text font-size="12" font-weight="700" fill="#C2410C" text-anchor="start" dominant-baseline="middle"><tspan x="753.0" y="1066.0">[Yes]</tspan></text>
+<path d="M745.0,1128.0 L745.0,1152.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M629.0,1178.0 L571.0,1178.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,1204.0 L455.0,1250.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,1258.0 L165.0,1304.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,1258.0 L455.0,1304.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M745.0,1258.0 L745.0,1304.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1035.0,1258.0 L1035.0,1304.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1035.0,1356.0 L1035.0,1380.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,1356.0 L165.0,1478.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,1356.0 L455.0,1478.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M745.0,1356.0 L745.0,1478.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1035.0,1432.0 L1035.0,1478.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M745.0,1486.0 L745.0,1528.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M650.0,1558.0 L609.0,1558.0 L609.0,1102.0 L629.0,1102.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/><text font-size="12" font-weight="700" fill="#C2410C" text-anchor="end" dominant-baseline="middle"><tspan x="644.0" y="1548.0">[Yes]</tspan></text>
+<path d="M745.0,1588.0 L745.0,1608.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/><text font-size="12" font-weight="700" fill="#C2410C" text-anchor="start" dominant-baseline="middle"><tspan x="753.0" y="1598.0">[No]</tspan></text>
+<path d="M629.0,1634.0 L571.0,1634.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,1660.0 L455.0,1684.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M455.0,1736.0 L455.0,1782.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,1790.0 L165.0,1836.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M165.0,1888.0 L165.0,1923.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1325.0,1790.0 L1325.0,1836.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1325.0,1888.0 L1325.0,1912.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1325.0,1964.0 L1325.0,1998.0" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#arrow)"/>
+<circle cx="165.0" cy="190.0" r="13" fill="#1E293B"/>
+<rect x="49.0" y="240.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="266.0">Log in (email code)</tspan></text>
+<rect x="49.0" y="316.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="334.4">Fill in emergency report</tspan><tspan x="165.0" y="349.6">(type, description)</tspan></text>
+<rect x="49.0" y="392.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="410.4">Capture GPS location,</tspan><tspan x="165.0" y="425.6">attach photos</tspan></text>
+<polygon points="165.0,464.0 260.0,494.0 165.0,524.0 70.0,494.0" fill="#FFEDD5" stroke="#FF6B00" stroke-width="2"/><text font-size="12" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="486.7">Details</tspan><tspan x="165.0" y="501.3">complete?</tspan></text>
+<rect x="49.0" y="544.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="570.0">Submit request</tspan></text>
+<rect x="339.0" y="620.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="646.0">Upload photos</tspan></text>
+<rect x="339.0" y="696.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="714.4">Save incident</tspan><tspan x="455.0" y="729.6">(status: Pending)</tspan></text>
+<rect x="339.0" y="772.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="790.4">Identify involved</tspan><tspan x="455.0" y="805.6">departments</tspan></text>
+<rect x="49.0" y="870.0" width="812.0" height="8" rx="2" fill="#1E293B"/>
+<rect x="49.0" y="924.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="950.0">Track status: Pending</tspan></text>
+<rect x="629.0" y="924.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="942.4">Receive real-time alert;</tspan><tspan x="745.0" y="957.6">review details, photos, map</tspan></text>
+<polygon points="745.0,996.0 840.0,1026.0 745.0,1056.0 650.0,1026.0" fill="#FFEDD5" stroke="#FF6B00" stroke-width="2"/><text font-size="12" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="1026.0">Accept?</tspan></text>
+<rect x="339.0" y="1000.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="1018.4">Record Declined;</tspan><tspan x="455.0" y="1033.6">notify citizen</tspan></text>
+<rect x="49.0" y="1000.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="1026.0">View status: Declined</tspan></text>
+<circle cx="165.0" cy="1102.0" r="15" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.4"/><path d="M154.5,1091.5 L175.5,1112.5 M175.5,1091.5 L154.5,1112.5" stroke="#1E293B" stroke-width="2.4"/>
+<rect x="629.0" y="1076.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="1094.4">Select available unit</tspan><tspan x="745.0" y="1109.6">on live map</tspan></text>
+<rect x="629.0" y="1152.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="1178.0">Dispatch unit</tspan></text>
+<rect x="339.0" y="1152.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="1170.4">Create dispatch record;</tspan><tspan x="455.0" y="1185.6">set unit En Route</tspan></text>
+<rect x="49.0" y="1250.0" width="1102.0" height="8" rx="2" fill="#1E293B"/>
+<rect x="49.0" y="1304.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="1322.4">View dispatched unit</tspan><tspan x="165.0" y="1337.6">and live location</tspan></text>
+<rect x="339.0" y="1304.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="1322.4">Stream tracker GPS</tspan><tspan x="455.0" y="1337.6">to live map</tspan></text>
+<rect x="629.0" y="1304.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="1322.4">Monitor unit</tspan><tspan x="745.0" y="1337.6">on live map</tspan></text>
+<rect x="919.0" y="1304.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1035.0" y="1322.4">Receive order;</tspan><tspan x="1035.0" y="1337.6">travel to scene</tspan></text>
+<rect x="919.0" y="1380.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1035.0" y="1398.4">Arrive and respond</tspan><tspan x="1035.0" y="1413.6">on scene</tspan></text>
+<rect x="49.0" y="1478.0" width="1102.0" height="8" rx="2" fill="#1E293B"/>
+<polygon points="745.0,1528.0 840.0,1558.0 745.0,1588.0 650.0,1558.0" fill="#FFEDD5" stroke="#FF6B00" stroke-width="2"/><text font-size="12" font-weight="700" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="1550.7">More units</tspan><tspan x="745.0" y="1565.3">needed?</tspan></text>
+<rect x="629.0" y="1608.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="745.0" y="1626.4">Mark incident</tspan><tspan x="745.0" y="1641.6">Completed</tspan></text>
+<rect x="339.0" y="1608.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="1626.4">Set units Available;</tspan><tspan x="455.0" y="1641.6">update overall status</tspan></text>
+<rect x="339.0" y="1684.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="455.0" y="1702.4">Save incident record</tspan><tspan x="455.0" y="1717.6">and audit log</tspan></text>
+<rect x="49.0" y="1782.0" width="1392.0" height="8" rx="2" fill="#1E293B"/>
+<rect x="49.0" y="1836.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="165.0" y="1862.0">View status: Resolved</tspan></text>
+<circle cx="165.0" cy="1938.0" r="15" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.4"/><path d="M154.5,1927.5 L175.5,1948.5 M175.5,1927.5 L154.5,1948.5" stroke="#1E293B" stroke-width="2.4"/>
+<rect x="1209.0" y="1836.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1325.0" y="1854.4">Review dashboard</tspan><tspan x="1325.0" y="1869.6">and activity logs</tspan></text>
+<rect x="1209.0" y="1912.0" width="232.0" height="52.0" rx="18" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/><text font-size="12.5" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1325.0" y="1930.4">Export audit report</tspan><tspan x="1325.0" y="1945.6">(PDF + photos ZIP / CSV)</tspan></text>
+<circle cx="1325.0" cy="2014.0" r="16" fill="#FFFFFF" stroke="#1E293B" stroke-width="2.4"/><circle cx="1325.0" cy="2014.0" r="10" fill="#1E293B"/>
+<rect x="1180" y="238" width="270" height="238" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+<text font-size="13.5" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1315.0" y="256.0">Legend</tspan></text>
+<circle cx="1210" cy="288" r="10" fill="#1E293B"/>
+<text font-size="12.5" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="1246.0" y="288.0">Start</tspan></text>
+<rect x="1190" y="311" width="40" height="22" rx="10" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/>
+<text font-size="12.5" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="1246.0" y="322.0">Activity / action</tspan></text>
+<polygon points="1210,345 1230,356 1210,367 1190,356" fill="#FFEDD5" stroke="#FF6B00" stroke-width="2"/>
+<text font-size="12.5" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="1246.0" y="356.0">Decision [guard]</tspan></text>
+<rect x="1186" y="386.5" width="48" height="7" fill="#1E293B"/>
+<text font-size="12.5" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="1246.0" y="390.0">Fork / join (parallel)</tspan></text>
+<circle cx="1210" cy="424" r="11" fill="#FFFFFF" stroke="#1E293B" stroke-width="2"/><path d="M1202,416 L1218,432 M1218,416 L1202,432" stroke="#1E293B" stroke-width="2"/>
+<text font-size="12.5" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="1246.0" y="424.0">Flow ends (this path)</tspan></text>
+<circle cx="1210" cy="458" r="11" fill="#FFFFFF" stroke="#1E293B" stroke-width="2"/><circle cx="1210" cy="458" r="6.5" fill="#1E293B"/>
+<text font-size="12.5" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle"><tspan x="1246.0" y="458.0">Activity ends</tspan></text>
+</svg>

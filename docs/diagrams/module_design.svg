@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1178" height="1318" viewBox="0 0 1178 1318" font-family="Segoe UI, Arial, sans-serif">
+<rect width="1178" height="1318" fill="#FFFFFF"/>
+<text font-size="24" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="589.0" y="34.0">Module Design of ResQ</tspan></text>
+<rect x="379.0" y="80" width="420" height="70" rx="12" fill="#FF6B00"/>
+<text font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="589.0" y="115.0">ResQ Emergency Response System</tspan></text>
+<line x1="589.0" y1="150" x2="589.0" y2="804" stroke="#475569" stroke-width="2"/>
+<line x1="166.0" y1="190" x2="1012.0" y2="190" stroke="#475569" stroke-width="2"/>
+<line x1="166.0" y1="190" x2="166.0" y2="224" stroke="#475569" stroke-width="2"/>
+<rect x="40.0" y="224" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="54.0" y="240.0">1.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="166.0" y="257.6">User</tspan><tspan x="166.0" y="276.4">Authentication</tspan></text>
+<line x1="56.0" y1="298" x2="56.0" y2="702.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="56.0" y1="352.0" x2="74.0" y2="352.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="324" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="336.0">1.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="356.0">Register citizen account</tspan></text>
+<line x1="56.0" y1="422.0" x2="74.0" y2="422.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="394" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="406.0">1.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="426.0">Log in</tspan></text>
+<line x1="56.0" y1="492.0" x2="74.0" y2="492.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="464" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="476.0">1.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="496.0">Email login code (OTP)</tspan></text>
+<line x1="56.0" y1="562.0" x2="74.0" y2="562.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="534" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="546.0">1.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="557.9">Remember this device</tspan><tspan x="191.0" y="574.1">(30 days)</tspan></text>
+<line x1="56.0" y1="632.0" x2="74.0" y2="632.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="604" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="616.0">1.5</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="636.0">Reset password</tspan></text>
+<line x1="56.0" y1="702.0" x2="74.0" y2="702.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="674" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="686.0">1.6</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="706.0">Log out</tspan></text>
+<line x1="448.0" y1="190" x2="448.0" y2="224" stroke="#475569" stroke-width="2"/>
+<rect x="322.0" y="224" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="336.0" y="240.0">2.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="448.0" y="257.6">Emergency Reporting</tspan><tspan x="448.0" y="276.4">(Citizen)</tspan></text>
+<line x1="338.0" y1="298" x2="338.0" y2="632.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="338.0" y1="352.0" x2="356.0" y2="352.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="324" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="336.0">2.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="347.9">Report emergency</tspan><tspan x="473.0" y="364.1">(type, description)</tspan></text>
+<line x1="338.0" y1="422.0" x2="356.0" y2="422.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="394" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="406.0">2.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="426.0">Auto-detect GPS location</tspan></text>
+<line x1="338.0" y1="492.0" x2="356.0" y2="492.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="464" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="476.0">2.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="496.0">Attach evidence photos</tspan></text>
+<line x1="338.0" y1="562.0" x2="356.0" y2="562.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="534" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="546.0">2.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="566.0">Track request status</tspan></text>
+<line x1="338.0" y1="632.0" x2="356.0" y2="632.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="604" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="616.0">2.5</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="627.9">View dispatched unit</tspan><tspan x="473.0" y="644.1">and live location</tspan></text>
+<line x1="730.0" y1="190" x2="730.0" y2="224" stroke="#475569" stroke-width="2"/>
+<rect x="604.0" y="224" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="618.0" y="240.0">3.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="730.0" y="257.6">Incident Management</tspan><tspan x="730.0" y="276.4">&amp; Dispatch</tspan></text>
+<line x1="620.0" y1="298" x2="620.0" y2="702.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="620.0" y1="352.0" x2="638.0" y2="352.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="324" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="336.0">3.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="356.0">View incident queue</tspan></text>
+<line x1="620.0" y1="422.0" x2="638.0" y2="422.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="394" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="406.0">3.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="417.9">Route to involved</tspan><tspan x="755.0" y="434.1">departments</tspan></text>
+<line x1="620.0" y1="492.0" x2="638.0" y2="492.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="464" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="476.0">3.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="496.0">Accept / decline incident</tspan></text>
+<line x1="620.0" y1="562.0" x2="638.0" y2="562.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="534" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="546.0">3.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="566.0">Dispatch response unit</tspan></text>
+<line x1="620.0" y1="632.0" x2="638.0" y2="632.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="604" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="616.0">3.5</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="636.0">Update incident status</tspan></text>
+<line x1="620.0" y1="702.0" x2="638.0" y2="702.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="674" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="686.0">3.6</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="706.0">Search incidents</tspan></text>
+<line x1="1012.0" y1="190" x2="1012.0" y2="224" stroke="#475569" stroke-width="2"/>
+<rect x="886.0" y="224" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="900.0" y="240.0">4.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="1012.0" y="257.6">Vehicle &amp; GPS</tspan><tspan x="1012.0" y="276.4">Tracking</tspan></text>
+<line x1="902.0" y1="298" x2="902.0" y2="632.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="902.0" y1="352.0" x2="920.0" y2="352.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="324" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="336.0">4.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="347.9">Manage vehicles</tspan><tspan x="1037.0" y="364.1">(plate, type, department)</tspan></text>
+<line x1="902.0" y1="422.0" x2="920.0" y2="422.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="394" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="406.0">4.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="417.9">Auto-register new</tspan><tspan x="1037.0" y="434.1">GPS trackers</tspan></text>
+<line x1="902.0" y1="492.0" x2="920.0" y2="492.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="464" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="476.0">4.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="487.9">Receive ESP32 location</tspan><tspan x="1037.0" y="504.1">(Wi-Fi / SIM data)</tspan></text>
+<line x1="902.0" y1="562.0" x2="920.0" y2="562.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="534" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="546.0">4.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="566.0">Live vehicle map</tspan></text>
+<line x1="902.0" y1="632.0" x2="920.0" y2="632.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="604" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="616.0">4.5</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="627.9">Vehicle status (Available,</tspan><tspan x="1037.0" y="644.1">En Route, Offline)</tspan></text>
+<line x1="166.0" y1="804" x2="1012.0" y2="804" stroke="#475569" stroke-width="2"/>
+<line x1="166.0" y1="804" x2="166.0" y2="838" stroke="#475569" stroke-width="2"/>
+<rect x="40.0" y="838" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="54.0" y="854.0">5.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="166.0" y="871.6">Notifications &amp;</tspan><tspan x="166.0" y="890.4">Real-Time Updates</tspan></text>
+<line x1="56.0" y1="912" x2="56.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="56.0" y1="966.0" x2="74.0" y2="966.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="938" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="950.0">5.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="970.0">Real-time incident alerts</tspan></text>
+<line x1="56.0" y1="1036.0" x2="74.0" y2="1036.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="1008" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="1020.0">5.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="1040.0">Live screen updates</tspan></text>
+<line x1="56.0" y1="1106.0" x2="74.0" y2="1106.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="1078" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="1090.0">5.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="1101.9">Notification bell &amp;</tspan><tspan x="191.0" y="1118.1">unread count</tspan></text>
+<line x1="56.0" y1="1176.0" x2="74.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="74.0" y="1148" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="84.0" y="1160.0">5.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="191.0" y="1180.0">Mark as read</tspan></text>
+<line x1="448.0" y1="804" x2="448.0" y2="838" stroke="#475569" stroke-width="2"/>
+<rect x="322.0" y="838" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="336.0" y="854.0">6.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="448.0" y="871.6">Evidence</tspan><tspan x="448.0" y="890.4">Media</tspan></text>
+<line x1="338.0" y1="912" x2="338.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="338.0" y1="966.0" x2="356.0" y2="966.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="938" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="950.0">6.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="970.0">Evidence photo gallery</tspan></text>
+<line x1="338.0" y1="1036.0" x2="356.0" y2="1036.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="1008" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="1020.0">6.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="1040.0">Filter by incident type</tspan></text>
+<line x1="338.0" y1="1106.0" x2="356.0" y2="1106.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="1078" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="1090.0">6.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="1110.0">View photo details</tspan></text>
+<line x1="338.0" y1="1176.0" x2="356.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="356.0" y="1148" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="366.0" y="1160.0">6.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="473.0" y="1180.0">Download photos</tspan></text>
+<line x1="730.0" y1="804" x2="730.0" y2="838" stroke="#475569" stroke-width="2"/>
+<rect x="604.0" y="838" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="618.0" y="854.0">7.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="730.0" y="871.6">Reports &amp;</tspan><tspan x="730.0" y="890.4">Audit Logs</tspan></text>
+<line x1="620.0" y1="912" x2="620.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="620.0" y1="966.0" x2="638.0" y2="966.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="938" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="950.0">7.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="970.0">Dashboard metrics</tspan></text>
+<line x1="620.0" y1="1036.0" x2="638.0" y2="1036.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="1008" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="1020.0">7.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="1040.0">Activity / audit logs</tspan></text>
+<line x1="620.0" y1="1106.0" x2="638.0" y2="1106.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="1078" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="1090.0">7.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="1101.9">Audit package (PDF report</tspan><tspan x="755.0" y="1118.1">+ photos, ZIP)</tspan></text>
+<line x1="620.0" y1="1176.0" x2="638.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="638.0" y="1148" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="648.0" y="1160.0">7.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="755.0" y="1180.0">Export logs (CSV)</tspan></text>
+<line x1="1012.0" y1="804" x2="1012.0" y2="838" stroke="#475569" stroke-width="2"/>
+<rect x="886.0" y="838" width="252" height="74" rx="8" fill="#1E293B"/>
+<text font-size="12" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="900.0" y="854.0">8.0</tspan></text>
+<text font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle"><tspan x="1012.0" y="871.6">Administration</tspan><tspan x="1012.0" y="890.4">&amp; Settings</tspan></text>
+<line x1="902.0" y1="912" x2="902.0" y2="1246.0" stroke="#475569" stroke-width="1.6"/>
+<line x1="902.0" y1="966.0" x2="920.0" y2="966.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="938" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="950.0">8.1</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="961.9">Manage user accounts</tspan><tspan x="1037.0" y="978.1">(create, edit, disable)</tspan></text>
+<line x1="902.0" y1="1036.0" x2="920.0" y2="1036.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="1008" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="1020.0">8.2</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="1040.0">Manage agencies</tspan></text>
+<line x1="902.0" y1="1106.0" x2="920.0" y2="1106.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="1078" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="1090.0">8.3</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="1110.0">Profile &amp; change password</tspan></text>
+<line x1="902.0" y1="1176.0" x2="920.0" y2="1176.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="1148" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="1160.0">8.4</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="1180.0">Appearance (light / dark)</tspan></text>
+<line x1="902.0" y1="1246.0" x2="920.0" y2="1246.0" stroke="#475569" stroke-width="1.6"/>
+<rect x="920.0" y="1218" width="218" height="56" rx="6" fill="#FFF7ED" stroke="#FF6B00" stroke-width="1.5"/>
+<text font-size="11" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle"><tspan x="930.0" y="1230.0">8.5</tspan></text>
+<text font-size="13" font-weight="600" fill="#1E293B" text-anchor="middle" dominant-baseline="middle"><tspan x="1037.0" y="1241.9">Security settings</tspan><tspan x="1037.0" y="1258.1">(login code on/off)</tspan></text>
+</svg>

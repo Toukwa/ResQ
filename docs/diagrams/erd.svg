@@ -1,0 +1,270 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2010" height="1330" viewBox="0 0 2010 1330" font-family="Segoe UI, Arial, sans-serif">
+<rect width="2010" height="1330" fill="#FFFFFF"/>
+<text x="1005.0" y="28.0" font-size="24" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle">Entity Relationship Diagram of ResQ</text>
+<path d="M500.0,283.4 L468.0,283.4 L420.0,283.4 L420.0,132.7 L372.0,132.7 L340.0,132.7" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="490" y1="274.36" x2="490" y2="292.36" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="483" y1="274.36" x2="483" y2="292.36" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="350" y1="141.7" x2="350" y2="123.69999999999999" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="364" cy="132.7" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="386.0" y="121.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">has</text>
+<path d="M500.0,347.3 L468.0,347.3 L420.0,347.3 L420.0,400.0 L372.0,400.0 L340.0,400.0" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="490" y1="338.3" x2="490" y2="356.3" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="483" y1="338.3" x2="483" y2="356.3" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="350" y1="409.0" x2="350" y2="391.0" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="364" cy="400.0" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="386.0" y="388.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">verifies</text>
+<path d="M500.0,416.8 L468.0,416.8 L420.0,416.8 L420.0,580.0 L372.0,580.0 L340.0,580.0" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="490" y1="407.79999999999995" x2="490" y2="425.79999999999995" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="483" y1="407.79999999999995" x2="483" y2="425.79999999999995" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="356" y1="580.0" x2="340" y2="570.0" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="356" y1="580.0" x2="340" y2="580.0" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="356" y1="580.0" x2="340" y2="590.0" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="364" cy="580.0" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="386.0" y="568.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">remembers</text>
+<path d="M900.0,141.5 L868.0,141.5 L650.0,141.5 L650.0,218.0 L650.0,250.0" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="890" y1="132.5" x2="890" y2="150.5" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="876" cy="141.5" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><line x1="650.0" y1="234" x2="640.0" y2="250" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="650.0" y1="234" x2="650.0" y2="250" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="650.0" y1="234" x2="660.0" y2="250" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="650.0" cy="226" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="760.0" y="129.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">employs</text>
+<path d="M1200.0,141.5 L1232.0,141.5 L1250.0,141.5 L1250.0,164.5 L1268.0,164.5 L1300.0,164.5" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="1210" y1="150.5" x2="1210" y2="132.5" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1217" y1="150.5" x2="1217" y2="132.5" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="164.5" x2="1300" y2="174.5" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="164.5" x2="1300" y2="164.5" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="164.5" x2="1300" y2="154.5" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1276" cy="164.5" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="1225.0" y="129.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">owns</text>
+<path d="M1690.0,264.0 L1658.0,264.0 L1645.0,264.0 L1645.0,206.3 L1632.0,206.3 L1600.0,206.3" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="1680" y1="255.0" x2="1680" y2="273.0" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1673" y1="255.0" x2="1673" y2="273.0" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1610" y1="215.29999999999998" x2="1610" y2="197.29999999999998" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1624" cy="206.29999999999998" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="1622.0" y="194.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">tracks</text>
+<path d="M800.0,402.9 L832.0,402.9 L850.0,402.9 L850.0,503.4 L868.0,503.4 L900.0,503.4" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="810" y1="411.9" x2="810" y2="393.9" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="817" y1="411.9" x2="817" y2="393.9" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="884" y1="503.4" x2="900" y2="513.4" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="884" y1="503.4" x2="900" y2="503.4" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="884" y1="503.4" x2="900" y2="493.4" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="876" cy="503.4" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="857.0" y="420.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="start" dominant-baseline="middle">reports</text>
+<path d="M1200.0,503.4 L1232.0,503.4 L1250.0,503.4 L1250.0,515.1 L1268.0,515.1 L1300.0,515.1" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="1210" y1="512.4" x2="1210" y2="494.4" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1217" y1="512.4" x2="1217" y2="494.4" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="515.1" x2="1300" y2="525.1" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="515.1" x2="1300" y2="515.1" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="515.1" x2="1300" y2="505.1" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1276" cy="515.1" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="1250.0" y="487.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">is served by</text>
+<path d="M1450.0,269.0 L1450.0,301.0 L1450.0,359.5 L1450.0,359.5 L1450.0,418.0 L1450.0,450.0" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="1441.0" y1="279" x2="1459.0" y2="279" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1441.0" y1="286" x2="1459.0" y2="286" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1450.0" y1="434" x2="1440.0" y2="450" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1450.0" y1="434" x2="1450.0" y2="450" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1450.0" y1="434" x2="1460.0" y2="450" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1450.0" cy="426" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="1462.0" y="400.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="start" dominant-baseline="middle">is assigned in</text>
+<path d="M800.0,500.2 L840.0,500.2 L840.0,745.0 L1262.0,745.0 L1262.0,598.8 L1300.0,598.8" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="810" y1="509.20000000000005" x2="810" y2="491.20000000000005" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="817" y1="509.20000000000005" x2="817" y2="491.20000000000005" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="598.8" x2="1300" y2="608.8" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="598.8" x2="1300" y2="598.8" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="598.8" x2="1300" y2="588.8" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1276" cy="598.8" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="925.0" y="733.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="middle" dominant-baseline="middle">dispatches (admin)</text>
+<path d="M1050.0,698.0 L1050.0,730.0 L1050.0,873.8 L1268.0,873.8 L1300.0,873.8" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="1041.0" y1="708" x2="1059.0" y2="708" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1041.0" y1="715" x2="1059.0" y2="715" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="873.75" x2="1300" y2="883.75" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="873.75" x2="1300" y2="873.75" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1284" y1="873.75" x2="1300" y2="863.75" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1276" cy="873.75" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="1062.0" y="830.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="start" dominant-baseline="middle">triggers</text>
+<path d="M1450.0,636.0 L1450.0,668.0 L1450.0,723.0 L1450.0,723.0 L1450.0,778.0 L1450.0,810.0" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="1441.0" y1="646" x2="1459.0" y2="646" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1450.0" cy="660" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><line x1="1450.0" y1="794" x2="1440.0" y2="810" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1450.0" y1="794" x2="1450.0" y2="810" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="1450.0" y1="794" x2="1460.0" y2="810" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="1450.0" cy="786" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="1462.0" y="770.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="start" dominant-baseline="middle">triggers</text>
+<path d="M650.0,528.0 L650.0,560.0 L650.0,679.0 L650.0,679.0 L650.0,798.0 L650.0,830.0" fill="none" stroke="#334155" stroke-width="1.8"/><line x1="641.0" y1="538" x2="659.0" y2="538" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="641.0" y1="545" x2="659.0" y2="545" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="650.0" y1="814" x2="640.0" y2="830" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="650.0" y1="814" x2="650.0" y2="830" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="650.0" y1="814" x2="660.0" y2="830" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="650.0" cy="806" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/><text stroke="#FFFFFF" stroke-width="4" paint-order="stroke" x="662.0" y="700.0" font-size="12.5" font-weight="700" fill="#1D4ED8" text-anchor="start" dominant-baseline="middle">generates</text>
+<rect x="45" y="75" width="300" height="209" rx="8" fill="#E2E8F0"/>
+<rect x="40" y="70" width="300" height="209" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M48,70 H332 Q340,70 340,78 V110 H40 V78 Q40,70 48,70 Z" fill="#FF6B00"/>
+<text x="190.0" y="90.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">USER_SETTINGS</text>
+<text x="50.0" y="125.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK,FK</text>
+<text x="98.0" y="125.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">uid</text>
+<text x="330.0" y="125.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<line x1="40" y1="137" x2="340" y2="137" stroke="#CBD5E1"/>
+<text x="98.0" y="148.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">theme_mode</text>
+<text x="330.0" y="148.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="98.0" y="171.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">mfa_enabled</text>
+<text x="330.0" y="171.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int (0/1)</text>
+<text x="98.0" y="194.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">sound_alerts</text>
+<text x="330.0" y="194.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int (0/1)</text>
+<text x="98.0" y="217.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">map_display_style</text>
+<text x="330.0" y="217.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="98.0" y="240.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">session_timeout</text>
+<text x="330.0" y="240.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="98.0" y="263.5" font-size="13" font-weight="500" fill="#64748B" text-anchor="start" dominant-baseline="middle">… other preferences</text>
+<text x="330.0" y="263.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle"></text>
+<rect x="45" y="335" width="300" height="140" rx="8" fill="#E2E8F0"/>
+<rect x="40" y="330" width="300" height="140" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M48,330 H332 Q340,330 340,338 V370 H40 V338 Q40,330 48,330 Z" fill="#FF6B00"/>
+<text x="190.0" y="350.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">LOGIN_CODE (OTP)</text>
+<text x="50.0" y="385.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK,FK</text>
+<text x="98.0" y="385.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">uid</text>
+<text x="330.0" y="385.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<line x1="40" y1="397" x2="340" y2="397" stroke="#CBD5E1"/>
+<text x="98.0" y="408.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">codeHash</text>
+<text x="330.0" y="408.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="98.0" y="431.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">expiresAt</text>
+<text x="330.0" y="431.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<text x="98.0" y="454.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">attempts</text>
+<text x="330.0" y="454.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<rect x="45" y="515" width="300" height="140" rx="8" fill="#E2E8F0"/>
+<rect x="40" y="510" width="300" height="140" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M48,510 H332 Q340,510 340,518 V550 H40 V518 Q40,510 48,510 Z" fill="#FF6B00"/>
+<text x="190.0" y="530.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">TRUSTED_DEVICES</text>
+<text x="50.0" y="565.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="98.0" y="565.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">tokenHash</text>
+<text x="330.0" y="565.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<line x1="40" y1="577" x2="340" y2="577" stroke="#CBD5E1"/>
+<text x="50.0" y="588.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="98.0" y="588.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">uid</text>
+<text x="330.0" y="588.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="98.0" y="611.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">label</text>
+<text x="330.0" y="611.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="98.0" y="634.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">expiresAt</text>
+<text x="330.0" y="634.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="505" y="255" width="300" height="278" rx="8" fill="#E2E8F0"/>
+<rect x="500" y="250" width="300" height="278" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M508,250 H792 Q800,250 800,258 V290 H500 V258 Q500,250 508,250 Z" fill="#FF6B00"/>
+<text x="650.0" y="270.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">USERS</text>
+<text x="510.0" y="305.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="558.0" y="305.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">uid</text>
+<text x="790.0" y="305.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<line x1="500" y1="317" x2="800" y2="317" stroke="#CBD5E1"/>
+<text x="558.0" y="328.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">id</text>
+<text x="790.0" y="328.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int (unique)</text>
+<text x="558.0" y="351.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">fullName</text>
+<text x="790.0" y="351.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="374.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">email</text>
+<text x="790.0" y="374.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="397.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">contactNo</text>
+<text x="790.0" y="397.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="432.0" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">role</text>
+<text x="790.0" y="424.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">Citizen / Responder /</text>
+<text x="790.0" y="439.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">Admin / Superadmin</text>
+<text x="510.0" y="466.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="558.0" y="466.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">deptID</text>
+<text x="790.0" y="466.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="558.0" y="489.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">disabled</text>
+<text x="790.0" y="489.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">boolean</text>
+<text x="558.0" y="512.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">createdAt</text>
+<text x="790.0" y="512.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="905" y="65" width="300" height="163" rx="8" fill="#E2E8F0"/>
+<rect x="900" y="60" width="300" height="163" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M908,60 H1192 Q1200,60 1200,68 V100 H900 V68 Q900,60 908,60 Z" fill="#FF6B00"/>
+<text x="1050.0" y="80.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">DEPARTMENTS</text>
+<text x="910.0" y="115.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="958.0" y="115.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">dept_ID</text>
+<text x="1190.0" y="115.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<line x1="900" y1="127" x2="1200" y2="127" stroke="#CBD5E1"/>
+<text x="958.0" y="138.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">deptName</text>
+<text x="1190.0" y="138.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">PNP / BFP / CDRRMO</text>
+<text x="958.0" y="161.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">agencyType</text>
+<text x="1190.0" y="161.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="958.0" y="184.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">deptLocation</text>
+<text x="1190.0" y="184.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="958.0" y="207.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">contactInfo</text>
+<text x="1190.0" y="207.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<rect x="905" y="425" width="300" height="278" rx="8" fill="#E2E8F0"/>
+<rect x="900" y="420" width="300" height="278" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M908,420 H1192 Q1200,420 1200,428 V460 H900 V428 Q900,420 908,420 Z" fill="#FF6B00"/>
+<text x="1050.0" y="440.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">INCIDENTS</text>
+<text x="910.0" y="475.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="958.0" y="475.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Req_ID</text>
+<text x="1190.0" y="475.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<line x1="900" y1="487" x2="1200" y2="487" stroke="#CBD5E1"/>
+<text x="910.0" y="498.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="958.0" y="498.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">citizenUid</text>
+<text x="1190.0" y="498.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="958.0" y="521.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">incType</text>
+<text x="1190.0" y="521.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="958.0" y="544.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">description</text>
+<text x="1190.0" y="544.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="958.0" y="567.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">latitude</text>
+<text x="1190.0" y="567.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">double</text>
+<text x="958.0" y="590.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">longitude</text>
+<text x="1190.0" y="590.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">double</text>
+<text x="958.0" y="613.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">image_path</text>
+<text x="1190.0" y="613.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">photo URLs</text>
+<text x="958.0" y="636.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">reqStatus</text>
+<text x="1190.0" y="636.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="958.0" y="659.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">dept_status</text>
+<text x="1190.0" y="659.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">map: dept → status</text>
+<text x="958.0" y="682.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">SOS_timeStamp</text>
+<text x="1190.0" y="682.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="1305" y="65" width="300" height="209" rx="8" fill="#E2E8F0"/>
+<rect x="1300" y="60" width="300" height="209" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M1308,60 H1592 Q1600,60 1600,68 V100 H1300 V68 Q1300,60 1308,60 Z" fill="#FF6B00"/>
+<text x="1450.0" y="80.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">VEHICLES</text>
+<text x="1310.0" y="115.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="1358.0" y="115.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">vehicle_ID</text>
+<text x="1590.0" y="115.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<line x1="1300" y1="127" x2="1600" y2="127" stroke="#CBD5E1"/>
+<text x="1358.0" y="138.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">plate_no</text>
+<text x="1590.0" y="138.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="1358.0" y="161.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">vehicle_type</text>
+<text x="1590.0" y="161.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="1310.0" y="184.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="184.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">dept_ID</text>
+<text x="1590.0" y="184.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1310.0" y="207.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="207.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">trackerUid</text>
+<text x="1590.0" y="207.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="1358.0" y="230.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">HardwareID_mapping</text>
+<text x="1590.0" y="230.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">MAC address</text>
+<text x="1358.0" y="253.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">status</text>
+<text x="1590.0" y="253.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">Available / En Route</text>
+<rect x="1695" y="65" width="300" height="255" rx="8" fill="#E2E8F0"/>
+<rect x="1690" y="60" width="300" height="255" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M1698,60 H1982 Q1990,60 1990,68 V100 H1690 V68 Q1690,60 1698,60 Z" fill="#FF6B00"/>
+<text x="1840.0" y="80.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">GPS_TRACKERS</text>
+<text x="1700.0" y="115.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="1748.0" y="115.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">trackerUid</text>
+<text x="1980.0" y="115.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<line x1="1690" y1="127" x2="1990" y2="127" stroke="#CBD5E1"/>
+<text x="1748.0" y="138.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">hardwareId</text>
+<text x="1980.0" y="138.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">MAC address</text>
+<text x="1748.0" y="161.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">latitude</text>
+<text x="1980.0" y="161.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">double</text>
+<text x="1748.0" y="184.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">longitude</text>
+<text x="1980.0" y="184.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">double</text>
+<text x="1748.0" y="207.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">speed_kph</text>
+<text x="1980.0" y="207.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">double</text>
+<text x="1748.0" y="230.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">satellites</text>
+<text x="1980.0" y="230.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1748.0" y="253.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">hasFix</text>
+<text x="1980.0" y="253.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">boolean</text>
+<text x="1748.0" y="276.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">source</text>
+<text x="1980.0" y="276.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">wifi / cellular</text>
+<text x="1748.0" y="299.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">received_at</text>
+<text x="1980.0" y="299.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="1305" y="455" width="300" height="186" rx="8" fill="#E2E8F0"/>
+<rect x="1300" y="450" width="300" height="186" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M1308,450 H1592 Q1600,450 1600,458 V490 H1300 V458 Q1300,450 1308,450 Z" fill="#FF6B00"/>
+<text x="1450.0" y="470.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">DISPATCHES</text>
+<text x="1310.0" y="505.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="1358.0" y="505.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Disp_ID</text>
+<text x="1590.0" y="505.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<line x1="1300" y1="517" x2="1600" y2="517" stroke="#CBD5E1"/>
+<text x="1310.0" y="528.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="528.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Req_ID</text>
+<text x="1590.0" y="528.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1310.0" y="551.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="551.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Vehicle_ID</text>
+<text x="1590.0" y="551.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1310.0" y="574.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="574.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Admin_ID</text>
+<text x="1590.0" y="574.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1358.0" y="597.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">status</text>
+<text x="1590.0" y="597.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">En Route / Completed</text>
+<text x="1358.0" y="620.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Dispatch_timeStamp</text>
+<text x="1590.0" y="620.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="1305" y="815" width="300" height="255" rx="8" fill="#E2E8F0"/>
+<rect x="1300" y="810" width="300" height="255" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M1308,810 H1592 Q1600,810 1600,818 V850 H1300 V818 Q1300,810 1308,810 Z" fill="#FF6B00"/>
+<text x="1450.0" y="830.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">NOTIFICATIONS</text>
+<text x="1310.0" y="865.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="1358.0" y="865.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">notification_ID</text>
+<text x="1590.0" y="865.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<line x1="1300" y1="877" x2="1600" y2="877" stroke="#CBD5E1"/>
+<text x="1310.0" y="888.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="888.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">req_ID</text>
+<text x="1590.0" y="888.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1310.0" y="911.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="911.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">disp_ID</text>
+<text x="1590.0" y="911.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="1310.0" y="934.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="1358.0" y="934.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">recipient_ID</text>
+<text x="1590.0" y="934.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int (null = all staff)</text>
+<text x="1358.0" y="957.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">title</text>
+<text x="1590.0" y="957.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="1358.0" y="980.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">message</text>
+<text x="1590.0" y="980.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="1358.0" y="1003.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">notification_type</text>
+<text x="1590.0" y="1003.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">EMERGENCY / DISPATCH</text>
+<text x="1358.0" y="1026.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">readBy</text>
+<text x="1590.0" y="1026.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">map: uid → time</text>
+<text x="1358.0" y="1049.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">timestamp</text>
+<text x="1590.0" y="1049.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="505" y="835" width="300" height="255" rx="8" fill="#E2E8F0"/>
+<rect x="500" y="830" width="300" height="255" rx="8" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.8"/>
+<path d="M508,830 H792 Q800,830 800,838 V870 H500 V838 Q500,830 508,830 Z" fill="#FF6B00"/>
+<text x="650.0" y="850.0" font-size="15" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">SYSTEM_LOGS</text>
+<text x="510.0" y="885.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">PK</text>
+<text x="558.0" y="885.5" font-size="13" font-weight="700" fill="#1E293B" text-anchor="start" dominant-baseline="middle">log_key</text>
+<text x="790.0" y="885.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<line x1="500" y1="897" x2="800" y2="897" stroke="#CBD5E1"/>
+<text x="510.0" y="908.5" font-size="10.5" font-weight="800" fill="#FF6B00" text-anchor="start" dominant-baseline="middle">FK</text>
+<text x="558.0" y="908.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">uid</text>
+<text x="790.0" y="908.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="931.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">role</text>
+<text x="790.0" y="931.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="954.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">action</text>
+<text x="790.0" y="954.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="977.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">entity_type</text>
+<text x="790.0" y="977.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="1000.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">entity_id</text>
+<text x="790.0" y="1000.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">int</text>
+<text x="558.0" y="1023.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">status</text>
+<text x="790.0" y="1023.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">string</text>
+<text x="558.0" y="1046.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">details</text>
+<text x="790.0" y="1046.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">text</text>
+<text x="558.0" y="1069.5" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">timestamp</text>
+<text x="790.0" y="1069.5" font-size="11.5" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">timestamp</text>
+<rect x="40" y="1040" width="340" height="230" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+<text x="210.0" y="1062.0" font-size="14" font-weight="800" fill="#1E293B" text-anchor="middle" dominant-baseline="middle">Legend (crow's foot)</text>
+<line x1="60" y1="1096" x2="130" y2="1096" stroke="#334155" stroke-width="1.8"/>
+<line x1="120" y1="1087" x2="120" y2="1105" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="113" y1="1087" x2="113" y2="1105" stroke="#334155" stroke-width="1.8" fill="none"/>
+<text x="150.0" y="1096.0" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Exactly one</text>
+<line x1="60" y1="1132" x2="130" y2="1132" stroke="#334155" stroke-width="1.8"/>
+<line x1="120" y1="1123" x2="120" y2="1141" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="106" cy="1132" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/>
+<text x="150.0" y="1132.0" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Zero or one</text>
+<line x1="60" y1="1168" x2="130" y2="1168" stroke="#334155" stroke-width="1.8"/>
+<line x1="114" y1="1168" x2="130" y2="1178" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="114" y1="1168" x2="130" y2="1168" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="114" y1="1168" x2="130" y2="1158" stroke="#334155" stroke-width="1.8" fill="none"/><circle cx="106" cy="1168" r="6" fill="#FFFFFF" stroke="#334155" stroke-width="1.8"/>
+<text x="150.0" y="1168.0" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">Zero or many</text>
+<line x1="60" y1="1204" x2="130" y2="1204" stroke="#334155" stroke-width="1.8"/>
+<line x1="114" y1="1204" x2="130" y2="1214" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="114" y1="1204" x2="130" y2="1204" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="114" y1="1204" x2="130" y2="1194" stroke="#334155" stroke-width="1.8" fill="none"/><line x1="108" y1="1195" x2="108" y2="1213" stroke="#334155" stroke-width="1.8" fill="none"/>
+<text x="150.0" y="1204.0" font-size="13" font-weight="500" fill="#1E293B" text-anchor="start" dominant-baseline="middle">One or many</text>
+<text x="56.0" y="1246.0" font-size="12" font-weight="600" fill="#64748B" text-anchor="start" dominant-baseline="middle">PK = primary key   FK = foreign key</text>
+<text x="1970.0" y="1308.0" font-size="12" font-weight="500" fill="#64748B" text-anchor="end" dominant-baseline="middle">Stored in Firebase Realtime Database. Internal ID counters and live-update signals are not shown.</text>
+</svg>
