@@ -54,15 +54,14 @@ class SessionService {
     };
   }
 
-  /// Clear session on explicit logout
+  /// Clear session on explicit logout. The "remember this device" token is kept,
+  /// so the next login on this device can skip the email code until it expires.
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt(_keyUserId);
-    if (userId != null) {
-      await clearDeviceToken(userId);
-    }
     await FirebaseService.signOut();
-    await prefs.clear();
+    for (final key in [_keyIsLoggedIn, _keyUserId, _keyFullName, _keyEmail, _keyRole, _keyDepartment]) {
+      await prefs.remove(key);
+    }
   }
 
   /// Check if user is currently logged in
@@ -87,6 +86,12 @@ class SessionService {
     final token = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     await prefs.setString(key, token);
     return token;
+  }
+
+  /// The device token for [userId] if this device was remembered, otherwise null.
+  static Future<String?> getDeviceToken(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyDeviceToken(userId));
   }
 
   /// Persist the userId that was last "remembered" (used on cold-start check)

@@ -6,6 +6,7 @@ import 'email_otp_service.dart';
 import 'admin_data.dart';
 import 'firebase_rest.dart';
 import 'incident_data.dart';
+import 'session_service.dart';
 import 'vehicle_data.dart';
 
 class FirebaseService {
@@ -37,6 +38,11 @@ class FirebaseService {
     final mfaSetting = settings is Map ? settings['mfa_enabled'] : null;
     final mfaEnabled = mfaSetting != false && mfaSetting != 0;
 
+    if (mfaEnabled && await _isTrustedDevice(uid, _int(user['id']))) {
+      await _logEvent(user, 'LOGIN_TRUSTED_DEVICE', {'email': user['email'], 'mfa': 'skipped_trusted_device'});
+      return {'success': true, 'mfaRequired': false, 'user': user};
+    }
+
     if (mfaEnabled) {
       await EmailOtpService.sendCode(email: user['email'], userName: user['fullName'] ?? 'User');
       return {
@@ -64,6 +70,21 @@ class FirebaseService {
   }
 
   static String _hashToken(String token) => sha256.convert(utf8.encode(token)).toString();
+
+  static int? _int(dynamic v) => v == null ? null : int.tryParse(v.toString());
+
+  /// True if the user ticked "Remember this device" here within the last 30 days.
+  static Future<bool> _isTrustedDevice(String uid, int? userId) async {
+    if (userId == null) return false;
+    final token = await SessionService.getDeviceToken(userId);
+    if (token == null) return false;
+    try {
+      final device = await Rtdb.get('trusted_devices/$uid/${_hashToken(token)}');
+      return device != null && DateTime.now().millisecondsSinceEpoch <= (device['expiresAt'] as int);
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Register this device as trusted so future logins skip MFA for 30 days.
   static Future<bool> trustDevice({
@@ -102,15 +123,8 @@ class FirebaseService {
     }
   }
 
-  /// Forget trusted devices and the saved login (on logout).
-  static Future<void> signOut() async {
-    try {
-      if (FirebaseAuthRest.uid != null) {
-        await Rtdb.remove('trusted_devices/${FirebaseAuthRest.uid}');
-      }
-    } catch (_) {}
-    await FirebaseAuthRest.signOut();
-  }
+  /// Signs out. Remembered devices stay trusted until they expire.
+  static Future<void> signOut() => FirebaseAuthRest.signOut();
 
   static Future<void> sendPasswordReset(String email) => FirebaseAuthRest.sendPasswordReset(email);
 
@@ -179,20 +193,20 @@ class FirebaseService {
     }
   }
 
-  static Future<List<dynamic>> getVehicles() => VehicleData.getVehicles();
+  static Future<List<dynamic>> getVehicles() => VehicleData.getVehicles().then(_loose);
 
   static Future<Map<String, dynamic>> getDashboardMetrics() => AdminData.dashboardMetrics();
-  static Future<List<dynamic>> getActiveIncidents() => IncidentData.getAllIncidents();
+  static Future<List<dynamic>> getActiveIncidents() => IncidentData.getAllIncidents().then(_loose);
 
   static Future<List<dynamic>> getDispatchedVehicles(dynamic reqId) async {
     try {
-      return await IncidentData.getDispatchedVehicles(int.parse(reqId.toString()));
+      return _loose(await IncidentData.getDispatchedVehicles(int.parse(reqId.toString())));
     } catch (_) {
       return [];
     }
   }
 
-  static Future<List<dynamic>> searchIncidents(String query) => IncidentData.searchIncidents(query);
+  static Future<List<dynamic>> searchIncidents(String query) => IncidentData.searchIncidents(query).then(_loose);
 
   static Future<String> dispatchVehicle({
     required int reqId,
@@ -215,6 +229,10 @@ class FirebaseService {
     String? department,
   }) => IncidentData.updateIncidentStatus(reqId, status, department);
 
+  /// Screens were written against JSON lists (`List<dynamic>`) and call things like
+  /// firstWhere(orElse: ...) that fail on a strictly typed list, so hand them loose lists.
+  static List<dynamic> _loose(Iterable<dynamic> items) => List<dynamic>.from(items);
+
   static DateTime getStartOfCurrentWeekMonday() {
     final now = DateTime.now();
     final daysFromMonday = now.weekday - 1;
@@ -222,7 +240,7 @@ class FirebaseService {
   }
 
   static Future<List<dynamic>> getActivityLogs({int limit = 50}) =>
-      AdminData.logs(limit: limit, from: getStartOfCurrentWeekMonday());
+      AdminData.logs(limit: limit, from: getStartOfCurrentWeekMonday()).then(_loose);
 
   static Future<List<int>?> downloadAuditLogPackageZip(String targetDate) async {
     try {
@@ -235,14 +253,14 @@ class FirebaseService {
     final rawList = await IncidentData.getMediaGallery();
     final weekStart = getStartOfCurrentWeekMonday();
 
-    return rawList.where((raw) {
+    return _loose(rawList.where((raw) {
       final ts = DateTime.tryParse(raw['uploadedAt']?.toString() ?? '')?.toLocal();
       if (ts == null) return true;
       return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
-    }).toList();
+    }));
   }
 
-  static Future<List<dynamic>> getMediaFilters() => IncidentData.getMediaFilters();
+  static Future<List<dynamic>> getMediaFilters() => IncidentData.getMediaFilters().then(_loose);
 
   static Future<Map<String, dynamic>?> getIncidentDispatch(int reqId) async {
     try {
@@ -255,7 +273,7 @@ class FirebaseService {
   // Notification API methods
   static Future<List<dynamic>> getNotifications(int userId) async {
     try {
-      return await IncidentData.getNotifications(userId);
+      return _loose(await IncidentData.getNotifications(userId));
     } catch (_) {
       return [];
     }
@@ -307,14 +325,14 @@ class FirebaseService {
   // Management screen methods
   static Future<List<dynamic>> getAccounts() async {
     try {
-      return await AdminData.accounts();
+      return _loose(await AdminData.accounts());
     } catch (_) {
       return [];
     }
   }
   static Future<List<dynamic>> getVehiclesForManagement() async {
     try {
-      return await VehicleData.getVehicles();
+      return _loose(await VehicleData.getVehicles());
     } catch (_) {
       return [];
     }
@@ -322,7 +340,7 @@ class FirebaseService {
 
   static Future<List<dynamic>> getDepartments() async {
     try {
-      return await VehicleData.getDepartments();
+      return _loose(await VehicleData.getDepartments());
     } catch (_) {
       return [];
     }
@@ -420,7 +438,7 @@ class FirebaseService {
     int limit = 100,
   }) async {
     try {
-      return await AdminData.filteredLogs(userId: userId, action: action, entityType: entityType, limit: limit);
+      return _loose(await AdminData.filteredLogs(userId: userId, action: action, entityType: entityType, limit: limit));
     } catch (_) {
       return [];
     }
@@ -450,8 +468,8 @@ class FirebaseService {
     String? endDate,
   }) async {
     try {
-      return await AdminData.filteredLogs(
-          userId: userId, action: action, entityType: entityType, limit: limit, startDate: startDate, endDate: endDate);
+      return _loose(await AdminData.filteredLogs(
+          userId: userId, action: action, entityType: entityType, limit: limit, startDate: startDate, endDate: endDate));
     } catch (_) {
       return [];
     }

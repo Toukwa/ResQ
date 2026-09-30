@@ -29,7 +29,12 @@
     "rules": "storage.rules"
   },
   "hosting": {
-    "public": "build/web",
+    "public": "hosting",
+    "cleanUrls": true,
+    "redirects": [
+      { "source": "/download", "destination": "/", "type": 301 },
+      { "source": "/download.html", "destination": "/", "type": 301 }
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

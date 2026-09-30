@@ -13,7 +13,7 @@
         // Sign-up creates your own profile as a Citizen; only a Superadmin can write anyone's profile
         ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.child('role').val() === 'Citizen') || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
         ".validate": "newData.hasChildren(['id', 'fullName', 'email', 'role'])",
-        "role": { ".validate": "newData.val() === 'Citizen' || newData.val() === 'Admin' || newData.val() === 'Superadmin'" },
+        "role": { ".validate": "newData.val() === 'Citizen' || newData.val() === 'Responder' || newData.val() === 'Admin' || newData.val() === 'Superadmin'" },
         "id": { ".validate": "newData.isNumber()" },
         // You may edit your own name and phone number
         "fullName": { ".write": "auth != null && auth.uid === $uid && data.exists()", ".validate": "newData.isString() && newData.val().length > 0" },

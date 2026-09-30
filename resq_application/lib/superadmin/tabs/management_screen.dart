@@ -863,6 +863,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // EDIT AGENCY MODAL
   // ==========================================
   void _showEditAgencyModal() {
+    final ts = ThemeService.instance;
     if (_departments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No departments available to edit.')),
@@ -892,7 +893,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
             child: Container(
               width: 480,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ts.cardBackground,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
@@ -919,19 +920,19 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             color: const Color(0xFFFF5200),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.business_outlined, color: Colors.white, size: 24),
+                          child: Icon(Icons.business_outlined, color: Colors.white, size: 24),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 "Edit Agency",
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
+                                  color: ts.textPrimary,
                                   height: 1.2,
                                 ),
                               ),
@@ -940,7 +941,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 "Update department details and contact info",
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF94A3B8),
+                                  color: ts.textMuted,
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
@@ -951,7 +952,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           onPressed: () => Navigator.pop(context),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                          icon: Icon(Icons.close, color: ts.textMuted, size: 20),
                         ),
                       ],
                     ),
@@ -961,9 +962,10 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     _buildInputLabel("Select Department"),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<Map<String, dynamic>>(
+                      dropdownColor: ts.cardBackground,
                       initialValue: selectedDept,
-                      icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF0F172A)),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                      icon: Icon(Icons.keyboard_arrow_down, size: 18, color: ts.textPrimary),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textPrimary),
                       decoration: _buildInputDecoration("Select department"),
                       items: _departments.map((dept) {
                         return DropdownMenuItem<Map<String, dynamic>>(
@@ -987,7 +989,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: agencyTypeController,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                      style: TextStyle(fontSize: 13, color: ts.textPrimary),
                       decoration: _buildInputDecoration("e.g. Accident, Fire, Medical"),
                     ),
                     const SizedBox(height: 16),
@@ -997,7 +999,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: contactPersonController,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                      style: TextStyle(fontSize: 13, color: ts.textPrimary),
                       decoration: _buildInputDecoration("e.g. Juan dela Cruz"),
                     ),
                     const SizedBox(height: 16),
@@ -1008,7 +1010,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     TextField(
                       controller: contactNoController,
                       keyboardType: TextInputType.phone,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                      style: TextStyle(fontSize: 13, color: ts.textPrimary),
                       decoration: _buildInputDecoration("e.g. 0917123456"),
                     ),
                     const SizedBox(height: 28),
@@ -1023,17 +1025,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                side: BorderSide(color: ts.borderColor),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 "Cancel",
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
+                                  color: ts.textSecondary,
                                 ),
                               ),
                             ),
@@ -1075,7 +1077,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 "Save",
                                 style: TextStyle(
                                   fontSize: 13,
@@ -1102,6 +1104,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // CREATE ACCOUNT MODAL
   // ==========================================
   void _showCreateAccountModal() {
+    final ts = ThemeService.instance;
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final contactNoController = TextEditingController();
@@ -1124,7 +1127,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
           child: Container(
             width: 480,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ts.cardBackground,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -1151,19 +1154,19 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           color: const Color(0xFFFF5200),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 24),
+                        child: Icon(Icons.add, color: Colors.white, size: 24),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               "Create Account",
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
+                                color: ts.textPrimary,
                                 height: 1.2,
                               ),
                             ),
@@ -1172,7 +1175,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               "Responder authority required",
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF94A3B8),
+                                color: ts.textMuted,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -1183,7 +1186,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         onPressed: () => Navigator.pop(context),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                        icon: Icon(Icons.close, color: ts.textMuted, size: 20),
                       ),
                     ],
                   ),
@@ -1194,7 +1197,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: nameController,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
                     decoration: _buildInputDecoration("e.g. Juan dela Cruz"),
                   ),
                   const SizedBox(height: 16),
@@ -1204,8 +1207,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: emailController,
+                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
                     keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
                     decoration: _buildInputDecoration("juan.delacruz@pnp.gov.ph"),
                   ),
                   const SizedBox(height: 16),
@@ -1216,7 +1219,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   TextField(
                     controller: contactNoController,
                     keyboardType: TextInputType.phone,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
                     decoration: _buildInputDecoration("09XX XXX XXXX"),
                   ),
                   const SizedBox(height: 16),
@@ -1232,9 +1235,10 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             _buildInputLabel("Agency"),
                             const SizedBox(height: 6),
                             DropdownButtonFormField<String>(
+                              dropdownColor: ts.cardBackground,
                               initialValue: selectedAgency,
-                              icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF0F172A)),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                              icon: Icon(Icons.keyboard_arrow_down, size: 18, color: ts.textPrimary),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textPrimary),
                               decoration: _buildInputDecoration(""),
                               items: _departments.isEmpty
                                   ? ['PNP', 'BFP', 'CDRRMO'].map((agency) {
@@ -1260,9 +1264,10 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             _buildInputLabel("Role"),
                             const SizedBox(height: 6),
                             DropdownButtonFormField<String>(
+                              dropdownColor: ts.cardBackground,
                               initialValue: selectedRole,
-                              icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF0F172A)),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                              icon: Icon(Icons.keyboard_arrow_down, size: 18, color: ts.textPrimary),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textPrimary),
                               decoration: _buildInputDecoration(""),
                               items: ['Admin', 'Responder', 'Superadmin'].map((role) {
                                 return DropdownMenuItem(value: role, child: Text(role));
@@ -1279,7 +1284,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   // --- PASSWORD ---
                   Row(
                     children: [
-                      const Icon(Icons.lock_outline, size: 14, color: Color(0xFF94A3B8)),
+                      Icon(Icons.lock_outline, size: 14, color: ts.textMuted),
                       const SizedBox(width: 4),
                       _buildInputLabel("Password"),
                     ],
@@ -1288,13 +1293,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   TextField(
                     controller: passwordController,
                     obscureText: obscurePassword,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
                     decoration: _buildInputDecoration(
                       "Create a strong password",
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: const Color(0xFF94A3B8),
+                          color: ts.textMuted,
                           size: 18,
                         ),
                         onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
@@ -1309,7 +1314,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   TextField(
                     controller: confirmPasswordController,
                     obscureText: true,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
                     decoration: _buildInputDecoration("Re-enter password"),
                   ),
                   const SizedBox(height: 16),
@@ -1319,7 +1324,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: TextEditingController(), // Optional field, no persistent controller
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
                     decoration: _buildInputDecoration("Firebase Cloud Messaging token for push notifications"),
                   ),
                   const SizedBox(height: 28),
@@ -1334,17 +1339,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              side: BorderSide(color: ts.borderColor),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Cancel",
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF64748B),
+                                color: ts.textSecondary,
                               ),
                             ),
                           ),
@@ -1414,7 +1419,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Create Account",
                               style: TextStyle(
                                 fontSize: 13,
@@ -1438,31 +1443,33 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
   // --- HELPER WIDGETS FOR MODALS ---
   Widget _buildInputLabel(String text) {
+    final ts = ThemeService.instance;
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: Color(0xFF64748B),
+        color: ts.textSecondary,
       ),
     );
   }
 
   InputDecoration _buildInputDecoration(String hintText, {Widget? suffixIcon}) {
+    final ts = ThemeService.instance;
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+      hintStyle: TextStyle(color: ts.textMuted, fontSize: 13),
       suffixIcon: suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ts.inputBackground,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+        borderSide: BorderSide(color: ts.borderColor, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFFF5200), width: 1.5),
+        borderSide: BorderSide(color: Color(0xFFFF5200), width: 1.5),
       ),
     );
   }
@@ -1471,12 +1478,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // ACCOUNT ACTION MODALS
   // ==========================================
   void _showAccountDetailsModal(Map<String, dynamic> account) {
+    final ts = ThemeService.instance;
     showDialog(
       context: context,
       builder: (context) => ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: ts.cardBackground,
           child: Container(
             width: 400,
             padding: const EdgeInsets.all(24),
@@ -1488,17 +1496,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         "Account Details",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          color: ts.textPrimary,
                         ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close, color: ts.textSecondary),
                       ),
                     ],
                   ),
@@ -1510,7 +1518,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         backgroundColor: _parseColor(account['avatarBg']),
                         child: Text(
                           account['initials'] ?? 'NA',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -1524,17 +1532,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           children: [
                             Text(
                               account['name'] ?? 'Unknown',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
+                                color: ts.textPrimary,
                               ),
                             ),
                             Text(
                               account['email'] ?? 'N/A',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF64748B),
+                                color: ts.textSecondary,
                               ),
                             ),
                           ],
@@ -1558,13 +1566,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   void _showEditAccountModal(Map<String, dynamic> account) {
+    final ts = ThemeService.instance;
     final nameController = TextEditingController(text: account['name']);
     final emailController = TextEditingController(text: account['email']);
     final phoneController = TextEditingController(text: account['phone']);
     
-    String selectedRole = (account['role'] == 'Dispatcher' || account['role'] == null)
-        ? 'Responder'
-        : account['role'];
+    const roles = ['Citizen', 'Responder', 'Admin', 'Superadmin'];
+    String selectedRole = account['role'] == 'Dispatcher' ? 'Responder' : (account['role'] ?? 'Citizen');
+    if (!roles.contains(selectedRole)) selectedRole = 'Citizen';
     int? selectedDeptId = account['deptID'];
 
     showDialog(
@@ -1573,7 +1582,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
         builder: (context, setModalState) => ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Dialog(
-            backgroundColor: Colors.white,
+            backgroundColor: ts.cardBackground,
             child: Container(
               width: 400,
               padding: const EdgeInsets.all(24),
@@ -1585,53 +1594,45 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           "Edit Account",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                            color: ts.textPrimary,
                           ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
+                          icon: Icon(Icons.close, color: ts.textSecondary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: "Full Name",
-                        border: OutlineInputBorder(),
-                      ),
+                      style: TextStyle(color: ts.textPrimary),
+                      decoration: _themedField("Full Name"),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: "Email",
-                        border: OutlineInputBorder(),
-                      ),
+                      style: TextStyle(color: ts.textPrimary),
+                      decoration: _themedField("Email"),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: phoneController,
-                      decoration: const InputDecoration(
-                        labelText: "Phone Number",
-                        border: OutlineInputBorder(),
-                      ),
+                      style: TextStyle(color: ts.textPrimary),
+                      decoration: _themedField("Phone Number"),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: ['Admin', 'Responder'].contains(selectedRole) ? selectedRole : 'Responder',
-                      decoration: const InputDecoration(
-                        labelText: "Role",
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ['Admin', 'Responder'].map((role) {
-                        return DropdownMenuItem(value: role, child: Text(role));
+                      dropdownColor: ts.cardBackground,
+                      initialValue: selectedRole,
+                      decoration: _themedField("Role"),
+                      items: roles.map((role) {
+                        return DropdownMenuItem(value: role, child: Text(role, style: TextStyle(color: ts.textPrimary)));
                       }).toList(),
                       onChanged: (value) {
                         setModalState(() => selectedRole = value!);
@@ -1639,11 +1640,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
+                      dropdownColor: ts.cardBackground,
                       initialValue: selectedDeptId,
-                      decoration: const InputDecoration(
-                        labelText: "Department",
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: _themedField("Department"),
                       items: _departments.map((dept) {
                         return DropdownMenuItem(
                           value: dept['dept_ID'] as int?,
@@ -1660,7 +1659,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text("Cancel"),
+                          child: Text("Cancel"),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -1701,7 +1700,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF5200),
                           ),
-                          child: const Text("Update Account"),
+                          child: Text("Update Account"),
                         ),
                       ],
                     ),
@@ -1716,15 +1715,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   void _showDeleteAccountDialog(Map<String, dynamic> account) {
+    final ts = ThemeService.instance;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete Account"),
-        content: Text("Are you sure you want to delete ${account['name']}'s account?"),
+        backgroundColor: ts.cardBackground,
+        title: Text("Delete Account", style: TextStyle(color: ts.textPrimary)),
+        content: Text("Are you sure you want to delete ${account['name']}'s account?", style: TextStyle(color: ts.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: Text("Cancel"),
           ),
           TextButton(
             onPressed: () async {
@@ -1742,14 +1743,26 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 );
               }
             },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            child: Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
   }
 
+  InputDecoration _themedField(String label) {
+    final ts = ThemeService.instance;
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: ts.textSecondary),
+      filled: true,
+      fillColor: ts.inputBackground,
+      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: ts.borderColor)),
+      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF5200), width: 1.5)),
+    );
+  }
   Widget _buildDetailRow(String label, String value) {
+    final ts = ThemeService.instance;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -1759,19 +1772,19 @@ class _ManagementScreenState extends State<ManagementScreen> {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF64748B),
+                color: ts.textSecondary,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF0F172A),
+                color: ts.textPrimary,
               ),
             ),
           ),
