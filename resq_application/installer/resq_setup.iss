@@ -1,4 +1,4 @@
-﻿; ============================================================
+; ============================================================
 ;  ResQ EOC - Inno Setup Installer Script
 ;  App Version : 1.0.0
 ;  Target OS   : Windows 10/11 x64
@@ -8,7 +8,7 @@
 #define MyAppVersion   "1.0.0"
 #define MyAppPublisher "ResQ Team"
 #define MyAppURL       "https://resq-db-41ff8.web.app"
-#define MyAppExeName   "resq_application.exe"
+#define MyAppExeName   "ResQ.exe"
 #define MyAppID        "{{8F2A3C4D-1B5E-4F7A-9C2D-3E6B8A0F1D4C}"
 #define ReleaseSrc     "..\build\windows\x64\runner\Release"
 

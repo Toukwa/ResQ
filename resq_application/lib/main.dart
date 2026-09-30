@@ -7,6 +7,7 @@ import 'admin/admin_shell.dart';
 import 'services/firebase_rest.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
+import 'shared/resq_logo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +40,7 @@ class MyApp extends StatelessWidget {
         final isDark = ThemeService.instance.isDark;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'ResQ App',
+          title: 'ResQ',
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
           theme: ThemeData(
             fontFamily: 'Inter',
@@ -80,20 +81,49 @@ class SessionInitializer extends StatefulWidget {
   State<SessionInitializer> createState() => _SessionInitializerState();
 }
 
-class _SessionInitializerState extends State<SessionInitializer> {
+/// Intro screen: shows the logo and name while the saved login is checked,
+/// for at least [_minimumDisplay], then fades into the right screen.
+class _SessionInitializerState extends State<SessionInitializer> with SingleTickerProviderStateMixin {
+  static const _minimumDisplay = Duration(milliseconds: 2200);
+
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..forward();
+
   @override
   void initState() {
     super.initState();
     _checkSession();
   }
 
+  @override
+  void dispose() {
+    _intro.dispose();
+    super.dispose();
+  }
+
+  /// Replaces the intro with [screen] using a fade.
+  void _go(Widget screen) {
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (_, _, _) => screen,
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
+      ),
+    );
+  }
+
   Future<void> _checkSession() async {
+    final shownLongEnough = Future.delayed(_minimumDisplay);
     var session = await SessionService.getSession();
     // A saved session is only usable if the Firebase login can be restored too
     if (session != null && await FirebaseAuthRest.restore() == null) {
       await SessionService.clearSession();
       session = null;
     }
+    await shownLongEnough;
 
     if (!mounted) return;
 
@@ -103,50 +133,58 @@ class _SessionInitializerState extends State<SessionInitializer> {
       final fullName = session['fullName'] as String;
 
       if (role == 'Superadmin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SuperAdminShell(
+        _go(SuperAdminShell(
               isSuperAdmin: true,
               userId: userId,
-            ),
-          ),
-        );
+            ));
       } else if (role == 'Admin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AdminShell(
+        _go(AdminShell(
               userId: userId,
-            ),
-          ),
-        );
+            ));
       } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
+        _go(HomeScreen(
               citizenId: userId.toString(),
               userName: fullName,
-            ),
-          ),
-        );
+            ));
       }
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+      _go(const LoginScreen());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF8FAFC),
+    final ts = ThemeService.instance;
+    final fade = CurvedAnimation(parent: _intro, curve: Curves.easeOut);
+    return Scaffold(
+      backgroundColor: ts.pageBackground,
       body: Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFFF6B00),
+        child: FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(
+            scale: Tween(begin: 0.85, end: 1.0).animate(fade),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ResqLogo(size: 140, radius: 32),
+                const SizedBox(height: 20),
+                Text(
+                  'ResQ',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: ts.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Emergency Response Portal',
+                  style: TextStyle(fontSize: 14, color: ts.textSecondary),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

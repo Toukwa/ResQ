@@ -8,6 +8,7 @@ import 'admin/admin_shell.dart';
 import 'services/firebase_services.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
+import 'shared/resq_logo.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -475,19 +476,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: brandOrange,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.shield_outlined,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
+                const ResqLogo(size: 60, radius: 16),
                 const SizedBox(height: 16),
                 Text(
                   "ResQ",

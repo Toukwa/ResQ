@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/theme_service.dart';
+import '../../shared/resq_logo.dart';
 
 class AdminSidebar extends StatelessWidget {
   final int selectedIndex;
@@ -18,7 +19,6 @@ class AdminSidebar extends StatelessWidget {
     return ListenableBuilder(
       listenable: ThemeService.instance,
       builder: (context, _) {
-        const Color brandOrange = Color(0xFFFF6B00);
         final ts = ThemeService.instance;
         final Color sidebarBg = ts.sidebarBackground;
         final Color border = ts.borderColor;
@@ -39,18 +39,7 @@ class AdminSidebar extends StatelessWidget {
             children: [
               const SizedBox(height: 24),
               // ResQ Admin Brand Shield Container
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: brandOrange,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.shield_outlined,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
+              const ResqLogo(size: 52, radius: 14),
               const SizedBox(height: 24),
 
               // Main Navigation Items List

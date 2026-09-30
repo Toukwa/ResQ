@@ -8,6 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'services/firebase_services.dart';
 import 'services/session_service.dart';
+import 'shared/resq_logo.dart';
 
 class HomeScreen extends StatefulWidget {
   final String citizenId;
@@ -347,18 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: brandOrange,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.shield_outlined,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
+                      const ResqLogo(size: 44, radius: 12),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

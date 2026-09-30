@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'services/theme_service.dart';
+import 'shared/resq_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -126,19 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Icon(Icons.arrow_back, size: 18, color: textDark),
               ),
             ),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: brandOrange,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
+            const ResqLogo(size: 32, radius: 10),
           ],
         ),
         const SizedBox(height: 16),

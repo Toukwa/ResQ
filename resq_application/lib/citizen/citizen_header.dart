@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/session_service.dart';
+import '../shared/resq_logo.dart';
 
 class CitizenHeader extends StatelessWidget {
   final String userName;
@@ -37,18 +38,7 @@ class CitizenHeader extends StatelessWidget {
                   onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
                 ),
               ),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: brandOrange,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
+            const ResqLogo(size: 44, radius: 12),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

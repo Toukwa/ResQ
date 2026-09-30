@@ -6,6 +6,7 @@ import '../admin/admin_service.dart'; // Import AdminService for notification me
 import '../../config.dart';
 import '../../services/session_service.dart';
 import '../../services/theme_service.dart';
+import '../shared/resq_logo.dart';
 
 // Import your 7 dedicated feature modules
 import './tabs/super_admin_dashboard.dart'; // Tab 1: Live Map Overview
@@ -331,7 +332,6 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
 
   @override
   Widget build(BuildContext context) {
-    const Color brandOrange = Color(0xFFFF6B00);
 
     return ListenableBuilder(
       listenable: ThemeService.instance,
@@ -366,18 +366,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                     children: [
                       const SizedBox(height: 24),
                       // ResQ EOC Brand Shield
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: brandOrange,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.shield_outlined,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
+                      const ResqLogo(size: 52, radius: 14),
                       const SizedBox(height: 24),
 
                       // Main Navigation Icons
