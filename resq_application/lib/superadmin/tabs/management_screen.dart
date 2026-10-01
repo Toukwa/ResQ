@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../config.dart';
+import '../../services/firebase_services.dart';
 import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
 
@@ -1404,11 +1405,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 Navigator.pop(context);
                                 _loadAccounts();
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Account created successfully')),
+                                  SnackBar(
+                                    content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
+                                    duration: const Duration(seconds: 6),
+                                  ),
                                 );
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Failed to create account')),
+                                  SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
                                 );
                               }
                             },

@@ -289,7 +289,23 @@ class IncidentData {
         .toList();
   }
 
+  /// Department admins may only act on incidents routed to their department.
+  /// (Super Admins and admins without a department can act on any.)
+  static Future<void> _ensureMyDepartment(dynamic incident) async {
+    final user = await me();
+    if (user['role'] != 'Admin') return;
+    final mine = normalizeDepartment(user['department']?.toString());
+    if (mine == 'ALL') return;
+    final routed = incident is Map && incident['dept_status'] is Map
+        ? (incident['dept_status'] as Map).keys.map((k) => '$k').toList()
+        : involvedDepartments(incident is Map ? incident['incType'] : null);
+    if (!routed.contains(mine)) {
+      throw const HttpException('This request is not assigned to your department.');
+    }
+  }
+
   static Future<void> updateIncidentStatus(int reqId, String status, String? department) async {
+    await _ensureMyDepartment(await Rtdb.get('incidents/$reqId'));
     await _syncDepartmentStatus(reqId, department ?? 'ALL', status);
 
     if (status.toLowerCase() == 'completed') {
@@ -323,6 +339,7 @@ class IncidentData {
   static Future<int> dispatchVehicle({required int reqId, required int vehicleId, required int adminId, String? department}) async {
     final incident = await Rtdb.get('incidents/$reqId');
     if (incident == null) throw const HttpException('Incident not found.');
+    await _ensureMyDepartment(incident);
     final vehicle = await Rtdb.get('vehicles/$vehicleId');
     final id = await Rtdb.nextId('counters/dispatches');
 

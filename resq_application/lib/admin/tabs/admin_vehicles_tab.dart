@@ -220,14 +220,14 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     if (req is! Map) return false;
 
-    // 1. Check department_statuses list from backend
+    // 1. The departments the incident was routed to decide it (same rule as the dashboard)
     final rawStatuses = req['department_statuses'];
     if (rawStatuses is List && rawStatuses.isNotEmpty) {
       final deptNames = rawStatuses.map((e) => (e['dept_name'] ?? e['dept'] ?? '').toString().toUpperCase().trim()).toList();
-      if (deptNames.contains(dept)) return true;
+      return deptNames.contains(dept);
     }
 
-    // 2. Check emergency type / agency keywords
+    // 2. Older records without routing: fall back to emergency type / agency keywords
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? '').toString().toUpperCase().trim();
     final agency = (req['Department_Name'] ?? req['agency'] ?? req['agencyType'] ?? req['deptName'] ?? '').toString().toUpperCase().trim();
 
@@ -240,11 +240,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     if (dept == 'PNP') {
       if (type.contains('POL') || type.contains('ACCIDENT') || type.contains('CRIME') || type.contains('VIOLENCE') || type.contains('THEFT') || type.contains('ROBBERY') || agency.contains('PNP')) return true;
     }
-
-    // 3. Fallback: Pending emergency requests are visible to all department admins
-    // so no incident is ever hidden or lost in the Request Queue.
-    final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString().toLowerCase();
-    if (status == 'pending') return true;
 
     return false;
   }

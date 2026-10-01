@@ -371,7 +371,8 @@ class AdminData {
   }
 
   /// Creates a login + profile for someone else without signing the Super Admin out.
-  static Future<int> createAccount(Map<String, dynamic> data) async {
+  /// Returns a message for the Super Admin (e.g. when a disabled account was reactivated).
+  static Future<String> createAccount(Map<String, dynamic> data) async {
     final name = (data['fullName'] ?? data['userName'])?.toString();
     final email = data['email']?.toString().trim().toLowerCase();
     final password = data['password']?.toString();
@@ -385,7 +386,10 @@ class AdminData {
     );
     if (res.statusCode != 200) {
       final code = (jsonDecode(res.body)['error']?['message'] ?? '').toString();
-      throw HttpException(code.startsWith('EMAIL_EXISTS') ? 'Email is already registered.' : 'Could not create account ($code).');
+      if (code.startsWith('EMAIL_EXISTS')) return _reactivate(email, name, data);
+      if (code.startsWith('WEAK_PASSWORD')) throw const HttpException('Password must be at least 6 characters.');
+      if (code.startsWith('INVALID_EMAIL')) throw const HttpException('Please enter a valid email address.');
+      throw HttpException('Could not create account ($code).');
     }
     final uid = jsonDecode(res.body)['localId'] as String;
     final id = await Rtdb.nextId('counters/users');
@@ -402,7 +406,29 @@ class AdminData {
     await Rtdb.set('user_ids/$id', uid);
     await IncidentData.log('ACCOUNT_CREATED', 'USER', id, {'email': email, 'role': data['role'] ?? 'Citizen'});
     LiveEvents.emit('refreshManagementData');
-    return id;
+    return 'Account created successfully.';
+  }
+
+  /// A deleted (disabled) account keeps its login, so its email can't be registered again.
+  /// Bring it back with the new details instead, and email the person a link to set a password.
+  static Future<String> _reactivate(String email, String name, Map<String, dynamic> data) async {
+    final match = (await _allUsers()).entries.where((e) => (e.value['email'] ?? '').toString().toLowerCase() == email);
+    if (match.isEmpty || match.first.value['disabled'] != true) {
+      throw const HttpException('Email is already registered to an active account.');
+    }
+    final uid = match.first.key;
+    await Rtdb.update('users/$uid', {
+      'fullName': name,
+      'contactNo': (data['contactNo'] ?? data['phone'] ?? '').toString(),
+      'role': data['role'] ?? 'Citizen',
+      ...await _deptFields(data['deptID']),
+      'disabled': null,
+    });
+    await FirebaseAuthRest.sendPasswordReset(email);
+    await IncidentData.log('ACCOUNT_REACTIVATED', 'USER', match.first.value['id'], {'email': email, 'role': data['role']});
+    LiveEvents.emit('refreshManagementData');
+    return 'This email belonged to a deleted account, so it was restored with the new details. '
+        'A link to set a new password was emailed to $email.';
   }
 
   /// Updates name, phone, role and department. (A login email can't be changed

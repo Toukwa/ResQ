@@ -346,11 +346,15 @@ class FirebaseService {
     }
   }
 
+  /// What happened on the last createAccount call, for the screen to show.
+  static String? lastAccountMessage;
+
   static Future<bool> createAccount(Map<String, dynamic> accountData) async {
     try {
-      await AdminData.createAccount(accountData);
+      lastAccountMessage = await AdminData.createAccount(accountData);
       return true;
-    } catch (_) {
+    } catch (e) {
+      lastAccountMessage = e is HttpException ? e.message : 'Failed to create account.';
       return false;
     }
   }
