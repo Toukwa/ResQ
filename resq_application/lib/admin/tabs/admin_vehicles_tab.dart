@@ -69,6 +69,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   @override
   void dispose() {
+    _offlineRecheck?.cancel();
     _socket?.disconnect();
     _socket?.dispose();
     _debounce.close();
@@ -84,9 +85,32 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       });
       _socket!.connect();
       // Route all updates through debounce to avoid concurrent setState calls
-      _socket!.on('incidentUpdate', (_) => _debounce.add(null));
-      _socket!.on('vehicleUpdate', (_) => _debounce.add(null));
+      for (final event in ['refreshIncidentQueueEvent', 'refreshManagementData', 'vehicleUpdate']) {
+        _socket!.on(event, (_) => _debounce.add(null));
+      }
+      _socket!.on('vehicleLocationUpdated', _onVehicleLocation);
     } catch (_) {}
+    // A tracker that goes silent only shows as Offline after a reload, so recheck every minute
+    _offlineRecheck = Timer.periodic(const Duration(minutes: 1), (_) => _debounce.add(null));
+  }
+
+  Timer? _offlineRecheck;
+
+  /// A tracker just reported: if its vehicle is shown as Offline, show its real status again.
+  void _onVehicleLocation(dynamic data) {
+    if (!mounted || data is! Map) return;
+    final id = data['vehicle_ID']?.toString();
+    final idx = _vehicles.indexWhere((v) => v is Map && (v['vehicle_ID'] ?? v['id'])?.toString() == id);
+    if (idx == -1) {
+      _debounce.add(null);
+      return;
+    }
+    final v = Map<String, dynamic>.from(_vehicles[idx] as Map);
+    if (v['computed_status'] != 'Offline') return;
+    v['computed_status'] = v['status'];
+    v['latitude'] = data['latitude'];
+    v['longitude'] = data['longitude'];
+    setState(() => _vehicles[idx] = v);
   }
 
   Future<void> _fetchData({bool showLoading = true}) async {
