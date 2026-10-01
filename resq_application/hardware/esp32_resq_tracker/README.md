@@ -1,19 +1,32 @@
-# ResQ ESP32 tracker deployment
+# ResQ ESP32 tracker
 
-The tracker maps to one `response_vehicle` record through `VEHICLE_ID`. It does **not** send a department ID. The API finds the department from `response_vehicle.dept_ID`, so a tracker cannot claim another department by changing a payload field.
+ESP32 + NEO-M8L GPS, with an optional SIM7600 for mobile data. The tracker writes its position straight to the Firebase Realtime Database. It uses Wi-Fi when connected and falls back to the SIM's mobile data when `ENABLE_CELLULAR` is on.
 
-1. Run [`vehicle_telemetry_schema.sql`](../../lib/server/vehicle_telemetry_schema.sql) in MySQL. Change the sample `vehicle_ID = 1` and both credentials first.
-2. In `esp32_resq_tracker.ino`, fill `WIFI_SSID`, `WIFI_PASSWORD`, the server computer's LAN IP in `TELEMETRY_URL`, `VEHICLE_ID`, and the two secrets.
-3. In Arduino IDE, install **TinyGPSPlus** from Library Manager, select your ESP32 board and upload the sketch.
-4. Wire GPS TX to `GPS_RX_PIN`, GPS RX to `GPS_TX_PIN` only if configuration commands are needed, and share GND. The NEO-M8L normally uses 9600 baud.
-5. The Superadmin map updates on the `vehicleLocationUpdated` socket event, with a five-second polling fallback.
+## Setup
 
-## SMS / chat fallback
+1. Copy `secrets.example.h` to `secrets.h` and fill in `WIFI_SSID`, `WIFI_PASSWORD` and `DEVICE_API_KEY` (at least 6 characters). `secrets.h` is not committed.
+2. In Arduino IDE, install **TinyGPSPlus** and **ArduinoHttpClient** from Library Manager, select your ESP32 board and upload.
+3. Wire GPS TX to `GPS_RX_PIN` (4) and share GND. GPS RX to `GPS_TX_PIN` (2) is optional. The NEO-M8L uses 9600 baud.
+4. On first boot the tracker creates its own Firebase account (`tracker-<mac>@resq-tracker.app`, password = `DEVICE_API_KEY`). It then appears in the admin app as an **Unassigned** vehicle. Set its plate, type and department there.
 
-After the SIM7600X is installed, set `ENABLE_SIM7600` to `true`, configure its UART pins and `SMS_DESTINATION`, and ensure the HAT has suitable independent power. The device sends a compact text such as:
+## Enabling the SIM card
 
-`RESQ1,1,1760000000,13.1390000,123.7330000,24.50,185.20,10.00,9,secret`
+Once the SIM7600 is wired, has its own suitable power supply, and holds a SIM with load/data:
 
-Your SMS-to-chat provider or webhook should POST the exact incoming text as `{ "message": "..." }` to `POST /api/telemetry/sms-location`. That endpoint verifies the SMS secret, parses the position, and updates the same map record with source `sms`.
+1. Install **TinyGSM** from Library Manager.
+2. In `esp32_resq_tracker.ino`, set `#define ENABLE_CELLULAR true`.
+3. In `secrets.h`, set `GSM_APN` for your network:
+   - Globe / TM: `internet.globe.com.ph`
+   - Smart / TNT: `internet`
+   - DITO: `internet.dito.ph`
 
-The current implementation intentionally uses local Wi-Fi only. It treats an unreachable ResQ server (not merely lack of public internet) as the failover condition. SMS starts after 30 seconds of failed uploads and is rate-limited to one message per minute.
+   Set `SIM_PIN` only if the SIM is PIN-locked.
+4. Check the modem pins in the sketch match your wiring: `MODEM_RX_PIN` (16, from SIM7600 TX), `MODEM_TX_PIN` (17, to SIM7600 RX). Set `MODEM_PWRKEY_PIN` to the GPIO wired to PWRKEY, or leave it at `-1` if the module powers on by itself.
+5. Re-upload and open Serial Monitor (115200). You should see `[SIM] Mobile data connected.`
+
+Updates are sent every 3 s on Wi-Fi and every 10 s on mobile data to save load.
+
+## Troubleshooting
+
+- `[SIM] Modem not responding`: check wiring, power and the RX/TX pins (they may be swapped).
+- `[SIM] Mobile data connection failed`: check `GSM_APN` and that the SIM has load/data.
