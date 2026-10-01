@@ -89,21 +89,41 @@
     },
 
     "vehicles": {
-      ".read": "auth != null",
+      // Admins see the whole fleet; a citizen only the vehicle sent to their incident
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
       ".indexOn": ["dept_ID", "status", "plate_no", "HardwareID_mapping"],
-      "$vehicleId": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
+      "$vehicleId": {
+        ".read": "auth != null && root.child('citizen_access/' + auth.uid + '/vehicles/' + $vehicleId).exists()",
+        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+      }
     },
 
     "trackers": {
-      // Written by the ESP32 trackers; everyone signed in can see vehicle positions
-      ".read": "auth != null",
+      // Written by the ESP32 trackers. Admins see every position; a citizen only the
+      // tracker of the vehicle sent to their incident.
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
       "$uid": {
+        ".read": "auth != null && root.child('citizen_access/' + auth.uid + '/trackers/' + $uid).exists()",
         ".write": "auth != null && auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app')",
         ".validate": "newData.hasChild('hardwareId')",
         "hardwareId": { ".validate": "newData.isString() && newData.val().length <= 32" },
         "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
         "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" }
       }
+    },
+
+    "citizen_access": {
+      // Which vehicle / tracker each citizen may see; maintained by admins on dispatch and completion
+      "$citizenUid": {
+        ".read": "auth != null && (auth.uid === $citizenUid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+      }
+    },
+
+    "tracker_links": {
+      // One entry per GPS tracker; the first admin app to claim it creates its vehicle
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      "$uid": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
     },
 
     "departments": {

@@ -159,6 +159,18 @@ class Rtdb {
   static Future<void> remove(String path) async =>
       _check(await http.delete(await _uri(path)).timeout(_kTimeout));
 
+  /// Writes [value] at [path] only if nothing is there yet. Returns true if this
+  /// call created it, false if something else already had (even at the same moment).
+  static Future<bool> createIfAbsent(String path, dynamic value) async {
+    final uri = await _uri(path);
+    final res = await http
+        .put(uri, headers: {'if-match': 'null_etag'}, body: jsonEncode(value))
+        .timeout(_kTimeout);
+    if (res.statusCode == 412) return false;
+    _check(res);
+    return true;
+  }
+
   /// Atomically increments the counter at [path] and returns the new value.
   /// Uses ETag conditional writes so two devices never get the same number.
   static Future<int> nextId(String path) async {

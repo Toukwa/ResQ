@@ -29,9 +29,16 @@ class VehicleData {
 
   static String _unassignedPlate() => 'VHE-${DateFormat('HHmmyyyy').format(DateTime.now())}';
 
+  static Future<bool>? _provisioning;
+
   /// Creates an "Unassigned" vehicle for every tracker that isn't linked to one yet.
   /// Returns true if any were added. (The old server did this when a tracker first reported.)
-  static Future<bool> provisionNewTrackers() async {
+  /// Several screens call this at once, so calls in this app share one run, and a
+  /// claim in tracker_links/ stops other computers from creating a second vehicle.
+  static Future<bool> provisionNewTrackers() =>
+      _provisioning ??= _provisionNewTrackers().whenComplete(() => _provisioning = null);
+
+  static Future<bool> _provisionNewTrackers() async {
     final results = await Future.wait([Rtdb.get('trackers'), Rtdb.get('vehicles')]);
     final trackers = (results[0] as Map?) ?? {};
     final linked = {
@@ -42,6 +49,8 @@ class VehicleData {
     for (final entry in trackers.entries) {
       final uid = entry.key.toString();
       if (linked.contains(uid)) continue;
+      // Only the first claimer creates the vehicle, even if two apps race
+      if (!await Rtdb.createIfAbsent('tracker_links/$uid', {'claimedAt': {'.sv': 'timestamp'}})) continue;
       final id = await Rtdb.nextId('counters/vehicles');
       await Rtdb.set('vehicles/$id', {
         'vehicle_ID': id,
@@ -52,6 +61,7 @@ class VehicleData {
         'HardwareID_mapping': (entry.value as Map)['hardwareId'],
         'trackerUid': uid,
       });
+      await Rtdb.update('tracker_links/$uid', {'vehicle_ID': id});
       added = true;
     }
     if (added) {

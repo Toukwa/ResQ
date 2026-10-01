@@ -865,14 +865,11 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
       final vRawLat = double.tryParse((v['latitude'] ?? v['current_lat'] ?? v['lat'] ?? v['y'] ?? '').toString());
       final vRawLng = double.tryParse((v['longitude'] ?? v['current_lng'] ?? v['lng'] ?? v['x'] ?? '').toString());
 
-      double vLat = (vRawLat != null && vRawLat.isFinite && !vRawLat.isNaN)
-          ? vRawLat
-          : (citizenLocation.latitude + (0.0015 * (i + 1)));
-      double vLng = (vRawLng != null && vRawLng.isFinite && !vRawLng.isNaN)
-          ? vRawLng
-          : (citizenLocation.longitude + (0.0015 * (i + 1)));
-
-      if (!vLat.isFinite || !vLng.isFinite || vLat.isNaN || vLng.isNaN) continue;
+      // Only real GPS positions go on the map; a unit without a fix yet is listed
+      // in the banner below but not drawn (never at a made-up spot near the citizen).
+      if (vRawLat == null || vRawLng == null || !vRawLat.isFinite || !vRawLng.isFinite) continue;
+      final vLat = vRawLat;
+      final vLng = vRawLng;
 
       final plate = (v['plate_no'] ?? v['plateNo'] ?? v['vehicle_type'] ?? 'Unit').toString();
       final type = (v['vehicle_type'] ?? v['deptName'] ?? v['agencyType'] ?? '').toString().toUpperCase();

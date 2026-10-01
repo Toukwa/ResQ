@@ -297,6 +297,8 @@ class IncidentData {
       for (final d in dispatches) {
         await Rtdb.update('dispatches/${d['Disp_ID']}', {'status': 'Completed'});
         await Rtdb.update('vehicles/${d['Vehicle_ID']}', {'status': 'Available'});
+        final vehicle = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
+        await _setCitizenAccess(d['citizenUid'], vehicle, d['Vehicle_ID'], false);
       }
     }
 
@@ -306,6 +308,17 @@ class IncidentData {
   }
 
   // ─── dispatch ────────────────────────────────────────────────────────────
+
+  /// Lets a citizen read the vehicle (and its GPS tracker) sent to their incident,
+  /// and nothing else. Granted on dispatch, removed when the incident is completed.
+  static Future<void> _setCitizenAccess(dynamic citizenUid, dynamic vehicle, dynamic vehicleId, bool allow) async {
+    if (citizenUid == null) return;
+    final trackerUid = vehicle is Map ? vehicle['trackerUid'] : null;
+    await Rtdb.update('citizen_access/$citizenUid', {
+      'vehicles/$vehicleId': allow ? true : null,
+      if (trackerUid != null) 'trackers/$trackerUid': allow ? true : null,
+    });
+  }
 
   static Future<int> dispatchVehicle({required int reqId, required int vehicleId, required int adminId, String? department}) async {
     final incident = await Rtdb.get('incidents/$reqId');
@@ -323,6 +336,7 @@ class IncidentData {
       'Dispatch_timeStamp': _nowIso(),
     });
     await Rtdb.update('vehicles/$vehicleId', {'status': 'En Route'});
+    await _setCitizenAccess(incident['citizenUid'], vehicle, vehicleId, true);
 
     var actingDept = department;
     if ((actingDept == null || actingDept == 'ALL') && vehicle != null) {
