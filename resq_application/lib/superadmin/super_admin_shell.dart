@@ -355,6 +355,8 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Whatever tab is on screen has been seen, however it was opened
+    _tabsWithActivity.remove(_selectedIndex);
 
     return ListenableBuilder(
       listenable: ThemeService.instance,
