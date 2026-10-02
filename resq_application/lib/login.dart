@@ -9,6 +9,7 @@ import 'services/firebase_services.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'shared/resq_logo.dart';
+import 'shared/call_agencies_sheet.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -586,6 +587,23 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+          // Phones only: emergency hotlines that work with no internet
+          if (!isDesktop) ...[
+            const SizedBox(height: 28),
+            OutlinedButton.icon(
+              onPressed: () => showCallAgenciesSheet(context),
+              icon: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
+              label: const Text(
+                'Call Agencies',
+                style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                side: const BorderSide(color: Color(0xFFEF4444)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ],
         ],
       ),
     );
