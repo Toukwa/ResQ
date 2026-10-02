@@ -339,8 +339,7 @@ bool sendHistoryPoint() {
                                 "/tracker_history/" + trackerUid + ".json?auth=" + idToken + "&print=silent",
                                 "application/json", String(payload), response, true);
   if (code == 200 || code == 204) return true;
-  Serial.printf("[FIREBASE ERROR %d via %s] Could not write history point
-", code, transportName());
+  Serial.printf("[FIREBASE ERROR %d via %s] Could not write history point\n", code, transportName());
   return false;
 }
 
