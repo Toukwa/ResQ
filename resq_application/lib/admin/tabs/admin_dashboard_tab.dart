@@ -14,6 +14,7 @@ import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../services/theme_service.dart';
 import '../../shared/display_settings.dart';
+import '../../services/incident_data.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
 
@@ -2127,7 +2128,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final List<Marker> markers = [];
 
     // Render ALL city incidents/accidents on the map for complete situational awareness
-    for (var item in _filteredIncidents) {
+    for (var item in _filteredIncidents.where(IncidentData.showOnMap)) {
       final lat = double.tryParse(item['Latitude']?.toString() ?? item['latitude']?.toString() ?? '') ?? 13.4215;
       final lng = double.tryParse(item['Longitude']?.toString() ?? item['longitude']?.toString() ?? '') ?? 123.4842;
       final rawType = (item['Incident_Type'] ?? item['type'] ?? 'Emergency').toString();

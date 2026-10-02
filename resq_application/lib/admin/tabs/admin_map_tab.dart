@@ -12,6 +12,7 @@ import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/vehicle_history_dialog.dart';
 import '../../shared/display_settings.dart';
+import '../../services/incident_data.dart';
 
 class AdminMapTab extends StatefulWidget {
   final String searchFilter;
@@ -388,6 +389,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                       ),
                                       MarkerLayer(
                                         markers: _incidents
+                                            .where(IncidentData.showOnMap)
                                             .map((incident) {
                                               final latitude = double.tryParse('${incident['latitude']}');
                                               final longitude = double.tryParse('${incident['longitude']}');

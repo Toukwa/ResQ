@@ -15,6 +15,7 @@ import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../shared/display_settings.dart';
+import '../../services/incident_data.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -876,7 +877,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                         : null,
                                   ),
                                   MarkerLayer(
-                                    markers: _displayedIncidentQueueList.map((
+                                    markers: _displayedIncidentQueueList.where(IncidentData.showOnMap).map((
                                       incident,
                                     ) {
                                       final typeConfig = _getIncidentTypeConfig(

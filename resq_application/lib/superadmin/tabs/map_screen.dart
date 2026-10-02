@@ -12,6 +12,7 @@ import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/vehicle_history_dialog.dart';
 import '../../shared/display_settings.dart';
+import '../../services/incident_data.dart';
 
 class MapScreen extends StatefulWidget {
   final String searchFilter;
@@ -353,6 +354,7 @@ class _MapScreenState extends State<MapScreen> {
                                       ),
                                       MarkerLayer(
                                         markers: _incidents
+                                            .where(IncidentData.showOnMap)
                                             .map((incident) {
                                               final latitude = double.tryParse(
                                                 '${incident['latitude']}',

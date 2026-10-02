@@ -28,6 +28,10 @@ class IncidentData {
 
   static int? _int(dynamic v) => v == null ? null : int.tryParse(v.toString());
 
+  /// Completed incidents are taken off the staff maps.
+  static bool showOnMap(dynamic incident) =>
+      incident is Map && '${incident['reqStatus'] ?? incident['status']}'.toLowerCase() != 'completed';
+
   static String _nowIso() => DateTime.now().toUtc().toIso8601String();
 
   static Map<String, dynamic>? _me;
