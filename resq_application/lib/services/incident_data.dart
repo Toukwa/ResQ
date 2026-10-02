@@ -315,7 +315,18 @@ class IncidentData {
 
     if (status.toLowerCase() == 'completed') {
       final dispatches = rows(await Rtdb.get('dispatches', query: {'orderBy': '"Req_ID"', 'equalTo': '$reqId'}));
+      // A department completing only releases its own units; other departments
+      // on the same incident may still be working. The Super Admin ('ALL') releases all.
+      final acting = normalizeDepartment(department);
+      final deptNames = acting == 'ALL'
+          ? const <int?, String>{}
+          : {for (final dep in rows(await Rtdb.get('departments'))) _int(dep['dept_ID']): normalizeDepartment(dep['deptName']?.toString())};
       for (final d in dispatches) {
+        if ('${d['status']}'.toLowerCase() == 'completed') continue;
+        if (acting != 'ALL') {
+          final v = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
+          if (deptNames[_int(v?['dept_ID'])] != acting) continue;
+        }
         await Rtdb.update('dispatches/${d['Disp_ID']}', {
           'status': 'Completed',
           if (d['Completed_timeStamp'] == null) 'Completed_timeStamp': _nowIso(),
