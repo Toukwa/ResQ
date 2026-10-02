@@ -29,6 +29,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   audioplayers: ^6.7.1
   url_launcher: ^6.3.2
+  flutter_local_notifications: ^22.3.1
 
 dev_dependencies:
   flutter_test:

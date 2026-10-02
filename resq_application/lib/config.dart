@@ -25,7 +25,7 @@ class AppConfig {
   /// from the phone, so they work without internet.
   /// TODO: PLACEHOLDERS - replace with the real Iriga City numbers before release.
   static const List<({String agency, String name, String number})> agencyHotlines = [
-    (agency: 'PNP', name: 'Philippine National Police', number: '09000000001'),
+    (agency: 'PNP', name: 'Philippine National Police', number: '09858472966'),
     (agency: 'BFP', name: 'Bureau of Fire Protection', number: '09000000002'),
     (agency: 'CDRRMO', name: 'City Disaster Risk Reduction & Management Office', number: '09000000003'),
   ];

@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 import 'firebase_services.dart';
+import 'report_status_notifier.dart';
 
 class SessionService {
   static const String _keyIsLoggedIn = 'session_is_logged_in';
@@ -58,6 +59,7 @@ class SessionService {
   /// so the next login on this device can skip the email code until it expires.
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
+    await ReportStatusNotifier.reset();
     await FirebaseService.signOut();
     for (final key in [_keyIsLoggedIn, _keyUserId, _keyFullName, _keyEmail, _keyRole, _keyDepartment]) {
       await prefs.remove(key);

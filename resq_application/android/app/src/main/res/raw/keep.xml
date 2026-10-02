@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification sounds are referenced by name from Dart, so stop release builds stripping them -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/resq_dispatch,@raw/resq_status_update,@raw/resq_completed,@raw/resq_declined" />
