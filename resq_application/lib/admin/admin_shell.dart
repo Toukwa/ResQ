@@ -20,6 +20,7 @@ import 'tabs/admin_logs_tab.dart';
 import 'tabs/admin_media_tab.dart';
 import 'tabs/admin_management_screen.dart';
 import 'tabs/admin_settings_tab.dart';
+import '../shared/reports_screen.dart';
 
 
 void main() {
@@ -351,6 +352,8 @@ class _AdminShellState extends State<AdminShell> {
         return 'Department Fleet & Unit Management';
       case 7:
         return 'Account & Operational Settings';
+      case 8:
+        return 'Analytics Reports';
       default:
         return 'ResQ Admin';
     }
@@ -374,6 +377,8 @@ class _AdminShellState extends State<AdminShell> {
         return 'View and add emergency fleet vehicles for your department';
       case 7:
         return 'Manage department operational parameters and user preferences';
+      case 8:
+        return 'Emergency counts, response times, vehicle usage and department performance';
       default:
         return 'Emergency Command & Control System';
     }
@@ -454,6 +459,7 @@ class _AdminShellState extends State<AdminShell> {
                         adminId: _effectiveUserId,
                         searchFilter: _currentSearchQuery,
                       ),
+                      ReportsScreen(department: _effectiveDepartment),
                     ],
                   ),
                 ),

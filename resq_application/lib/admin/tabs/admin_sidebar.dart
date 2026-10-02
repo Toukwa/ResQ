@@ -79,6 +79,12 @@ class AdminSidebar extends StatelessWidget {
                         inactiveIconColor,
                       ),
                       _buildSidebarIcon(
+                        Icons.bar_chart_rounded,
+                        8,
+                        "Analytics Reports",
+                        inactiveIconColor,
+                      ),
+                      _buildSidebarIcon(
                         Icons.perm_media_outlined,
                         5,
                         "Evidence / Media Gallery",

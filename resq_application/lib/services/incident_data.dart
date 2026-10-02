@@ -146,7 +146,12 @@ class IncidentData {
       }
     }
 
-    await Rtdb.update('incidents/$reqId', {'dept_status': statuses, 'reqStatus': overall});
+    await Rtdb.update('incidents/$reqId', {
+      'dept_status': statuses,
+      'reqStatus': overall,
+      // Used by the response-time and performance reports
+      if (overall == 'Completed' && incident['completedAt'] == null) 'completedAt': _nowIso(),
+    });
   }
 
   // ─── photos (Cloudinary) ─────────────────────────────────────────────────
@@ -311,7 +316,10 @@ class IncidentData {
     if (status.toLowerCase() == 'completed') {
       final dispatches = rows(await Rtdb.get('dispatches', query: {'orderBy': '"Req_ID"', 'equalTo': '$reqId'}));
       for (final d in dispatches) {
-        await Rtdb.update('dispatches/${d['Disp_ID']}', {'status': 'Completed'});
+        await Rtdb.update('dispatches/${d['Disp_ID']}', {
+          'status': 'Completed',
+          if (d['Completed_timeStamp'] == null) 'Completed_timeStamp': _nowIso(),
+        });
         await Rtdb.update('vehicles/${d['Vehicle_ID']}', {'status': 'Available'});
         final vehicle = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
         await _setCitizenAccess(d['citizenUid'], vehicle, d['Vehicle_ID'], false);

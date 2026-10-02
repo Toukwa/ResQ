@@ -16,6 +16,7 @@ import './tabs/logs_screen.dart'; // Tab 4: Live Activity Logs
 import './tabs/media_screen.dart'; // Tab 5: Evidence/Media Gallery
 import './tabs/management_screen.dart'; // Tab 6: Account/Agency Management
 import './tabs/settings_screen.dart'; // Tab 7: Settings Panel
+import '../shared/reports_screen.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -320,6 +321,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     "Evidence Gallery Archive",
     "Agency Account Management",
     "System Control Settings",
+    "Analytics Reports",
   ];
 
   /// Callback function to update live data records across streams
@@ -379,6 +381,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                               _buildSidebarIcon(Icons.map_outlined, 1, "Larger Map View", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.gpp_maybe_outlined, 2, "Active Incidents", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.receipt_long_rounded, 3, "Live Activity Logs", inactiveColor: sidebarIconInactive),
+                              _buildSidebarIcon(Icons.bar_chart_rounded, 7, "Analytics Reports", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.perm_media_outlined, 4, "Evidence / Media Gallery", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.manage_accounts_outlined, 5, "Account & Agency Management", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.settings_outlined, 6, "Settings", inactiveColor: sidebarIconInactive),
@@ -463,6 +466,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                               searchFilter: _currentSearchQuery,
                               userId: widget.userId ?? 13,
                             ),
+                            const ReportsScreen(),
                           ],
                         ),
                       ),
