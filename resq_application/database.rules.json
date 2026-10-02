@@ -63,7 +63,9 @@
       ".indexOn": ["timestamp", "user_ID", "action"],
       "$logId": {
         // Anyone signed in can add a log entry about themselves; nobody can edit or delete logs
-        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+        // The role on a log must be your real role, so citizens can't pose as admins
+        ".validate": "newData.child('role').val() === root.child('users/' + auth.uid + '/role').val() && newData.child('action').isString() && newData.child('action').val().length <= 64"
       }
     },
 
@@ -75,7 +77,15 @@
         ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
         // Citizens can only file a new Pending report as themselves; staff update it afterwards
         ".write": "auth != null && ((!data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('reqStatus').val() === 'Pending') || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
-        ".validate": "newData.hasChildren(['Req_ID', 'citizenUid', 'incType', 'latitude', 'longitude', 'reqStatus'])"
+        ".validate": "newData.hasChildren(['Req_ID', 'citizenUid', 'incType', 'latitude', 'longitude', 'reqStatus'])",
+        "Req_ID": { ".validate": "newData.isNumber() && newData.val() == $reqId" },
+        "incType": { ".validate": "newData.isString() && newData.val().length <= 64" },
+        "description": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "residentName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "contactNo": { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "image_path": { ".validate": "newData.isString() && newData.val().length <= 3000" },
+        "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+        "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" }
       }
     },
 
@@ -136,7 +146,8 @@
       ".indexOn": ["timestamp", "recipient_ID"],
       "$notifId": {
         // Anyone signed in can raise a notification (e.g. a citizen's new report); nobody edits it afterwards
-        ".write": "auth != null && !data.exists() && newData.child('createdBy').val() === auth.uid",
+        ".write": "auth != null && !data.exists() && newData.child('createdBy').val() === auth.uid && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin') || (newData.child('notification_type').val() === 'EMERGENCY' && root.child('incidents/' + newData.child('req_ID').val() + '/citizenUid').val() === auth.uid))",
+        ".validate": "newData.child('message').isString() && newData.child('message').val().length <= 500 && newData.child('title').val().length <= 120",
         "readBy": {
           "$uid": { ".write": "auth != null && auth.uid === $uid && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
         }
@@ -145,7 +156,11 @@
 
     "live": {
       ".read": "auth != null",
-      "$event": { ".write": "auth != null" }
+      "$event": {
+        // Staff may announce anything; citizens only that they filed a report
+        ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin') || $event === 'refreshIncidentQueueEvent' || $event === 'refreshMediaGalleryEvent' || $event === 'newNotification' || $event === 'refreshActivityLogsEvent')",
+        ".validate": "$event.length <= 64 && newData.hasChild('ts')"
+      }
     }
   }
 }

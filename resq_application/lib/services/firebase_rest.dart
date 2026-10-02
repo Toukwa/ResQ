@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,6 +20,9 @@ class FirebaseAuthRest {
   static DateTime _idTokenExpiry = DateTime.fromMillisecondsSinceEpoch(0);
   static String? _refreshToken;
   static String? uid;
+
+  // The refresh token is a long-lived login, so it goes in the OS keystore, not plain prefs
+  static const _secure = FlutterSecureStorage();
 
   static Uri _identity(String method) => Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:$method?key=${AppConfig.firebaseApiKey}');
@@ -55,8 +59,8 @@ class FirebaseAuthRest {
     uid = r['localId'] ?? r['user_id'];
     final expiresIn = int.tryParse('${r['expiresIn'] ?? r['expires_in'] ?? 3600}') ?? 3600;
     _idTokenExpiry = DateTime.now().add(Duration(seconds: expiresIn - 60));
+    await _secure.write(key: _prefRefreshToken, value: _refreshToken);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefRefreshToken, _refreshToken!);
     await prefs.setString(_prefUid, uid!);
   }
 
@@ -84,7 +88,14 @@ class FirebaseAuthRest {
   /// Restores the saved login on app start. Returns the uid, or null if none.
   static Future<String?> restore() async {
     final prefs = await SharedPreferences.getInstance();
-    _refreshToken = prefs.getString(_prefRefreshToken);
+    _refreshToken = await _secure.read(key: _prefRefreshToken);
+    // Move a login saved by an older version out of plain prefs
+    final legacy = prefs.getString(_prefRefreshToken);
+    if (legacy != null) {
+      _refreshToken ??= legacy;
+      await _secure.write(key: _prefRefreshToken, value: _refreshToken);
+      await prefs.remove(_prefRefreshToken);
+    }
     if (_refreshToken == null) return null;
     try {
       await getIdToken(forceRefresh: true);
@@ -115,6 +126,7 @@ class FirebaseAuthRest {
     _idToken = null;
     _refreshToken = null;
     uid = null;
+    await _secure.delete(key: _prefRefreshToken);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefRefreshToken);
     await prefs.remove(_prefUid);
