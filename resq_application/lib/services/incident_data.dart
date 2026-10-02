@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../config.dart';
 import 'firebase_rest.dart';
 import 'live_socket.dart';
+import 'sound_service.dart';
 import 'vehicle_data.dart';
 
 /// Incidents, dispatches, evidence photos and staff notifications, stored in
@@ -218,7 +219,7 @@ class IncidentData {
       type: 'EMERGENCY',
       reqId: id,
     );
-    LiveEvents.emit('refreshIncidentQueueEvent');
+    LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.newReport.id});
     LiveEvents.emit('refreshMediaGalleryEvent');
     return id.toString();
   }
@@ -338,7 +339,7 @@ class IncidentData {
     }
 
     await log('STATUS_CHANGE', 'emergency_request', reqId, {'newStatus': status});
-    LiveEvents.emit('refreshIncidentQueueEvent');
+    LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.forStatus(status).id});
     LiveEvents.emit('refreshManagementData');
   }
 
@@ -392,14 +393,14 @@ class IncidentData {
       reqId: reqId,
       dispId: id,
     );
-    LiveEvents.emit('refreshIncidentQueueEvent');
+    LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.dispatch.id});
     LiveEvents.emit('refreshManagementData');
     return id;
   }
 
   static Future<void> updateDispatchStatus(int dispId, String status) async {
     await Rtdb.update('dispatches/$dispId', {'status': status});
-    LiveEvents.emit('refreshIncidentQueueEvent');
+    LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.forStatus(status).id});
   }
 
   static Future<List<Map<String, dynamic>>> _dispatchesFor(int reqId) async {

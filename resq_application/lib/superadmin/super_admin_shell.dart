@@ -17,6 +17,7 @@ import './tabs/media_screen.dart'; // Tab 5: Evidence/Media Gallery
 import './tabs/management_screen.dart'; // Tab 6: Account/Agency Management
 import './tabs/settings_screen.dart'; // Tab 7: Settings Panel
 import '../shared/reports_screen.dart';
+import '../services/sound_service.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -81,6 +82,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
   Future<void> _loadUserSettingsAndInitInactivityTimer() async {
     try {
       final settings = await AdminService.getUserSettings(_effectiveUserId);
+      SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
       if (settings != null && mounted) {
         if (settings['theme_mode'] != null) {
           ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
@@ -223,6 +225,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     _settingsTimer?.cancel();
     _pollingTimer?.cancel();
     _socket?.disconnect();
+    SoundService.stop();
     super.dispose();
   }
 

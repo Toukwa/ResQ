@@ -21,6 +21,7 @@ import 'tabs/admin_media_tab.dart';
 import 'tabs/admin_management_screen.dart';
 import 'tabs/admin_settings_tab.dart';
 import '../shared/reports_screen.dart';
+import '../services/sound_service.dart';
 
 
 void main() {
@@ -120,6 +121,7 @@ class _AdminShellState extends State<AdminShell> {
     _notificationTrigger.close();
     _socket?.disconnect();
     _socket?.dispose();
+    SoundService.stop();
     super.dispose();
   }
 
@@ -163,6 +165,7 @@ class _AdminShellState extends State<AdminShell> {
         }
       }
       final settings = await AdminService.getUserSettings(_effectiveUserId);
+      SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
       if (settings != null && settings['theme_mode'] != null) {
         ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
       }

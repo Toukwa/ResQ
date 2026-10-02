@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../services/theme_service.dart';
+import '../../shared/sound_preview.dart';
+import '../../services/sound_service.dart';
 enum SettingsCategory {
   appearance,
   alerts,
@@ -782,12 +784,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       {
         'icon': Icons.volume_up_outlined,
         'title': 'Sound Alerts',
-        'subtitle': 'Audio notifications for emergencies',
+        'subtitle': 'Play a distinct sound for new reports, dispatches and status changes',
         'value': _soundAlerts,
         'color': accentPurple,
         'key': 'sound_alerts',
         'onChanged': (bool v) {
           setState(() => _soundAlerts = v);
+          SoundService.enabled = v;
           _saveSetting({'sound_alerts': v ? 1 : 0});
         },
       },
@@ -832,6 +835,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
+    if (_soundAlerts && _matchesSearch('Alert sounds preview', 'sound')) list.add(const SoundPreviewPanel());
     return list;
   }
   // --- MAP SETTINGS ---
