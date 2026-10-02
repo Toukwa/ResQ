@@ -13,7 +13,6 @@ enum SettingsCategory {
   alerts,
   map,
   security,
-  operational,
 }
 class AdminSettingsTab extends StatefulWidget {
   final int adminId;
@@ -48,8 +47,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   bool _soundAlerts = true;
   bool _tabActivityDots = true;
   bool _duplicateDetection = true;
-  bool _emailNotifications = true;
-  bool _smsAlerts = false;
   // Map Settings state (backed by user_settings table)
   bool _autoCenterOnIncident = true;
   bool _showUnitLabels = true;
@@ -58,11 +55,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   bool _mfa = true;
   String _sessionTimeout = '15 min';
   bool _autoLogout = true;
-  bool _activityLog = true;
-  // Operational Settings state (backed by user_settings table)
-  bool _emergencyBroadcast = true;
-  bool _dataRetentionPolicy = true;
-  bool _analyticsReporting = true;
   // RxDart Subjects for search and status messages
   final BehaviorSubject<String> _searchSubject = BehaviorSubject<String>();
   final PublishSubject<String> _statusMessageSubject = PublishSubject<String>();
@@ -128,18 +120,12 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
           _tabActivityDots = _toBool(settings['tab_activity_dots'], defaultValue: true);
           _duplicateDetection = _toBool(settings['duplicate_detection'], defaultValue: true);
-          _emailNotifications = _toBool(settings['email_notifications'], defaultValue: true);
-          _smsAlerts = _toBool(settings['sms_alerts']);
           _autoCenterOnIncident = _toBool(settings['auto_center_on_incident'], defaultValue: true);
           _showUnitLabels = _toBool(settings['show_unit_labels'], defaultValue: true);
           _showRouteLines = _toBool(settings['show_route_lines'], defaultValue: true);
           _mfa = _toBool(settings['mfa_enabled'], defaultValue: true);
           _sessionTimeout = (settings['session_timeout'] as String?) ?? '15 min';
           _autoLogout = _toBool(settings['auto_logout'], defaultValue: true);
-          _activityLog = _toBool(settings['activity_log_enabled'], defaultValue: true);
-          _emergencyBroadcast = _toBool(settings['emergency_broadcast'], defaultValue: true);
-          _dataRetentionPolicy = _toBool(settings['data_retention_policy'], defaultValue: true);
-          _analyticsReporting = _toBool(settings['analytics_reporting'], defaultValue: true);
         });
       }
     } catch (e) {
@@ -354,12 +340,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
             title: 'Account Security',
             icon: Icons.shield_outlined,
             activeColor: const Color(0xFF3B82F6),
-          ),
-          _buildMenuItem(
-            category: SettingsCategory.operational,
-            title: 'Operational Settings',
-            icon: Icons.settings_outlined,
-            activeColor: const Color(0xFF8B5CF6),
           ),
           const Spacer(),
           // Authenticated User Avatar Footnote Card
@@ -609,8 +589,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         return _buildHeaderItem('Map Settings', 'Configure map display and navigation preferences', Icons.map_outlined, const Color(0xFF10B981));
       case SettingsCategory.security:
         return _buildHeaderItem('Account Security', 'Manage security, session timeout, and password', Icons.shield_outlined, const Color(0xFF3B82F6));
-      case SettingsCategory.operational:
-        return _buildHeaderItem('Operational Settings', 'Configure organizational rules and data policies', Icons.settings_outlined, const Color(0xFF8B5CF6));
     }
   }
   Widget _buildHeaderItem(String title, String subtitle, IconData icon, Color color) {
@@ -661,8 +639,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         return _buildMapContent();
       case SettingsCategory.security:
         return _buildSecurityContent();
-      case SettingsCategory.operational:
-        return _buildOperationalContent();
     }
   }
   // --- MY PROFILE ---
@@ -987,30 +963,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _saveSetting({'sound_alerts': v ? 1 : 0});
         },
       },
-      {
-        'icon': Icons.language_outlined,
-        'title': 'Email Notifications',
-        'subtitle': 'Send alerts to registered email',
-        'value': _emailNotifications,
-        'color': accentBlue,
-        'key': 'email_notifications',
-        'onChanged': (bool v) {
-          setState(() => _emailNotifications = v);
-          _saveSetting({'email_notifications': v ? 1 : 0});
-        },
-      },
-      {
-        'icon': Icons.smartphone_outlined,
-        'title': 'SMS Alerts',
-        'subtitle': 'Critical alerts via SMS',
-        'value': _smsAlerts,
-        'color': activeColor,
-        'key': 'sms_alerts',
-        'onChanged': (bool v) {
-          setState(() => _smsAlerts = v);
-          _saveSetting({'sms_alerts': v ? 1 : 0});
-        },
-      },
     ];
     final list = <Widget>[];
     for (final item in items) {
@@ -1171,22 +1123,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         ),
       );
     }
-    if (_matchesSearch('Activity Log', 'Track and record all dispatcher actions')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
-      list.add(
-        _buildSwitchRow(
-          Icons.visibility_outlined,
-          'Activity Log',
-          'Track and record all dispatcher actions',
-          _activityLog,
-          (v) {
-            setState(() => _activityLog = v);
-            _saveSetting({'activity_log_enabled': v ? 1 : 0});
-          },
-          activeColor,
-        ),
-      );
-    }
     if (_matchesSearch('Change Password', 'Update account authentication password')) {
       list.add(const SizedBox(height: 16));
       list.add(
@@ -1229,63 +1165,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           ),
         ),
       );
-    }
-    return list;
-  }
-  // --- OPERATIONAL SETTINGS ---
-  List<Widget> _buildOperationalContent() {
-    const accentRed = Color(0xFFEF4444);
-    const accentPurple = Color(0xFF8B5CF6);
-    final items = [
-      {
-        'icon': Icons.notifications_none_rounded,
-        'title': 'Emergency Broadcast',
-        'subtitle': 'Send mass alerts to all units',
-        'value': _emergencyBroadcast,
-        'color': accentRed,
-        'onChanged': (bool v) {
-          setState(() => _emergencyBroadcast = v);
-          _saveSetting({'emergency_broadcast': v ? 1 : 0});
-        },
-      },
-      {
-        'icon': Icons.shield_outlined,
-        'title': 'Data Retention Policy',
-        'subtitle': 'Keep incident records for 5 years',
-        'value': _dataRetentionPolicy,
-        'color': accentPurple,
-        'onChanged': (bool v) {
-          setState(() => _dataRetentionPolicy = v);
-          _saveSetting({'data_retention_policy': v ? 1 : 0});
-        },
-      },
-      {
-        'icon': Icons.visibility_outlined,
-        'title': 'Analytics & Reporting',
-        'subtitle': 'Collect usage data for performance reports',
-        'value': _analyticsReporting,
-        'color': accentPurple,
-        'onChanged': (bool v) {
-          setState(() => _analyticsReporting = v);
-          _saveSetting({'analytics_reporting': v ? 1 : 0});
-        },
-      },
-    ];
-    final list = <Widget>[];
-    for (final item in items) {
-      if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
-        if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
-        list.add(
-          _buildSwitchRow(
-            item['icon'] as IconData,
-            item['title'] as String,
-            item['subtitle'] as String,
-            item['value'] as bool,
-            item['onChanged'] as ValueChanged<bool>,
-            item['color'] as Color,
-          ),
-        );
-      }
     }
     return list;
   }

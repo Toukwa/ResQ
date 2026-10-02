@@ -389,7 +389,7 @@ class _AdminShellState extends State<AdminShell> {
       case 6:
         return 'Department Fleet & Unit Management';
       case 7:
-        return 'Account & Operational Settings';
+        return 'Account & Settings';
       case 8:
         return 'Analytics Reports';
       default:
@@ -414,7 +414,7 @@ class _AdminShellState extends State<AdminShell> {
       case 6:
         return 'View and add emergency fleet vehicles for your department';
       case 7:
-        return 'Manage department operational parameters and user preferences';
+        return 'Manage your account, alerts, map and security preferences';
       case 8:
         return 'Emergency counts, response times, vehicle usage and department performance';
       default:
