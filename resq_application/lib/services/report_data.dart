@@ -16,6 +16,12 @@ class ReportData {
       Rtdb.get('vehicles'),
       Rtdb.get('departments'),
     ]);
+    return fromData(results, from, to, department: department);
+  }
+
+  /// Builds the report from already-loaded database nodes
+  /// ([incidents, dispatches, vehicles, departments]).
+  static Report fromData(List<dynamic> results, DateTime from, DateTime to, {String department = 'ALL'}) {
     final dept = IncidentData.normalizeDepartment(department);
     final deptNames = {
       for (final d in IncidentData.rows(results[3]))
@@ -231,6 +237,61 @@ class Report {
   }
 
   List<ReportTable> get all => [emergencyCount, responseTimes, vehicleUsage, departmentPerformance];
+
+  // ── Chart data (PDF export) ─────────────────────────────────────────────
+
+  /// Incidents per type, most common first.
+  Map<String, int> get countsByType {
+    final m = <String, int>{};
+    for (final i in _incidents) {
+      m[i.type] = (m[i.type] ?? 0) + 1;
+    }
+    return Map.fromEntries(m.entries.toList()..sort((a, b) => b.value.compareTo(a.value)));
+  }
+
+  /// Incidents grouped as Completed / Open / Declined or Cancelled.
+  Map<String, int> get countsByOutcome {
+    final m = {'Completed': 0, 'Open': 0, 'Declined / Cancelled': 0};
+    for (final i in _incidents) {
+      final s = i.status.toLowerCase();
+      final key = s == 'completed' ? 'Completed' : (s == 'declined' || s == 'cancelled') ? 'Declined / Cancelled' : 'Open';
+      m[key] = m[key]! + 1;
+    }
+    return m;
+  }
+
+  /// Incidents reported on each day of the period (days with none included).
+  Map<DateTime, int> get dailyCounts {
+    final m = <DateTime, int>{};
+    for (var d = DateTime(from.year, from.month, from.day); !d.isAfter(to); d = DateTime(d.year, d.month, d.day + 1)) {
+      m[d] = 0;
+    }
+    for (final i in _incidents) {
+      final d = DateTime(i.reported.year, i.reported.month, i.reported.day);
+      if (m.containsKey(d)) m[d] = m[d]! + 1;
+    }
+    return m;
+  }
+
+  /// Average report-to-dispatch time in minutes per department (only departments that sent units).
+  Map<String, double> get averageResponseMinutesByDept {
+    final m = <String, double>{};
+    for (final dept in {..._dispatches.map((d) => d.dept)}..remove('Unassigned')) {
+      final avg = _average(_incidents.map((i) => i.responseTime(dept)).whereType<Duration>());
+      if (avg != null) m[dept] = avg.inSeconds / 60;
+    }
+    return m;
+  }
+
+  /// Dispatch count per vehicle (plate number), busiest first.
+  Map<String, int> get dispatchesByVehicle {
+    final m = <String, int>{};
+    for (final d in _dispatches) {
+      final plate = _vehicles[d.vehicleId]?['plate_no']?.toString() ?? 'Unit #${d.vehicleId}';
+      m[plate] = (m[plate] ?? 0) + 1;
+    }
+    return Map.fromEntries(m.entries.toList()..sort((a, b) => b.value.compareTo(a.value)));
+  }
 
   /// FT-AR-06: every report as one CSV file.
   String toCsv() {

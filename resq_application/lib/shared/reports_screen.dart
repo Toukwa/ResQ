@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import '../services/incident_data.dart';
 import '../services/report_data.dart';
+import '../services/report_pdf.dart';
 import '../services/theme_service.dart';
 
 /// Analytics reports (emergency count, response times, vehicle usage,
@@ -48,18 +49,45 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
-  Future<void> _pickRange() async {
-    final picked = await showDateRangePicker(
+  /// Same calendar as the audit logs' Date Range: one picker per end.
+  Future<void> _pickDate(bool isStart) async {
+    final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime(2024),
-      lastDate: DateUtils.dateOnly(DateTime.now()),
-      initialDateRange: _range,
+      initialDate: isStart ? _range.start : _range.end,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
     );
-    if (picked != null) {
-      _range = picked;
-      _load();
-    }
+    if (picked == null) return;
+    var start = isStart ? picked : _range.start;
+    var end = isStart ? _range.end : picked;
+    if (end.isBefore(start)) isStart ? end = start : start = end; // keep the range valid
+    _range = DateTimeRange(start: start, end: end);
+    _load();
   }
+
+  Widget _dateBox(ThemeService ts, bool isStart) => SizedBox(
+        width: 150,
+        child: InkWell(
+          onTap: _loading ? null : () => _pickDate(isStart),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: ts.borderColor),
+              borderRadius: BorderRadius.circular(8),
+              color: ts.inputBackground,
+            ),
+            child: Row(children: [
+              const Icon(Icons.calendar_today_rounded, size: 14, color: Color(0xFFFF5200)),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('MM/dd/yyyy').format(isStart ? _range.start : _range.end),
+                style: TextStyle(fontSize: 11, color: ts.textPrimary),
+              ),
+            ]),
+          ),
+        ),
+      );
 
   Future<void> _export() async {
     final report = _report;
@@ -70,9 +98,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ? await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory()
           : await getApplicationDocumentsDirectory();
       final f = DateFormat('yyyy-MM-dd');
-      final name = 'ResQ_Report_${report.department}_${f.format(_range.start)}_to_${f.format(_range.end)}.csv';
-      // BOM so Excel opens the file as UTF-8
-      await File('${dir.path}${Platform.pathSeparator}$name').writeAsString('﻿${report.toCsv()}', flush: true);
+      messenger.showSnackBar(const SnackBar(content: Text('Generating analytics package (PDF + data)...')));
+      final name = '${ReportPdf.baseName(report)}.zip';
+      await File('${dir.path}${Platform.pathSeparator}$name').writeAsBytes(await ReportPdf.zip(report), flush: true);
+      messenger.hideCurrentSnackBar();
       await IncidentData.log('REPORT_EXPORTED', 'report', null, {
         'department': report.department,
         'from': f.format(_range.start),
@@ -94,7 +123,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       builder: (context, _) {
         final ts = ThemeService.instance;
         final report = _report;
-        final f = DateFormat('MMM d, yyyy');
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -105,10 +133,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: _loading ? null : _pickRange,
-                    icon: const Icon(Icons.date_range_rounded, size: 18),
-                    label: Text('${f.format(_range.start)} - ${f.format(_range.end)}'),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Date Range',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
+                      const SizedBox(height: 6),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        _dateBox(ts, true),
+                        const SizedBox(width: 8),
+                        _dateBox(ts, false),
+                      ]),
+                    ],
                   ),
                   IconButton(
                     tooltip: 'Refresh',
@@ -117,8 +154,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                   FilledButton.icon(
                     onPressed: _loading || report == null ? null : _export,
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('Export CSV'),
+                    icon: const Icon(Icons.archive_rounded, size: 18),
+                    label: const Text('Download ZIP (PDF Report)'),
                   ),
                   if (widget.department != 'ALL')
                     Text('Department: ${widget.department}', style: TextStyle(color: ts.textSecondary)),
