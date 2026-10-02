@@ -158,6 +158,10 @@ class VehicleData {
       'dept_ID': await _resolveDeptId(data),
       'status': data['status'] ?? 'Available',
     });
+    await IncidentData.log('VEHICLE_CREATED', 'vehicle', id, {
+      'plate_no': data['plate_no'],
+      'vehicle_type': data['vehicle_type'],
+    });
     _announce('vehicle_created');
     return id;
   }
@@ -169,16 +173,26 @@ class VehicleData {
       'dept_ID': await _resolveDeptId(data),
       'status': data['status'] ?? 'Available',
     });
+    await IncidentData.log('VEHICLE_UPDATED', 'vehicle', vehicleId, {
+      'plate_no': data['plate_no'],
+      'vehicle_type': data['vehicle_type'],
+      'status': data['status'] ?? 'Available',
+    });
     _announce('vehicle_updated');
   }
 
   /// Returns the vehicle to the unassigned fleet; its tracker stays linked.
   static Future<void> deleteVehicle(int vehicleId) async {
+    final old = await Rtdb.get('vehicles/$vehicleId');
     await Rtdb.update('vehicles/$vehicleId', {
       'dept_ID': null,
       'plate_no': _unassignedPlate(),
       'vehicle_type': 'Unassigned',
       'status': 'Available',
+    });
+    await IncidentData.log('VEHICLE_DELETED', 'vehicle', vehicleId, {
+      'plate_no': old is Map ? old['plate_no'] : null,
+      'vehicle_type': old is Map ? old['vehicle_type'] : null,
     });
     _announce('vehicle_deleted');
   }
@@ -194,6 +208,7 @@ class VehicleData {
       'deptLocation': data['deptLocation'],
       'contactInfo': data['contactInfo'],
     });
+    await IncidentData.log('DEPARTMENT_UPDATED', 'department', id, {'deptName': data['deptName']});
     LiveEvents.emit('refreshManagementData', {'type': 'department_updated'});
   }
 }
