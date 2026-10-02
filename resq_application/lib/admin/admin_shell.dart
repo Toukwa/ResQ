@@ -174,6 +174,7 @@ class _AdminShellState extends State<AdminShell> {
       }
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
+      AlertCategory.load(settings);
       TabActivity.enabled.value = '${settings?['tab_activity_dots']}' != '0';
       if (settings != null && settings['theme_mode'] != null) {
         ThemeService.instance.setThemeMode(settings['theme_mode'].toString());

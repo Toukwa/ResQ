@@ -41,7 +41,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _criticalEmergencyAlerts = true;
   bool _unitStatusUpdates = true;
   bool _incidentUpdates = true;
-  bool _systemNotifications = false;
   bool _soundAlerts = true;
   bool _tabActivityDots = true;
   bool _emailNotifications = true;
@@ -121,7 +120,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _criticalEmergencyAlerts = _toBool(settings['critical_emergency_alerts'], defaultValue: true);
           _unitStatusUpdates = _toBool(settings['unit_status_updates'], defaultValue: true);
           _incidentUpdates = _toBool(settings['incident_updates'], defaultValue: true);
-          _systemNotifications = _toBool(settings['system_notifications']);
           _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
           _tabActivityDots = _toBool(settings['tab_activity_dots'], defaultValue: true);
           _emailNotifications = _toBool(settings['email_notifications'], defaultValue: true);
@@ -739,49 +737,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       {
         'icon': Icons.notifications_none_rounded,
         'title': 'Critical Emergency Alerts',
-        'subtitle': 'Real-time alerts for critical incidents',
+        'subtitle': 'Alarm and tab dot when a new report comes in',
         'value': _criticalEmergencyAlerts,
         'color': activeColor,
         'key': 'critical_emergency_alerts',
         'onChanged': (bool v) {
           setState(() => _criticalEmergencyAlerts = v);
+          AlertCategory.critical.enabled = v;
           _saveSetting({'critical_emergency_alerts': v ? 1 : 0});
         },
       },
       {
         'icon': Icons.autorenew_rounded,
         'title': 'Unit Status Updates',
-        'subtitle': 'Notify when unit status changes',
+        'subtitle': 'Sound and tab dot when units are dispatched',
         'value': _unitStatusUpdates,
         'color': accentOrange,
         'key': 'unit_status_updates',
         'onChanged': (bool v) {
           setState(() => _unitStatusUpdates = v);
+          AlertCategory.unitStatus.enabled = v;
           _saveSetting({'unit_status_updates': v ? 1 : 0});
         },
       },
       {
         'icon': Icons.notifications_none_rounded,
         'title': 'Incident Updates',
-        'subtitle': 'Updates on active incidents',
+        'subtitle': 'Sound and tab dot when an incident is accepted, completed or declined',
         'value': _incidentUpdates,
         'color': accentOrange,
         'key': 'incident_updates',
         'onChanged': (bool v) {
           setState(() => _incidentUpdates = v);
+          AlertCategory.incident.enabled = v;
           _saveSetting({'incident_updates': v ? 1 : 0});
-        },
-      },
-      {
-        'icon': Icons.desktop_windows_outlined,
-        'title': 'System Notifications',
-        'subtitle': 'Maintenance, system events',
-        'value': _systemNotifications,
-        'color': activeColor,
-        'key': 'system_notifications',
-        'onChanged': (bool v) {
-          setState(() => _systemNotifications = v);
-          _saveSetting({'system_notifications': v ? 1 : 0});
         },
       },
       {

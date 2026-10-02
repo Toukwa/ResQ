@@ -45,7 +45,6 @@ class AdminData {
     'critical_emergency_alerts': 1,
     'unit_status_updates': 1,
     'incident_updates': 1,
-    'system_notifications': 0,
     'sound_alerts': 1,
     'email_notifications': 1,
     'sms_alerts': 0,

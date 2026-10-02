@@ -85,6 +85,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     try {
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
+      AlertCategory.load(settings);
       TabActivity.enabled.value = '${settings?['tab_activity_dots']}' != '0';
       if (settings != null && mounted) {
         if (settings['theme_mode'] != null) {
