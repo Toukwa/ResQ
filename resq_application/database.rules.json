@@ -122,6 +122,24 @@
       }
     },
 
+    "tracker_history": {
+      // Route points appended by each tracker every 30 s. Only staff can view them; points
+      // are never edited, and only a Superadmin may delete them (old-history cleanup).
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      "$uid": {
+        ".indexOn": ["ts"],
+        "$pointId": {
+          ".write": "auth != null && ((auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app') && !data.exists()) || (!newData.exists() && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'))",
+          ".validate": "newData.hasChildren(['latitude', 'longitude', 'ts'])",
+          "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+          "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "speed_kph": { ".validate": "newData.isNumber()" },
+          "ts": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "citizen_access": {
       // Which vehicle / tracker each citizen may see; maintained by admins on dispatch and completion
       "$citizenUid": {

@@ -115,6 +115,25 @@ class VehicleData {
     return t == null ? null : Map<String, dynamic>.from(t);
   }
 
+  /// Route points recorded by a vehicle's tracker between [from] and [to], oldest first.
+  static Future<List<Map<String, dynamic>>> historyOf(Map<String, dynamic> vehicle, DateTime from, DateTime to) async {
+    final uid = vehicle['trackerUid'];
+    if (uid == null) return [];
+    final raw = await Rtdb.get('tracker_history/$uid', query: {
+      'orderBy': '"ts"',
+      'startAt': '${from.millisecondsSinceEpoch}',
+      'endAt': '${to.millisecondsSinceEpoch}',
+    });
+    final points = ((raw as Map?) ?? {})
+        .values
+        .whereType<Map>()
+        .map((p) => Map<String, dynamic>.from(p))
+        .where((p) => p['latitude'] is num && p['longitude'] is num && p['ts'] is num)
+        .toList()
+      ..sort((a, b) => (a['ts'] as num).compareTo(b['ts'] as num));
+    return points;
+  }
+
   static Future<int?> _resolveDeptId(Map<String, dynamic> data) async {
     final direct = _int(data['dept_ID']);
     if (direct != null) return direct;

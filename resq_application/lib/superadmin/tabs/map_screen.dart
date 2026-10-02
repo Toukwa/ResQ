@@ -10,6 +10,7 @@ import '../../services/live_socket.dart' as io;
 import '../../admin/admin_service.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
+import '../../shared/vehicle_history_dialog.dart';
 
 class MapScreen extends StatefulWidget {
   final String searchFilter;
@@ -929,6 +930,15 @@ class _MapScreenState extends State<MapScreen> {
             _buildDetailRow("Vehicle Type", data['vehicle_type']?.toString() ?? 'Unknown', ts: ts),
             _buildDetailRow("Department", _getVehicleDepartment(data), ts: ts),
             _buildDetailRow("Status", data['status']?.toString() ?? 'Unknown', isBoldValue: true, ts: ts),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: data['trackerUid'] == null ? null : () => showVehicleHistoryDialog(context, data),
+                icon: const Icon(Icons.timeline_rounded, size: 16),
+                label: const Text('Location History', style: TextStyle(fontSize: 12)),
+              ),
+            ),
           ],
         ],
       ),

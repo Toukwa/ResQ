@@ -14,7 +14,7 @@
 // Set to false to use mobile data only (Wi-Fi stays off).
 #define ENABLE_WIFI false
 // Shown at boot so you can confirm the right file was uploaded.
-#define SKETCH_VERSION "v5-modem-diag"
+#define SKETCH_VERSION "v6-history"
 
 #if ENABLE_CELLULAR
 #define TINY_GSM_MODEM_SIM7600
@@ -62,6 +62,7 @@ constexpr unsigned long WIFI_INTERVAL_MS = 3000;
 constexpr unsigned long CELLULAR_INTERVAL_MS = 10000;
 constexpr unsigned long WIFI_RETRY_INTERVAL_MS = 10000;
 constexpr unsigned long CELLULAR_RETRY_INTERVAL_MS = 30000;
+constexpr unsigned long HISTORY_INTERVAL_MS = 30000;            // How often a point is added to the route history
 constexpr unsigned long GPS_STATUS_INTERVAL_MS = 2000;           // Serial monitor print interval
 constexpr unsigned long TOKEN_LIFETIME_MS = 50UL * 60UL * 1000UL; // Firebase ID tokens last 60 min
 
@@ -84,6 +85,7 @@ unsigned long lastCellularAttempt = 0;
 #endif
 
 unsigned long lastLocationAttempt = 0;
+unsigned long lastHistoryPoint = 0;
 unsigned long lastWifiAttempt = 0;
 unsigned long lastGpsStatusPrint = 0;
 
@@ -324,6 +326,24 @@ String isoTimestamp() {
   return "";
 }
 
+// Appends the current fix to tracker_history/<uid>, which the app shows as the vehicle's route.
+// /trackers/<uid> only keeps the latest position, so this is the only record of past movement.
+bool sendHistoryPoint() {
+  char payload[200];
+  snprintf(payload, sizeof(payload),
+    "{\"latitude\":%.7f,\"longitude\":%.7f,\"speed_kph\":%.2f,\"ts\":{\".sv\":\"timestamp\"}}",
+    gps.location.lat(), gps.location.lng(), gps.speed.isValid() ? gps.speed.kmph() : 0.0);
+
+  String response;
+  const int code = httpsRequest(rtdbClient(), RTDB_HOST, "POST",
+                                "/tracker_history/" + trackerUid + ".json?auth=" + idToken + "&print=silent",
+                                "application/json", String(payload), response, true);
+  if (code == 200 || code == 204) return true;
+  Serial.printf("[FIREBASE ERROR %d via %s] Could not write history point
+", code, transportName());
+  return false;
+}
+
 bool sendLocation() {
   if (!online() || !ensureSignedIn()) return false;
 
@@ -356,6 +376,9 @@ bool sendLocation() {
                                 "application/json", String(payload), response, true);
 
   if (code == 200 || code == 204) {
+    if (hasFix && (lastHistoryPoint == 0 || millis() - lastHistoryPoint >= HISTORY_INTERVAL_MS)) {
+      if (sendHistoryPoint()) lastHistoryPoint = millis();
+    }
     if (hasFix) {
       Serial.printf("[FIREBASE OK via %s] %s at %.5f, %.5f (%u sats)\n", transportName(), hardwareId.c_str(),
                     gps.location.lat(), gps.location.lng(), gps.satellites.value());
