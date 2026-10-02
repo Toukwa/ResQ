@@ -907,7 +907,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                       );
                                     }).toList(),
                                   ),
-                                  PolylineLayer(polylines: DisplaySettings.routeLines(_unfilteredIncidentQueueList, _vehiclesList)),
                                   AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
                                 ],
                               ),

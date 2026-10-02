@@ -920,7 +920,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         MarkerLayer(
                           markers: _buildMapMarkers(),
                         ),
-                        PolylineLayer(polylines: DisplaySettings.routeLines(_incidents, _vehicles)),
                         // Every admin sees the whole fleet live
                         AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehicles)),
                       ],

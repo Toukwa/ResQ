@@ -408,7 +408,6 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                             .whereType<Marker>()
                                             .toList(),
                                       ),
-                                      PolylineLayer(polylines: DisplaySettings.routeLines(_incidents, _vehicles)),
                                       MarkerLayer(
                                         markers: _vehicles
                                             .map((vehicle) {

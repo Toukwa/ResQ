@@ -377,7 +377,6 @@ class _MapScreenState extends State<MapScreen> {
                                             .whereType<Marker>()
                                             .toList(),
                                       ),
-                                      PolylineLayer(polylines: DisplaySettings.routeLines(_incidents, _vehicles)),
                                       MarkerLayer(
                                         markers: _vehicles
                                             .map((vehicle) {

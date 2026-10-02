@@ -49,7 +49,6 @@ class AdminData {
     'map_display_style': 'Standard',
     'auto_center_on_incident': 1,
     'show_unit_labels': 1,
-    'show_route_lines': 1,
     'mfa_enabled': 1,
     'session_timeout': '15 min',
     'auto_logout': 1,

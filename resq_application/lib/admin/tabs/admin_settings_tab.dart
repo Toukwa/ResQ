@@ -50,7 +50,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   // Map Settings state (backed by user_settings table)
   bool _autoCenterOnIncident = true;
   bool _showUnitLabels = true;
-  bool _showRouteLines = true;
   // Account Security state (backed by user_settings table)
   bool _mfa = true;
   String _sessionTimeout = '15 min';
@@ -122,7 +121,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _duplicateDetection = _toBool(settings['duplicate_detection'], defaultValue: true);
           _autoCenterOnIncident = _toBool(settings['auto_center_on_incident'], defaultValue: true);
           _showUnitLabels = _toBool(settings['show_unit_labels'], defaultValue: true);
-          _showRouteLines = _toBool(settings['show_route_lines'], defaultValue: true);
           _mfa = _toBool(settings['mfa_enabled'], defaultValue: true);
           _sessionTimeout = (settings['session_timeout'] as String?) ?? '15 min';
           _autoLogout = _toBool(settings['auto_logout'], defaultValue: true);
@@ -1008,17 +1006,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           setState(() => _showUnitLabels = v);
           DisplaySettings.showUnitLabels.value = v;
           _saveSetting({'show_unit_labels': v ? 1 : 0});
-        },
-      },
-      {
-        'icon': Icons.map_outlined,
-        'title': 'Show Route Lines',
-        'subtitle': 'Display dispatch routes on map',
-        'value': _showRouteLines,
-        'onChanged': (bool v) {
-          setState(() => _showRouteLines = v);
-          DisplaySettings.showRouteLines.value = v;
-          _saveSetting({'show_route_lines': v ? 1 : 0});
         },
       },
     ];
