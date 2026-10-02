@@ -12,6 +12,7 @@ import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../shared/vehicle_markers.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -178,6 +179,14 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
       _socket!.on('refreshManagementData', handleRefresh);
       _socket!.on('refreshMediaGalleryEvent', handleRefresh);
       _socket!.on('newNotification', handleRefresh);
+      _socket!.on('vehicleLocationUpdated', (data) {
+        if (!mounted) return;
+        if (applyVehicleLocation(_vehiclesList, data)) {
+          setState(() {});
+        } else {
+          handleRefresh(null);
+        }
+      });
 
       _socket!.connect();
     } catch (e) {
@@ -888,6 +897,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                       );
                                     }).toList(),
                                   ),
+                                  MarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
                                 ],
                               ),
                               Positioned(

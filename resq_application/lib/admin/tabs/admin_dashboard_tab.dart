@@ -10,6 +10,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/firebase_services.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../shared/vehicle_markers.dart';
 import '../../services/theme_service.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
@@ -129,6 +130,14 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       ]) {
         _socket!.on(event, (_) => _refreshStream.add(event));
       }
+      _socket!.on('vehicleLocationUpdated', (data) {
+        if (!mounted) return;
+        if (applyVehicleLocation(_vehicles, data)) {
+          setState(() {});
+        } else {
+          _refreshStream.add('vehicleLocationUpdated');
+        }
+      });
 
       _socket!.connect();
     } catch (e) {
@@ -890,6 +899,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         MarkerLayer(
                           markers: _buildMapMarkers(),
                         ),
+                        // Every admin sees the whole fleet live
+                        MarkerLayer(markers: buildVehicleMarkers(_vehicles)),
                       ],
                     ),
                     // Map Top-Left Header Overlay (1:1 SuperAdmin)
