@@ -113,6 +113,12 @@ class _AdminShellState extends State<AdminShell> {
     _updateClock();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
     _resolveSession();
+    TabActivity.enabled.addListener(_onTabDotsSetting);
+  }
+
+  /// Turning the setting off clears the dots right away.
+  void _onTabDotsSetting() {
+    if (mounted) setState(() => _tabsWithActivity.clear());
   }
 
   @override
@@ -123,6 +129,7 @@ class _AdminShellState extends State<AdminShell> {
     _socket?.disconnect();
     _socket?.dispose();
     SoundService.stop();
+    TabActivity.enabled.removeListener(_onTabDotsSetting);
     super.dispose();
   }
 
@@ -167,6 +174,7 @@ class _AdminShellState extends State<AdminShell> {
       }
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
+      TabActivity.enabled.value = '${settings?['tab_activity_dots']}' != '0';
       if (settings != null && settings['theme_mode'] != null) {
         ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
       }
@@ -201,6 +209,7 @@ class _AdminShellState extends State<AdminShell> {
   final Set<int> _tabsWithActivity = {};
 
   void _markTabActivity(TabActivity? activity) {
+    if (!TabActivity.enabled.value) return;
     final tabs = switch (activity) {
       TabActivity.incidents => const [1, 3], // request queue, incident log
       TabActivity.media => const [5],

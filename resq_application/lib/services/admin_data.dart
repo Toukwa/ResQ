@@ -61,6 +61,7 @@ class AdminData {
     'data_retention_policy': 1,
     'analytics_reporting': 1,
     'duplicate_detection': 1,
+    'tab_activity_dots': 1,
   };
 
   static Future<Map<String, dynamic>> getSettings(int userId) async {

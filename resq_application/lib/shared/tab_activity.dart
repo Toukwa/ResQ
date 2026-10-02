@@ -15,6 +15,9 @@ enum TabActivity {
         _ => null,
       };
 
+  /// The "Tab Activity Dots" setting; shells rebuild when it changes.
+  static final enabled = ValueNotifier<bool>(true);
+
   static const events = ['refreshIncidentQueueEvent', 'newNotification', 'refreshMediaGalleryEvent', 'refreshManagementData'];
 }
 

@@ -5,6 +5,7 @@ import '../admin_service.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sound_preview.dart';
 import '../../services/sound_service.dart';
+import '../../shared/tab_activity.dart';
 enum SettingsCategory {
   profile,
   appearance,
@@ -45,6 +46,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   bool _incidentUpdates = true;
   bool _systemNotifications = false;
   bool _soundAlerts = true;
+  bool _tabActivityDots = true;
   bool _duplicateDetection = true;
   bool _emailNotifications = true;
   bool _smsAlerts = false;
@@ -125,6 +127,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _incidentUpdates = _toBool(settings['incident_updates'], defaultValue: true);
           _systemNotifications = _toBool(settings['system_notifications']);
           _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
+          _tabActivityDots = _toBool(settings['tab_activity_dots'], defaultValue: true);
           _duplicateDetection = _toBool(settings['duplicate_detection'], defaultValue: true);
           _emailNotifications = _toBool(settings['email_notifications'], defaultValue: true);
           _smsAlerts = _toBool(settings['sms_alerts']);
@@ -965,6 +968,19 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         'onChanged': (bool v) {
           setState(() => _duplicateDetection = v);
           _saveSetting({'duplicate_detection': v ? 1 : 0});
+        },
+      },
+      {
+        'icon': Icons.circle_notifications_outlined,
+        'title': 'Tab Activity Dots',
+        'subtitle': 'Show a dot on sidebar tabs where something new happened',
+        'value': _tabActivityDots,
+        'color': accentPurple,
+        'key': 'tab_activity_dots',
+        'onChanged': (bool v) {
+          setState(() => _tabActivityDots = v);
+          TabActivity.enabled.value = v;
+          _saveSetting({'tab_activity_dots': v ? 1 : 0});
         },
       },
       {

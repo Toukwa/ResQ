@@ -65,6 +65,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     super.initState();
     _loadNotifications();
     _initWebSocket();
+    TabActivity.enabled.addListener(_onTabDotsSetting);
     _loadUserSettingsAndInitInactivityTimer();
     
     // Periodic fallback polling for notifications (every 10 seconds)
@@ -84,6 +85,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     try {
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
+      TabActivity.enabled.value = '${settings?['tab_activity_dots']}' != '0';
       if (settings != null && mounted) {
         if (settings['theme_mode'] != null) {
           ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
@@ -227,6 +229,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     _pollingTimer?.cancel();
     _socket?.disconnect();
     SoundService.stop();
+    TabActivity.enabled.removeListener(_onTabDotsSetting);
     super.dispose();
   }
 
@@ -234,6 +237,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
   final Set<int> _tabsWithActivity = {};
 
   void _markTabActivity(TabActivity? activity) {
+    if (!TabActivity.enabled.value) return;
     final tabs = switch (activity) {
       TabActivity.incidents => const [2],
       TabActivity.media => const [4],
@@ -242,6 +246,11 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     };
     final fresh = tabs.where((t) => t != _selectedIndex && !_tabsWithActivity.contains(t));
     if (fresh.isNotEmpty && mounted) setState(() => _tabsWithActivity.addAll(fresh));
+  }
+
+  /// Turning the setting off clears the dots right away.
+  void _onTabDotsSetting() {
+    if (mounted) setState(() => _tabsWithActivity.clear());
   }
 
   void _initWebSocket() {

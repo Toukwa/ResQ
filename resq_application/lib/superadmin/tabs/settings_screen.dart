@@ -5,6 +5,7 @@ import '../../admin/admin_service.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sound_preview.dart';
 import '../../services/sound_service.dart';
+import '../../shared/tab_activity.dart';
 enum SettingsCategory {
   appearance,
   alerts,
@@ -42,6 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _incidentUpdates = true;
   bool _systemNotifications = false;
   bool _soundAlerts = true;
+  bool _tabActivityDots = true;
   bool _emailNotifications = true;
   bool _smsAlerts = false;
   // Map Settings state (backed by user_settings table)
@@ -121,6 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _incidentUpdates = _toBool(settings['incident_updates'], defaultValue: true);
           _systemNotifications = _toBool(settings['system_notifications']);
           _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
+          _tabActivityDots = _toBool(settings['tab_activity_dots'], defaultValue: true);
           _emailNotifications = _toBool(settings['email_notifications'], defaultValue: true);
           _smsAlerts = _toBool(settings['sms_alerts']);
           _autoCenterOnIncident = _toBool(settings['auto_center_on_incident'], defaultValue: true);
@@ -779,6 +782,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'onChanged': (bool v) {
           setState(() => _systemNotifications = v);
           _saveSetting({'system_notifications': v ? 1 : 0});
+        },
+      },
+      {
+        'icon': Icons.circle_notifications_outlined,
+        'title': 'Tab Activity Dots',
+        'subtitle': 'Show a dot on sidebar tabs where something new happened',
+        'value': _tabActivityDots,
+        'color': accentPurple,
+        'key': 'tab_activity_dots',
+        'onChanged': (bool v) {
+          setState(() => _tabActivityDots = v);
+          TabActivity.enabled.value = v;
+          _saveSetting({'tab_activity_dots': v ? 1 : 0});
         },
       },
       {
