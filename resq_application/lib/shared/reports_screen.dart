@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -27,9 +28,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
+    _resetToToday();
+  }
+
+  Timer? _midnightTimer;
+
+  /// Reports open on today's figures and switch to the new day at midnight.
+  /// Earlier days stay available by picking dates.
+  void _resetToToday() {
     final today = DateUtils.dateOnly(DateTime.now());
-    _range = DateTimeRange(start: today.subtract(const Duration(days: 29)), end: today);
+    _range = DateTimeRange(start: today, end: today);
     _load();
+    _midnightTimer?.cancel();
+    _midnightTimer = Timer(today.add(const Duration(days: 1)).difference(DateTime.now()), () {
+      if (mounted) _resetToToday();
+    });
+  }
+
+  @override
+  void dispose() {
+    _midnightTimer?.cancel();
+    super.dispose();
   }
 
   DateTime get _end => _range.end.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));

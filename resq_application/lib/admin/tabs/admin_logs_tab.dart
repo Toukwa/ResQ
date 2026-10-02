@@ -52,8 +52,14 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   // Advanced filters
   String? _selectedActionFilter;
   String? _selectedStatusFilter;
-  DateTime? _startDate;
-  DateTime? _endDate;
+  // The log view starts on today's activity and resets to the new day at midnight
+  DateTime? _startDate = DateUtils.dateOnly(DateTime.now());
+  DateTime? _endDate = DateUtils.dateOnly(DateTime.now());
+
+  bool get _isTodayRange {
+    final today = DateUtils.dateOnly(DateTime.now());
+    return _startDate == today && _endDate == today;
+  }
   bool _showAdvancedFilters = true;
 
   @override
@@ -164,6 +170,14 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     _midnightTimer?.cancel();
     _midnightTimer = Timer(timeUntilMidnight, () async {
       await _exportDailyLogsForMidnight();
+      // New day: show the new day's activity
+      if (mounted) {
+        setState(() {
+          _startDate = DateUtils.dateOnly(DateTime.now());
+          _endDate = _startDate;
+          _currentPage = 1;
+        });
+      }
       _scheduleMidnightAutoExport();
     });
   }
@@ -663,8 +677,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     return _selectedFilterIndex > 0 ||
         _selectedActionFilter != null ||
         _selectedStatusFilter != null ||
-        _startDate != null ||
-        _endDate != null ||
+        !_isTodayRange ||
         widget.searchFilter.trim().isNotEmpty;
   }
 
@@ -1179,8 +1192,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   _selectedFilterIndex = 0;
                   _selectedActionFilter = null;
                   _selectedStatusFilter = null;
-                  _startDate = null;
-                  _endDate = null;
+                  _startDate = DateUtils.dateOnly(DateTime.now());
+                  _endDate = _startDate;
                   _currentPage = 1;
                 });
               },

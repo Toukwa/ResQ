@@ -745,7 +745,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                 curve: Curves.easeOutCubic,
                                                 transform: Matrix4.translationValues(isHovered ? 6.0 : 0.0, 0, 0),
                                                 child: Material(
-                                                  color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                                                  color: isSelected ? (ts.isDark ? const Color(0xFF1E3A5F) : const Color(0xFFEFF6FF)) : (ts.isDark ? ts.subtleBackground : const Color(0xFFF8FAFC)),
                                                   borderRadius: BorderRadius.circular(12),
                                                   child: InkWell(
                                                     onTap: () {
@@ -760,7 +760,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                       decoration: BoxDecoration(
                                                         borderRadius: BorderRadius.circular(12),
                                                         border: Border.all(
-                                                          color: isSelected ? const Color(0xFF2563EB) : (isHovered ? const Color(0xFFCBD5E1) : Colors.transparent),
+                                                          color: isSelected ? const Color(0xFF2563EB) : (isHovered ? (ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1)) : Colors.transparent),
                                                         ),
                                                       ),
                                                       child: Row(
@@ -768,13 +768,13 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                           Container(
                                                             padding: const EdgeInsets.all(6),
                                                             decoration: BoxDecoration(
-                                                              color: const Color(0xFFE0F2FE),
+                                                              color: ts.isDark ? const Color(0xFF0C4A6E) : const Color(0xFFE0F2FE),
                                                               borderRadius: BorderRadius.circular(8),
                                                             ),
-                                                            child: const Icon(
+                                                            child: Icon(
                                                               Icons.directions_car_filled_rounded,
                                                               size: 16,
-                                                              color: Color(0xFF0284C7),
+                                                              color: ts.isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                                                             ),
                                                           ),
                                                           const SizedBox(width: 10),
@@ -783,10 +783,10 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                                             children: [
                                                               Text(
                                                                 unitCode,
-                                                                style: const TextStyle(
+                                                                style: TextStyle(
                                                                   fontSize: 12,
                                                                   fontWeight: FontWeight.bold,
-                                                                  color: Color(0xFF0284C7),
+                                                                  color: ts.isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                                                                 ),
                                                               ),
                                                               Text(

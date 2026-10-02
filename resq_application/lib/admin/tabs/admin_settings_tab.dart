@@ -1119,14 +1119,14 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F6FF),
+              color: ThemeService.instance.isDark ? const Color(0xFF172554) : const Color(0xFFF0F6FF),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0EDFF)),
+              border: Border.all(color: ThemeService.instance.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFE0EDFF)),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.lock_outline_rounded, color: Color(0xFF0066FF), size: 18),
-                SizedBox(width: 12),
+                Icon(Icons.lock_outline_rounded, color: _passwordAccent, size: 18),
+                const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1135,18 +1135,18 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0066FF),
+                        color: _passwordAccent,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Update your login credentials securely',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                      style: TextStyle(fontSize: 11, color: ThemeService.instance.textSecondary),
                     ),
                   ],
                 ),
-                Spacer(),
-                Icon(Icons.chevron_right_rounded, color: Color(0xFF0066FF), size: 20),
+                const Spacer(),
+                Icon(Icons.chevron_right_rounded, color: _passwordAccent, size: 20),
               ],
             ),
           ),
@@ -1158,6 +1158,9 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   // ---------------------------------------------------------------------------
   // CHANGE PASSWORD DIALOG MODAL
   // ---------------------------------------------------------------------------
+  /// Brighter blue on dark backgrounds so the Change Password card stays readable.
+  Color get _passwordAccent => ThemeService.instance.isDark ? const Color(0xFF60A5FA) : const Color(0xFF0066FF);
+
   void _showChangePasswordDialog() {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
