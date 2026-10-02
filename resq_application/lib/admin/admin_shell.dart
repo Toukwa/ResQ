@@ -22,6 +22,7 @@ import 'tabs/admin_management_screen.dart';
 import 'tabs/admin_settings_tab.dart';
 import '../shared/reports_screen.dart';
 import '../services/sound_service.dart';
+import '../shared/tab_activity.dart';
 
 
 void main() {
@@ -196,6 +197,20 @@ class _AdminShellState extends State<AdminShell> {
         .listen((_) => _fetchNotifications());
   }
 
+  /// Tabs with activity since the admin last opened them.
+  final Set<int> _tabsWithActivity = {};
+
+  void _markTabActivity(TabActivity? activity) {
+    final tabs = switch (activity) {
+      TabActivity.incidents => const [1, 3], // request queue, incident log
+      TabActivity.media => const [5],
+      TabActivity.management => const [6],
+      null => const <int>[],
+    };
+    final fresh = tabs.where((t) => t != _selectedIndex && !_tabsWithActivity.contains(t));
+    if (fresh.isNotEmpty && mounted) setState(() => _tabsWithActivity.addAll(fresh));
+  }
+
   void _initSocket() {
     try {
       _socket = io.io(
@@ -215,6 +230,9 @@ class _AdminShellState extends State<AdminShell> {
         'refreshIncidentQueueEvent',
       ]) {
         _socket?.on(event, (_) => _notificationTrigger.add(event));
+      }
+      for (final event in TabActivity.events) {
+        _socket?.on(event, (data) => _markTabActivity(TabActivity.of(event, data)));
       }
     } catch (e) {
       debugPrint('AdminShell socket error: $e');
@@ -398,7 +416,11 @@ class _AdminShellState extends State<AdminShell> {
         children: [
           AdminSidebar(
             selectedIndex: _selectedIndex,
-            onSelectTab: (index) => setState(() => _selectedIndex = index),
+            tabsWithActivity: _tabsWithActivity,
+            onSelectTab: (index) => setState(() {
+              _selectedIndex = index;
+              _tabsWithActivity.remove(index);
+            }),
             onLogout: () async {
               await SessionService.clearSession();
               if (!context.mounted) return;
@@ -437,7 +459,10 @@ class _AdminShellState extends State<AdminShell> {
                         adminId: _effectiveUserId,
                         department: _effectiveDepartment,
                         onRefreshNeeded: () => setState(() {}),
-                        onSwitchTab: (index) => setState(() => _selectedIndex = index),
+                        onSwitchTab: (index) => setState(() {
+                          _selectedIndex = index;
+                          _tabsWithActivity.remove(index);
+                        }),
                       ),
                       AdminVehiclesTab(
                         searchFilter: _currentSearchQuery,

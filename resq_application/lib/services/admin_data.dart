@@ -406,7 +406,7 @@ class AdminData {
     });
     await Rtdb.set('user_ids/$id', uid);
     await IncidentData.log('ACCOUNT_CREATED', 'USER', id, {'email': email, 'role': data['role'] ?? 'Citizen'});
-    LiveEvents.emit('refreshManagementData');
+    LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});
     return 'Account created successfully.';
   }
 
@@ -427,7 +427,7 @@ class AdminData {
     });
     await FirebaseAuthRest.sendPasswordReset(email);
     await IncidentData.log('ACCOUNT_REACTIVATED', 'USER', match.first.value['id'], {'email': email, 'role': data['role']});
-    LiveEvents.emit('refreshManagementData');
+    LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});
     return 'This email belonged to a deleted account, so it was restored with the new details. '
         'A link to set a new password was emailed to $email.';
   }
@@ -446,7 +446,7 @@ class AdminData {
       ...await _deptFields(data['deptID']),
     });
     await IncidentData.log('ACCOUNT_UPDATED', 'USER', accountId, {'fields': data.keys.where((k) => k != 'password').toList()});
-    LiveEvents.emit('refreshManagementData');
+    LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});
   }
 
   /// Disables the account: it can no longer log in and is hidden from lists.
@@ -456,6 +456,6 @@ class AdminData {
     if (uid == FirebaseAuthRest.uid) throw const HttpException('You cannot delete your own account.');
     await Rtdb.update('users/$uid', {'disabled': true});
     await IncidentData.log('ACCOUNT_DISABLED', 'USER', accountId, {});
-    LiveEvents.emit('refreshManagementData');
+    LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});
   }
 }

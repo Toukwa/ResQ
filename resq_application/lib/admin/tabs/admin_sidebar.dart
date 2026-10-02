@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../services/theme_service.dart';
 import '../../shared/resq_logo.dart';
+import '../../shared/tab_activity.dart';
 
 class AdminSidebar extends StatelessWidget {
   final int selectedIndex;
   final Function(int index) onSelectTab;
   final VoidCallback onLogout;
+  /// Tabs with activity the admin hasn't looked at yet (shown with a dot).
+  final Set<int> tabsWithActivity;
 
   const AdminSidebar({
     super.key,
     required this.selectedIndex,
     required this.onSelectTab,
     required this.onLogout,
+    this.tabsWithActivity = const {},
   });
 
   @override
@@ -143,10 +147,13 @@ class AdminSidebar extends StatelessWidget {
         message: tooltipText,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
-          child: Icon(
-            icon,
-            color: isActive ? const Color(0xFFFF6B00) : inactiveColor,
-            size: 24,
+          child: ActivityDot(
+            show: !isActive && tabsWithActivity.contains(targetIndex),
+            child: Icon(
+              icon,
+              color: isActive ? const Color(0xFFFF6B00) : inactiveColor,
+              size: 24,
+            ),
           ),
         ),
       ),

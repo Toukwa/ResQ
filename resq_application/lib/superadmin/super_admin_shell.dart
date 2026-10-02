@@ -18,6 +18,7 @@ import './tabs/management_screen.dart'; // Tab 6: Account/Agency Management
 import './tabs/settings_screen.dart'; // Tab 7: Settings Panel
 import '../shared/reports_screen.dart';
 import '../services/sound_service.dart';
+import '../shared/tab_activity.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -229,6 +230,20 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     super.dispose();
   }
 
+  /// Tabs with activity since the super admin last opened them.
+  final Set<int> _tabsWithActivity = {};
+
+  void _markTabActivity(TabActivity? activity) {
+    final tabs = switch (activity) {
+      TabActivity.incidents => const [2],
+      TabActivity.media => const [4],
+      TabActivity.management => const [5],
+      null => const <int>[],
+    };
+    final fresh = tabs.where((t) => t != _selectedIndex && !_tabsWithActivity.contains(t));
+    if (fresh.isNotEmpty && mounted) setState(() => _tabsWithActivity.addAll(fresh));
+  }
+
   void _initWebSocket() {
     try {
       _socket = io.io(
@@ -248,6 +263,9 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
       _socket!.on('newNotification', reload);
       _socket!.on('refreshIncidentQueueEvent', reload);
       _socket!.on('refreshManagementData', reload);
+      for (final event in TabActivity.events) {
+        _socket!.on(event, (data) => _markTabActivity(TabActivity.of(event, data)));
+      }
 
       _socket!.connect();
     } catch (_) {
@@ -491,6 +509,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
       onTap: () {
         setState(() {
           _selectedIndex = targetIndex;
+          _tabsWithActivity.remove(targetIndex);
         });
       },
       behavior: HitTestBehavior.opaque,
@@ -498,10 +517,13 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
         message: tooltipText,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
-          child: Icon(
-            icon,
-            color: isActive ? const Color(0xFFFF6B00) : (inactiveColor ?? const Color(0xFF94A3B8)),
-            size: 24,
+          child: ActivityDot(
+            show: !isActive && _tabsWithActivity.contains(targetIndex),
+            child: Icon(
+              icon,
+              color: isActive ? const Color(0xFFFF6B00) : (inactiveColor ?? const Color(0xFF94A3B8)),
+              size: 24,
+            ),
           ),
         ),
       ),
