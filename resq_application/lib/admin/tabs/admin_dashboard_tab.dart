@@ -685,7 +685,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   void _showDispatchDialog(Map<String, dynamic> incident) {
     final reqId = int.tryParse(incident['Req_ID']?.toString() ?? incident['req_ID']?.toString() ?? incident['id']?.toString() ?? '0') ?? 0;
-    int? selectedVehicleId;
+    final selectedVehicleIds = <int>{};
     final availableVehicles = _vehicles.where((v) => ((v['Status'] ?? v['status'] ?? '').toString().toLowerCase() == 'available') && _isVehicleForDepartment(v)).toList();
 
     showDialog(
@@ -724,29 +724,33 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         'No available vehicles at this time.',
                         style: TextStyle(color: Colors.red, fontSize: 12),
                       )
-                    : Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            isExpanded: true,
-                            value: selectedVehicleId,
-                            hint: const Text('Choose a vehicle'),
-                            items: availableVehicles.map((v) {
-                              final vId = int.tryParse(v['Vehicle_ID']?.toString() ?? v['vehicle_id']?.toString() ?? '0') ?? 0;
+                    : ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 260, minWidth: 320),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: availableVehicles.map((v) {
+                              final vId = int.tryParse((v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['vehicle_id'])?.toString() ?? '') ?? 0;
                               final callSign = v['Call_Sign'] ?? v['call_sign'] ?? v['plate_no'] ?? 'Unit';
                               final dept = v['Department_Name'] ?? v['deptName'] ?? v['department_name'] ?? 'ResQ';
-                              return DropdownMenuItem<int>(
-                                value: vId,
-                                child: Text('$callSign ($dept)'),
+                              return CheckboxListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                value: selectedVehicleIds.contains(vId),
+                                title: Text('$callSign ($dept)'),
+                                subtitle: Text('${v['vehicle_type'] ?? ''}'),
+                                onChanged: vId == 0
+                                    ? null
+                                    : (checked) => setDialogState(() {
+                                          if (checked == true) {
+                                            selectedVehicleIds.add(vId);
+                                          } else {
+                                            selectedVehicleIds.remove(vId);
+                                          }
+                                        }),
                               );
                             }).toList(),
-                            onChanged: (val) {
-                              setDialogState(() => selectedVehicleId = val);
-                            },
                           ),
                         ),
                       ),
@@ -763,21 +767,28 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                onPressed: (selectedVehicleId == null && availableVehicles.isNotEmpty)
+                onPressed: selectedVehicleIds.isEmpty
                     ? null
                     : () async {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(dialogCtx);
-                        final result = await AdminService.dispatchVehicle(
-                          reqId: reqId,
-                          vehicleId: selectedVehicleId ?? 1,
-                          adminId: widget.adminId,
-                          department: widget.department,
-                        );
+                        var failed = 0;
+                        for (final vehicleId in selectedVehicleIds) {
+                          final res = await AdminService.dispatchVehicle(
+                            reqId: reqId,
+                            vehicleId: vehicleId,
+                            adminId: widget.adminId,
+                            department: widget.department,
+                          );
+                          if (res == 'Failed to dispatch vehicle') failed++;
+                        }
+                        final result = failed == 0
+                            ? (selectedVehicleIds.length == 1 ? 'Unit dispatched!' : '${selectedVehicleIds.length} units dispatched!')
+                            : '$failed of ${selectedVehicleIds.length} units failed to dispatch';
                         if (!mounted) return;
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text(result ?? 'Emergency Unit Dispatched!'),
+                            content: Text(result),
                             backgroundColor: const Color(0xFF27AE60),
                           ),
                         );

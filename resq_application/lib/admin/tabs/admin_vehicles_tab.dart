@@ -37,7 +37,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   String _localSearchQuery = '';
   int? _selectedRequestId;
-  int? _selectedVehicleId;
+  /// Units picked on the right panel; all of them go out on one dispatch.
+  final Set<int> _selectedVehicleIds = {};
   String _bottomTabFilter = 'Cancelled';
   String _selectedQueueFilter = 'All';
 
@@ -488,23 +489,30 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     }
   }
 
-  Future<void> _handleDispatchUnit(int reqId, int vehicleId) async {
+  Future<void> _handleDispatchUnits(int reqId, List<int> vehicleIds) async {
     setState(() => _isActionInProgress = true);
-    final message = await AdminService.dispatchVehicle(
-      reqId: reqId,
-      vehicleId: vehicleId,
-      adminId: widget.adminId,
-      department: widget.department,
-    );
+    var failed = 0;
+    for (final vehicleId in vehicleIds) {
+      final res = await AdminService.dispatchVehicle(
+        reqId: reqId,
+        vehicleId: vehicleId,
+        adminId: widget.adminId,
+        department: widget.department,
+      );
+      if (res == 'Failed to dispatch vehicle') failed++;
+    }
+    final message = failed == 0
+        ? (vehicleIds.length == 1 ? 'Unit dispatched!' : '${vehicleIds.length} units dispatched!')
+        : '$failed of ${vehicleIds.length} units failed to dispatch';
     setState(() {
       _isActionInProgress = false;
-      _selectedVehicleId = null;
+      _selectedVehicleIds.clear();
     });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message ?? 'Vehicle dispatched successfully!'),
+          content: Text(message),
           backgroundColor: const Color(0xFFFF5C00),
         ),
       );
@@ -1350,17 +1358,14 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   width: double.infinity,
                   height: 42,
                   child: ElevatedButton.icon(
-                    onPressed: _selectedVehicleId != null
-                        ? () => _handleDispatchUnit(
-                              reqIdNum,
-                              int.parse(_selectedVehicleId.toString()),
-                            )
+                    onPressed: _selectedVehicleIds.isNotEmpty
+                        ? () => _handleDispatchUnits(reqIdNum, _selectedVehicleIds.toList())
                         : null,
                     icon: const Icon(Icons.send_rounded, size: 16),
                     label: Text(
-                      _selectedVehicleId != null
-                          ? 'Dispatch Selected Unit'
-                          : 'Select an Available Unit on Right Panel to Dispatch',
+                      _selectedVehicleIds.isNotEmpty
+                          ? 'Dispatch ${_selectedVehicleIds.length} Selected Unit${_selectedVehicleIds.length == 1 ? '' : 's'}'
+                          : 'Select Available Units on Right Panel to Dispatch',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -1398,7 +1403,28 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 ),
               ],
             )
-          else if (isDispatched && reqIdNum != 0)
+          else if (isDispatched && reqIdNum != 0) ...[
+            if (_selectedVehicleIds.isNotEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: ElevatedButton.icon(
+                  onPressed: () => _handleDispatchUnits(reqIdNum, _selectedVehicleIds.toList()),
+                  icon: const Icon(Icons.add_road_rounded, size: 16),
+                  label: Text(
+                    'Send ${_selectedVehicleIds.length} More Unit${_selectedVehicleIds.length == 1 ? '' : 's'}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5C00),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 Expanded(
@@ -1450,7 +1476,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   ),
                 ),
               ],
-            )
+            ),
+          ]
           else if (isCompleted)
             Container(
               padding: const EdgeInsets.all(12),
@@ -1607,7 +1634,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     itemBuilder: (context, index) {
                       final v = Map<String, dynamic>.from(filteredVehicles[index] as Map);
                       final vId = v['Vehicle_ID'] ?? v['vehicle_ID'] ?? v['vehicle_id'] ?? v['id'];
-                      final isSelected = vId != null && vId == _selectedVehicleId;
+                      final isSelected = _selectedVehicleIds.contains(int.tryParse('$vId'));
 
                       return _buildVehicleCard(v, isSelected: isSelected);
                     },
@@ -1650,11 +1677,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       onTap: isAvailable && vId != null
           ? () {
               setState(() {
-                if (_selectedVehicleId == vId) {
-                  _selectedVehicleId = null;
-                } else {
-                  _selectedVehicleId = vId;
-                }
+                final id = int.parse('$vId');
+                if (!_selectedVehicleIds.remove(id)) _selectedVehicleIds.add(id);
               });
             }
           : null,

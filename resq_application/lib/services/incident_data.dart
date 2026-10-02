@@ -341,6 +341,8 @@ class IncidentData {
     if (incident == null) throw const HttpException('Incident not found.');
     await _ensureMyDepartment(incident);
     final vehicle = await Rtdb.get('vehicles/$vehicleId');
+    // Writing status to a missing id would create a ghost "Unit #null" vehicle
+    if (vehicle == null || vehicle['vehicle_ID'] == null) throw const HttpException('Vehicle not found.');
     final id = await Rtdb.nextId('counters/dispatches');
 
     await Rtdb.set('dispatches/$id', {

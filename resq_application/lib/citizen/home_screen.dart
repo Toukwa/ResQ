@@ -246,13 +246,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final rawLat = double.tryParse((v['latitude'] ?? '').toString());
       final rawLng = double.tryParse((v['longitude'] ?? '').toString());
 
-      // If live GPS coordinates are missing, position slightly offset from emergency pin for visibility
-      double vLat = (rawLat != null && rawLat.isFinite && !rawLat.isNaN)
-          ? rawLat
-          : (_currentLocation.latitude + (0.0015 * (i + 1)));
-      double vLng = (rawLng != null && rawLng.isFinite && !rawLng.isNaN)
-          ? rawLng
-          : (_currentLocation.longitude + (0.0015 * (i + 1)));
+      // Only real GPS positions go on the map, never a made-up spot near the citizen
+      if (rawLat == null || rawLng == null) continue;
+      final vLat = rawLat;
+      final vLng = rawLng;
 
       if (!vLat.isFinite || !vLng.isFinite || vLat.isNaN || vLng.isNaN) continue;
 
