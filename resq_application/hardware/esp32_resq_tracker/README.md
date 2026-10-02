@@ -13,7 +13,7 @@ ESP32 + NEO-M8L GPS, with an optional SIM7600 for mobile data. The tracker write
 
 Once the SIM7600 is wired, has its own suitable power supply, and holds a SIM with load/data:
 
-1. Install **TinyGSM** from Library Manager.
+1. Install **TinyGSM** and **GovoroxSSLClient** from Library Manager.
 2. In `esp32_resq_tracker.ino`, set `#define ENABLE_CELLULAR true`.
 3. In `secrets.h`, set `GSM_APN` for your network:
    - Globe / TM: `internet.globe.com.ph`

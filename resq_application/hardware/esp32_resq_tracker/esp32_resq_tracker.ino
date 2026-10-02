@@ -7,14 +7,20 @@
 //   - TinyGPSPlus        (Mikal Hart)
 //   - ArduinoHttpClient  (Arduino)
 //   - TinyGSM            (Volodymyr Shymanskyy)  - only when ENABLE_CELLULAR is true
+//   - GovoroxSSLClient   (Govorox)               - only when ENABLE_CELLULAR is true
 
 // Set to true once the SIM7600 is wired, powered and has a SIM with mobile data.
-#define ENABLE_CELLULAR false
+#define ENABLE_CELLULAR true
+// Set to false to use mobile data only (Wi-Fi stays off).
+#define ENABLE_WIFI false
+// Shown at boot so you can confirm the right file was uploaded.
+#define SKETCH_VERSION "v5-modem-diag"
 
 #if ENABLE_CELLULAR
 #define TINY_GSM_MODEM_SIM7600
 #define TINY_GSM_RX_BUFFER 1024
 #include <TinyGsmClient.h>
+#include <SSLClient.h> // TinyGSM has no TLS for the SIM7600, so the ESP32 does it
 #endif
 
 #include <WiFi.h>
@@ -47,7 +53,7 @@ constexpr uint32_t GPS_BAUD = 9600;
 // SIM7600 on UART2. Must be different pins from the GPS.
 constexpr int MODEM_RX_PIN = 16;     // ESP32 RX <- SIM7600 TX
 constexpr int MODEM_TX_PIN = 17;     // ESP32 TX -> SIM7600 RX
-constexpr int MODEM_PWRKEY_PIN = -1; // GPIO wired to the module's PWRKEY, or -1 if it powers on by itself
+constexpr int MODEM_PWRKEY_PIN = 18; // GPIO wired to the module's PWRKEY, or -1 if it powers on by itself
 constexpr uint32_t MODEM_BAUD = 115200;
 
 // ---------- Timing ----------
@@ -69,8 +75,10 @@ WiFiClientSecure wifiAuth;
 #if ENABLE_CELLULAR
 HardwareSerial ModemSerial(2);
 TinyGsm modem(ModemSerial);
-TinyGsmClientSecure gsmRtdb(modem, 0);
-TinyGsmClientSecure gsmAuth(modem, 1);
+TinyGsmClient gsmRtdbBase(modem, 0);
+TinyGsmClient gsmAuthBase(modem, 1);
+SSLClient gsmRtdb(&gsmRtdbBase);
+SSLClient gsmAuth(&gsmAuthBase);
 bool cellularReady = false;
 unsigned long lastCellularAttempt = 0;
 #endif
@@ -120,7 +128,7 @@ void connectWiFi() {
   }
 }
 
-bool wifiUp() { return WiFi.status() == WL_CONNECTED; }
+bool wifiUp() { return ENABLE_WIFI && WiFi.status() == WL_CONNECTED; }
 
 #if ENABLE_CELLULAR
 void powerOnModem() {
@@ -136,7 +144,8 @@ void powerOnModem() {
 
 void connectCellular() {
   Serial.println("[SIM] Starting modem...");
-  if (!modem.init() && !modem.restart()) {
+  // The SIM7600 needs ~15-20 s after power-on before it answers AT commands.
+  if (!modem.testAT(30000) || (!modem.init() && !modem.restart())) {
     Serial.println("[SIM] Modem not responding. Check wiring, power and MODEM_RX/TX pins.");
     return;
   }
@@ -155,6 +164,27 @@ void connectCellular() {
   }
   cellularReady = true;
   Serial.println("[SIM] Mobile data connected.");
+  Serial.printf("[SIM] IP: %s\n", modem.localIP().toString().c_str());
+  // Diagnostic: ask the modem about its data state directly.
+  const char* diagCmds[] = {"+CPSI?", "+CGDCONT?", "+CGACT?", "+NETOPEN?", "+IPADDR", "+CPING=\"8.8.8.8\",1,4"};
+  for (const char* cmd : diagCmds) {
+    String reply;
+    modem.sendAT(cmd);
+    const bool isPing = strncmp(cmd, "+CPING", 6) == 0;
+    modem.waitResponse(5000L, reply);
+    if (isPing) delay(8000); // ping results arrive after OK
+    while (ModemSerial.available()) reply += (char)ModemSerial.read();
+    reply.trim();
+    Serial.printf("[DIAG] AT%s -> %s\n", cmd, reply.c_str());
+  }
+  // Diagnostic: plain TCP (no TLS) to the auth server. If this fails, TLS is not the problem.
+  const bool tcpOk = gsmAuthBase.connect(AUTH_HOST, 443);
+  Serial.printf("[SIM] TCP test to %s:443 - %s\n", AUTH_HOST, tcpOk ? "OK" : "FAILED");
+  gsmAuthBase.stop();
+  // Diagnostic: TCP straight to an IP (no DNS). OK here but FAILED above = DNS problem.
+  const bool ipOk = gsmAuthBase.connect(IPAddress(1, 1, 1, 1), 80);
+  Serial.printf("[SIM] TCP test to 1.1.1.1:80 (no DNS) - %s\n", ipOk ? "OK" : "FAILED");
+  gsmAuthBase.stop();
 }
 
 bool cellularUp() {
@@ -204,6 +234,8 @@ int httpsRequest(Client& client, const char* host, const char* method, const Str
   const int err = http.startRequest(path.c_str(), method, contentType, body.length(),
                                     reinterpret_cast<const byte*>(body.c_str()));
   if (err != 0) {
+    // -1 = could not connect (DNS/TCP/TLS), -2 = server error, -3 = timed out
+    Serial.printf("[HTTPS] %s via %s failed, startRequest error %d\n", host, transportName(), err);
     http.stop();
     return -1;
   }
@@ -360,8 +392,13 @@ void setup() {
 
   wifiRtdb.setInsecure(); // no CA bundle on the board; traffic is still encrypted
   wifiAuth.setInsecure();
+#if ENABLE_CELLULAR
+  gsmRtdb.setInsecure();
+  gsmAuth.setInsecure();
+#endif
 
-  connectWiFi();
+  if (ENABLE_WIFI) connectWiFi();
+  else WiFi.mode(WIFI_STA); // radio on but never connects; keeps WiFi.macAddress() (the tracker ID) valid
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 
 #if ENABLE_CELLULAR
@@ -372,7 +409,7 @@ void setup() {
 #endif
 
   Serial.println("=================================================");
-  Serial.printf(" ResQ Hardware Tracker Started (MAC: %s)\n", getHardwareId().c_str());
+  Serial.printf(" ResQ Hardware Tracker %s Started (MAC: %s)\n", SKETCH_VERSION, getHardwareId().c_str());
   Serial.printf(" Firebase account: %s\n", trackerEmail().c_str());
   Serial.printf(" Mobile data: %s\n", ENABLE_CELLULAR ? "enabled (backup when Wi-Fi is down)" : "disabled");
   Serial.println("=================================================");
@@ -389,7 +426,7 @@ void loop() {
   }
 
   // Non-blocking nudge; the loop must keep running to read the GPS and use the SIM.
-  if (!wifiUp() && now - lastWifiAttempt >= WIFI_RETRY_INTERVAL_MS) {
+  if (ENABLE_WIFI && !wifiUp() && now - lastWifiAttempt >= WIFI_RETRY_INTERVAL_MS) {
     lastWifiAttempt = now;
     WiFi.reconnect();
   }
