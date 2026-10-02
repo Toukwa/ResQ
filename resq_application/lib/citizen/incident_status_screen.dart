@@ -7,6 +7,7 @@ import '../config.dart';
 import '../services/firebase_services.dart';
 import '../services/theme_service.dart';
 import 'citizen_header.dart';
+import '../shared/animated_marker_layer.dart';
 
 class IncidentStatusScreen extends StatefulWidget {
   final String citizenId;
@@ -858,7 +859,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
         ? LatLng(rawLat, rawLng)
         : const LatLng(13.4210, 123.4142);
 
-    final List<Marker> vehicleMarkers = [];
+    final Map<String, Marker> vehicleMarkers = {};
     for (int i = 0; i < _dispatchedVehicles.length; i++) {
       final v = _dispatchedVehicles[i];
       if (v is! Map) continue;
@@ -887,7 +888,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
         icon = Icons.local_police_rounded;
       }
 
-      vehicleMarkers.add(
+      vehicleMarkers['${v['vehicle_ID'] ?? v['Vehicle_ID'] ?? plate}'] =
         Marker(
           point: LatLng(vLat, vLng),
           width: 100,
@@ -937,8 +938,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               ),
             ],
           ),
-        ),
-      );
+        );
     }
 
     final ts = ThemeService.instance;
@@ -1009,10 +1009,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                       ],
                     ),
                   ),
-                  // ONLY Dispatched Vehicles Assigned to this Citizen's Request
-                  ...vehicleMarkers,
                 ],
               ),
+              // ONLY Dispatched Vehicles Assigned to this Citizen's Request
+              AnimatedMarkerLayer(markers: vehicleMarkers),
             ],
           ),
 

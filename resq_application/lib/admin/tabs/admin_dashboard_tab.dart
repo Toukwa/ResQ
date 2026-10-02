@@ -10,6 +10,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/firebase_services.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../services/theme_service.dart';
 
@@ -911,7 +912,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           markers: _buildMapMarkers(),
                         ),
                         // Every admin sees the whole fleet live
-                        MarkerLayer(markers: buildVehicleMarkers(_vehicles)),
+                        AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehicles)),
                       ],
                     ),
                     // Map Top-Left Header Overlay (1:1 SuperAdmin)

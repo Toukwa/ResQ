@@ -12,6 +12,7 @@ import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/image_gallery_widget.dart';
+import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
@@ -897,7 +898,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                       );
                                     }).toList(),
                                   ),
-                                  MarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
+                                  AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
                                 ],
                               ),
                               Positioned(

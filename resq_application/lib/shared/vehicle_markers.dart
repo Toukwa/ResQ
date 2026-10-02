@@ -16,8 +16,9 @@ import 'package:latlong2/latlong.dart';
 }
 
 /// One pin per vehicle with a GPS fix. Offline vehicles are drawn faded at their last position.
-List<Marker> buildVehicleMarkers(List<dynamic> vehicles) {
-  final markers = <Marker>[];
+/// Keyed by vehicle_ID for [AnimatedMarkerLayer].
+Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
+  final markers = <String, Marker>{};
   for (final v in vehicles) {
     if (v is! Map) continue;
     final lat = double.tryParse('${v['latitude']}');
@@ -25,7 +26,7 @@ List<Marker> buildVehicleMarkers(List<dynamic> vehicles) {
     if (lat == null || lng == null) continue;
     final style = vehicleMarkerStyle(v);
     final offline = v['computed_status'] == 'Offline';
-    markers.add(Marker(
+    markers['${v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['plate_no']}'] = Marker(
       point: LatLng(lat, lng),
       width: 36,
       height: 36,
@@ -44,7 +45,7 @@ List<Marker> buildVehicleMarkers(List<dynamic> vehicles) {
           ),
         ),
       ),
-    ));
+    );
   }
   return markers;
 }
