@@ -231,7 +231,11 @@ class _AdminShellState extends State<AdminShell> {
         setState(() {
           _unreadNotificationCount = count;
           _notifications = rawList
-              .map((item) => Map<String, dynamic>.from(item as Map))
+              .map((item) => <String, dynamic>{
+                    ...Map<String, dynamic>.from(item as Map),
+                    // The header and dialog look the notification up by 'id'
+                    'id': item['notificationId'],
+                  })
               .toList();
         });
       }
