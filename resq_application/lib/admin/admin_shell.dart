@@ -8,6 +8,7 @@ import 'admin_service.dart';
 import '../../config.dart';
 import '../../services/session_service.dart';
 import '../../services/theme_service.dart';
+import '../shared/session_timeout_guard.dart';
 
 // Dedicated Admin Submodules in lib/admin/tabs/
 import 'tabs/admin_header.dart';
@@ -423,7 +424,9 @@ class _AdminShellState extends State<AdminShell> {
   Widget build(BuildContext context) {
     // Whatever tab is on screen has been seen, however it was opened
     _tabsWithActivity.remove(_selectedIndex);
-    return Scaffold(
+    return SessionTimeoutGuard(
+      userId: _effectiveUserId,
+      child: Scaffold(
       body: Row(
         children: [
           AdminSidebar(
@@ -512,7 +515,7 @@ class _AdminShellState extends State<AdminShell> {
           ),
         ],
       ),
-    );
+    ));
   }
 
 }
