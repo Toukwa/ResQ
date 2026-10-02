@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
+import '../services/phone_call_reports.dart';
 import '../services/theme_service.dart';
 
 /// Lists the PNP / BFP / CDRRMO hotlines; tapping one opens the phone dialer
@@ -26,7 +27,9 @@ class _CallAgenciesSheet extends StatelessWidget {
     'CDRRMO': Icons.medical_services_rounded,
   };
 
-  Future<void> _call(BuildContext context, String number) async {
+  Future<void> _call(BuildContext context, String agency, String number) async {
+    // Saved on the phone; becomes an incident on the staff map once online
+    await PhoneCallReports.record(agency);
     final ok = await launchUrl(Uri(scheme: 'tel', path: number));
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -57,7 +60,7 @@ class _CallAgenciesSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  onTap: () => _call(context, h.number),
+                  onTap: () => _call(context, h.agency, h.number),
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Row(children: [

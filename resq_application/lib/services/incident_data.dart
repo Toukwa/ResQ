@@ -28,9 +28,10 @@ class IncidentData {
 
   static int? _int(dynamic v) => v == null ? null : int.tryParse(v.toString());
 
-  /// Completed incidents are taken off the staff maps.
+  /// Closed incidents (completed, declined or cancelled) are taken off the staff maps.
   static bool showOnMap(dynamic incident) =>
-      incident is Map && '${incident['reqStatus'] ?? incident['status']}'.toLowerCase() != 'completed';
+      incident is Map &&
+      !const {'completed', 'declined', 'cancelled'}.contains('${incident['reqStatus'] ?? incident['status']}'.toLowerCase());
 
   static String _nowIso() => DateTime.now().toUtc().toIso8601String();
 
@@ -193,6 +194,8 @@ class IncidentData {
     required double latitude,
     required double longitude,
     required List<File> images,
+    DateTime? reportedAt, // when the emergency was reported, if earlier than now (offline phone calls)
+    String? source,
   }) async {
     final user = await me();
     final urls = <String>[for (final img in images) await _uploadPhoto(img)];
@@ -210,8 +213,9 @@ class IncidentData {
       'longitude': longitude,
       'reqStatus': 'Pending',
       'image_path': urls.isEmpty ? null : urls.join(','),
-      'SOS_timeStamp': _nowIso(),
+      'SOS_timeStamp': reportedAt?.toUtc().toIso8601String() ?? _nowIso(),
       'createdAt': {'.sv': 'timestamp'},
+      'source': ?source,
       'dept_status': {for (final d in involvedDepartments(incidentType)) d: 'Pending'},
     });
 

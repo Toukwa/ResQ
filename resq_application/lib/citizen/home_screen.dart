@@ -9,6 +9,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/firebase_services.dart';
 import '../services/theme_service.dart';
+import '../services/phone_call_reports.dart';
 import '../services/report_status_notifier.dart';
 import 'citizen_header.dart';
 import 'incident_status_screen.dart';
@@ -187,6 +188,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await _initializeLiveTracking();
       // Phone notifications when a report's status changes
       await ReportStatusNotifier.start();
+      // Hotline calls made from the login screen while offline become incidents now
+      await PhoneCallReports.upload(widget.citizenId);
     });
   }
 
