@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'display_settings.dart';
 
 /// Live fleet pins shared by the admin and super admin dashboard maps.
 /// Every admin sees every vehicle; controlling a vehicle stays department-scoped elsewhere.
@@ -26,11 +27,12 @@ Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
     if (lat == null || lng == null) continue;
     final style = vehicleMarkerStyle(v);
     final offline = v['computed_status'] == 'Offline';
+    final size = DisplaySettings.labeledSize(36, 36);
     markers['${v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['plate_no']}'] = Marker(
       point: LatLng(lat, lng),
-      width: 36,
-      height: 36,
-      child: Tooltip(
+      width: size.width,
+      height: size.height,
+      child: DisplaySettings.labeledPin(Tooltip(
         message: '${v['plate_no'] ?? 'Vehicle'} · ${v['deptName'] ?? ''}${offline ? ' (offline)' : ''}',
         child: Opacity(
           opacity: offline ? 0.45 : 1,
@@ -44,7 +46,7 @@ Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
             child: Center(child: Icon(style.icon, size: 16, color: Colors.white)),
           ),
         ),
-      ),
+      ), v['plate_no']),
     );
   }
   return markers;

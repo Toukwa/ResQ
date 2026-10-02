@@ -11,6 +11,7 @@ import '../../admin/admin_service.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/vehicle_history_dialog.dart';
+import '../../shared/display_settings.dart';
 
 class MapScreen extends StatefulWidget {
   final String searchFilter;
@@ -54,6 +55,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    DisplaySettings.changes.addListener(_onDisplaySettings);
     _loadData(showLoading: true);
     // RxDart interval polling every 5 seconds with backpressure
     _pollingSubscription = _refreshSubject
@@ -74,8 +76,13 @@ class _MapScreenState extends State<MapScreen> {
     _initWebSocket();
   }
 
+  void _onDisplaySettings() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    DisplaySettings.changes.removeListener(_onDisplaySettings);
     _pollingSubscription?.cancel();
     _refreshSubject.close();
     _realtimeSubscription?.cancel();
@@ -137,10 +144,12 @@ class _MapScreenState extends State<MapScreen> {
       final vehicles = await AdminService.getAllVehicles();
       
       if (mounted) {
+        final focus = DisplaySettings.newIncidentPosition(_incidents, incidents ?? []);
         setState(() {
           _incidents = incidents ?? [];
           _vehicles = (vehicles ?? []).where((v) => v['latitude'] != null && v['longitude'] != null).toList();
         });
+        if (focus != null) _mapController.move(focus, 16.5);
       }
     } catch (e) {
       // If API fails, clear loading state with empty lists
@@ -368,6 +377,7 @@ class _MapScreenState extends State<MapScreen> {
                                             .whereType<Marker>()
                                             .toList(),
                                       ),
+                                      PolylineLayer(polylines: DisplaySettings.routeLines(_incidents, _vehicles)),
                                       MarkerLayer(
                                         markers: _vehicles
                                             .map((vehicle) {
@@ -377,13 +387,17 @@ class _MapScreenState extends State<MapScreen> {
                                               final longitude = double.tryParse('${vehicle['longitude']}');
                                               if (latitude == null || longitude == null) return null;
                                               final markerConfig = _getVehicleMarkerConfig(vehicle['dept_ID']?.toString() ?? '');
+                                              final size = DisplaySettings.labeledSize(36, 40);
                                               return Marker(
                                                 point: LatLng(latitude, longitude),
-                                                width: 36,
-                                                height: 40,
-                                                child: _VehiclePinMarker(
-                                                  icon: markerConfig['icon'] as IconData,
-                                                  color: markerConfig['color'] as Color,
+                                                width: size.width,
+                                                height: size.height,
+                                                child: DisplaySettings.labeledPin(
+                                                  _VehiclePinMarker(
+                                                    icon: markerConfig['icon'] as IconData,
+                                                    color: markerConfig['color'] as Color,
+                                                  ),
+                                                  vehicle['plate_no'],
                                                 ),
                                               );
                                             })

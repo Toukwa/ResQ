@@ -13,6 +13,7 @@ import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../services/theme_service.dart';
+import '../../shared/display_settings.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
 
@@ -72,6 +73,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   @override
   void initState() {
     super.initState();
+    DisplaySettings.changes.addListener(_onDisplaySettings);
     _setupRefreshStream();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initSocket();
@@ -79,8 +81,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     });
   }
 
+  void _onDisplaySettings() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    DisplaySettings.changes.removeListener(_onDisplaySettings);
     _refreshSubscription?.cancel();
     _refreshStream.close();
     _socket?.disconnect();
@@ -165,6 +172,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       final mediaData = results[4] as List<dynamic>?;
 
       if (mounted) {
+        final focus = DisplaySettings.newIncidentPosition(_incidents, incidentsData ?? []);
+        if (focus != null) _mapController.move(focus, 16.5);
         setState(() {
           if (metricsData != null) {
             _metrics = {
@@ -911,6 +920,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         MarkerLayer(
                           markers: _buildMapMarkers(),
                         ),
+                        PolylineLayer(polylines: DisplaySettings.routeLines(_incidents, _vehicles)),
                         // Every admin sees the whole fleet live
                         AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehicles)),
                       ],

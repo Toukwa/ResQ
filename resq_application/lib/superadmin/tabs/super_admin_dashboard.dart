@@ -14,6 +14,7 @@ import '../../services/theme_service.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
+import '../../shared/display_settings.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -71,6 +72,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    DisplaySettings.changes.addListener(_onDisplaySettings);
     _setupBufferedLogStream();
     _fetchDatabaseData(showLoading: true);
     _initWebSocket();
@@ -215,6 +217,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
       final rawMedia = results[4] as List<dynamic>;
 
       if (mounted) {
+        final focus = DisplaySettings.newIncidentPosition(_unfilteredIncidentQueueList, listData ?? []);
+        if (focus != null) _mapController.move(focus, 16.5);
         setState(() {
           if (metricsData != null) {
             _availableUnits = metricsData['availableUnits'] ?? metricsData['activeVehicles'] ?? 0;
@@ -794,8 +798,13 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     );
   }
 
+  void _onDisplaySettings() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    DisplaySettings.changes.removeListener(_onDisplaySettings);
     _refreshTimer?.cancel();
     _activityPollingSubscription?.cancel();
     _activityLogSubscription?.cancel();
@@ -898,6 +907,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                       );
                                     }).toList(),
                                   ),
+                                  PolylineLayer(polylines: DisplaySettings.routeLines(_unfilteredIncidentQueueList, _vehiclesList)),
                                   AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
                                 ],
                               ),

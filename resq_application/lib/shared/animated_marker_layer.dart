@@ -2,6 +2,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'display_settings.dart';
 
 /// A [MarkerLayer] whose markers glide to their new position instead of jumping.
 /// [markers] is keyed by a stable id (e.g. vehicle_ID) so each pin keeps its own track.
@@ -108,6 +109,8 @@ class _AnimatedMarkerLayerState extends State<AnimatedMarkerLayer> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    // Reduced Motion setting: pins jump straight to each new position
+    if (DisplaySettings.reducedMotion.value) return MarkerLayer(markers: widget.markers.values.toList());
     return MarkerLayer(
       markers: [
         for (final entry in widget.markers.entries)

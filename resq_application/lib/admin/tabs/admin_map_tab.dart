@@ -11,6 +11,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/vehicle_history_dialog.dart';
+import '../../shared/display_settings.dart';
 
 class AdminMapTab extends StatefulWidget {
   final String searchFilter;
@@ -58,6 +59,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
   @override
   void initState() {
     super.initState();
+    DisplaySettings.changes.addListener(_onDisplaySettings);
     _pollingSubscription = _refreshSubject
         .startWith(null)
         .delay(const Duration(seconds: 5))
@@ -86,8 +88,13 @@ class _AdminMapTabState extends State<AdminMapTab> {
     }
   }
 
+  void _onDisplaySettings() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    DisplaySettings.changes.removeListener(_onDisplaySettings);
     _pollingSubscription?.cancel();
     _refreshSubject.close();
     _realtimeSubscription?.cancel();
@@ -144,10 +151,12 @@ class _AdminMapTabState extends State<AdminMapTab> {
       final vehicles = await AdminService.getAllVehicles();
       
       if (mounted) {
+        final focus = DisplaySettings.newIncidentPosition(_incidents, incidents ?? []);
         setState(() {
           _incidents = incidents ?? [];
           _vehicles = (vehicles ?? []).where((v) => v['latitude'] != null && v['longitude'] != null).toList();
         });
+        if (focus != null) _mapController.move(focus, 16.5);
       }
     } catch (e) {
       if (mounted) {
@@ -399,6 +408,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                             .whereType<Marker>()
                                             .toList(),
                                       ),
+                                      PolylineLayer(polylines: DisplaySettings.routeLines(_incidents, _vehicles)),
                                       MarkerLayer(
                                         markers: _vehicles
                                             .map((vehicle) {
@@ -406,13 +416,17 @@ class _AdminMapTabState extends State<AdminMapTab> {
                                               final longitude = double.tryParse('${vehicle['longitude']}');
                                               if (latitude == null || longitude == null) return null;
                                               final markerConfig = _getVehicleMarkerConfig(vehicle['dept_ID']?.toString() ?? '');
+                                              final size = DisplaySettings.labeledSize(36, 40);
                                               return Marker(
                                                 point: LatLng(latitude, longitude),
-                                                width: 36,
-                                                height: 40,
-                                                child: _VehiclePinMarker(
-                                                  icon: markerConfig['icon'] as IconData,
-                                                  color: markerConfig['color'] as Color,
+                                                width: size.width,
+                                                height: size.height,
+                                                child: DisplaySettings.labeledPin(
+                                                  _VehiclePinMarker(
+                                                    icon: markerConfig['icon'] as IconData,
+                                                    color: markerConfig['color'] as Color,
+                                                  ),
+                                                  vehicle['plate_no'],
                                                 ),
                                               );
                                             })

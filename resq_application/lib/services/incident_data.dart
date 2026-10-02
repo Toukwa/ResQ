@@ -254,8 +254,11 @@ class IncidentData {
     final vehicles = {for (final v in rows(results[2])) _int(v['vehicle_ID']): v};
     final depts = {for (final d in rows(results[3])) _int(d['dept_ID']): d};
     final latestDispatch = <int, Map<String, dynamic>>{};
+    final activeUnits = <int, List<int>>{}; // units still out on each incident (map route lines)
     for (final d in rows(results[1])) {
       final req = _int(d['Req_ID'])!;
+      final vid = _int(d['Vehicle_ID']);
+      if (vid != null && '${d['status']}'.toLowerCase() != 'completed') activeUnits.putIfAbsent(req, () => []).add(vid);
       if ((_int(d['Disp_ID']) ?? 0) > (_int(latestDispatch[req]?['Disp_ID']) ?? -1)) latestDispatch[req] = d;
     }
 
@@ -275,6 +278,7 @@ class IncidentData {
         'dispatchId': d?['Disp_ID'],
         'dispatchTimestamp': d?['Dispatch_timeStamp'],
         'dispatchStatus': d?['status'],
+        'activeVehicleIds': activeUnits[id] ?? const <int>[],
         'plate_no': v?['plate_no'],
         'vehicle_type': v?['vehicle_type'],
         'vehicleStatus': v?['status'],

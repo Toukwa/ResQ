@@ -6,6 +6,7 @@ import '../../services/theme_service.dart';
 import '../../shared/sound_preview.dart';
 import '../../services/sound_service.dart';
 import '../../shared/tab_activity.dart';
+import '../../shared/display_settings.dart';
 enum SettingsCategory {
   profile,
   appearance,
@@ -855,6 +856,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
             value: _reducedMotion,
             onChanged: (v) {
               setState(() => _reducedMotion = v);
+              DisplaySettings.reducedMotion.value = v;
               _saveSetting({'reduced_motion': v ? 1 : 0});
             },
             activeThumbColor: const Color(0xFFFF4D00),
@@ -1041,6 +1043,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         'value': _autoCenterOnIncident,
         'onChanged': (bool v) {
           setState(() => _autoCenterOnIncident = v);
+          DisplaySettings.autoCenterOnIncident.value = v;
           _saveSetting({'auto_center_on_incident': v ? 1 : 0});
         },
       },
@@ -1051,6 +1054,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         'value': _showUnitLabels,
         'onChanged': (bool v) {
           setState(() => _showUnitLabels = v);
+          DisplaySettings.showUnitLabels.value = v;
           _saveSetting({'show_unit_labels': v ? 1 : 0});
         },
       },
@@ -1061,6 +1065,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         'value': _showRouteLines,
         'onChanged': (bool v) {
           setState(() => _showRouteLines = v);
+          DisplaySettings.showRouteLines.value = v;
           _saveSetting({'show_route_lines': v ? 1 : 0});
         },
       },

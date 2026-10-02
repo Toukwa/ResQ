@@ -19,6 +19,7 @@ import './tabs/settings_screen.dart'; // Tab 7: Settings Panel
 import '../shared/reports_screen.dart';
 import '../services/sound_service.dart';
 import '../shared/tab_activity.dart';
+import '../shared/display_settings.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -86,6 +87,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
       AlertCategory.load(settings);
+      DisplaySettings.load(settings);
       TabActivity.enabled.value = '${settings?['tab_activity_dots']}' != '0';
       if (settings != null && mounted) {
         if (settings['theme_mode'] != null) {
