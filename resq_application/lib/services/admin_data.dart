@@ -60,6 +60,7 @@ class AdminData {
     'emergency_broadcast': 1,
     'data_retention_policy': 1,
     'analytics_reporting': 1,
+    'duplicate_detection': 1,
   };
 
   static Future<Map<String, dynamic>> getSettings(int userId) async {

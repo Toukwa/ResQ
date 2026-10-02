@@ -8,6 +8,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../services/theme_service.dart';
+import '../../services/duplicate_detection.dart';
 
 class AdminVehiclesTab extends StatefulWidget {
   final String searchFilter;
@@ -34,6 +35,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isActionInProgress = false;
+  /// Likely duplicate reports by Req_ID; empty when the setting is off.
+  Map<int, DuplicateMatch> _duplicates = {};
 
   String _localSearchQuery = '';
   int? _selectedRequestId;
@@ -125,13 +128,19 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       final results = await Future.wait([
         AdminService.getActiveIncidentsList(),
         AdminService.getVehicles(),
+        AdminService.getUserSettings(widget.adminId),
       ]);
+      final settings = results[2] as Map<String, dynamic>?;
+      final detect = settings == null || '${settings['duplicate_detection']}' != '0';
+      final incidents = (results[0] as List<dynamic>?) ?? [];
+      final duplicates = detect ? DuplicateDetection.find(incidents) : <int, DuplicateMatch>{};
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
-              _incidents = results[0] as List<dynamic>;
-              _vehicles = results[1] as List<dynamic>;
+              _incidents = incidents;
+              _vehicles = (results[1] as List<dynamic>?) ?? [];
+              _duplicates = duplicates;
               _isLoading = false;
               _errorMessage = null;
             });
@@ -490,6 +499,21 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleDispatchUnits(int reqId, List<int> vehicleIds) async {
+    final dup = _duplicates[reqId];
+    if (dup != null) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Possible duplicate report'),
+          content: Text('${dup.label}. Units may already be handling it.\n\nDispatch anyway?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Dispatch Anyway')),
+          ],
+        ),
+      );
+      if (proceed != true || !mounted) return;
+    }
     setState(() => _isActionInProgress = true);
     var failed = 0;
     for (final vehicleId in vehicleIds) {
@@ -1020,6 +1044,21 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     color: ts.isDark ? Colors.white : const Color(0xFF212121),
                   ),
                 ),
+                if (_duplicates[_getReqId(req)] != null) ...[
+                  const Spacer(),
+                  Tooltip(
+                    message: _duplicates[_getReqId(req)]!.label,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3E8FF),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('Possible duplicate',
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED))),
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 6),
@@ -1077,6 +1116,76 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
 
 
+  Widget _buildDuplicateBanner(int reqId, DuplicateMatch dup) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E8FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD8B4FE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.content_copy_rounded, size: 16, color: Color(0xFF7C3AED)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(dup.label,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF5B21B6))),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton(
+              onPressed: _isActionInProgress ? null : () => setState(() => _selectedRequestId = dup.originalId),
+              child: const Text('View Original', style: TextStyle(fontSize: 12)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
+              onPressed: _isActionInProgress ? null : () => _handleConfirmDuplicate(reqId, dup.originalId),
+              child: const Text('Mark as Duplicate', style: TextStyle(fontSize: 12)),
+            ),
+            TextButton(
+              onPressed: _isActionInProgress ? null : () => _handleDismissDuplicate(reqId, dup.originalId),
+              child: const Text('Not a Duplicate', style: TextStyle(fontSize: 12)),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleConfirmDuplicate(int reqId, int originalId) async {
+    try {
+      await DuplicateDetection.confirm(reqId, originalId);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to mark as duplicate.'), backgroundColor: Colors.redAccent),
+        );
+      }
+      return;
+    }
+    // Same outcome as "Taken Action (Duplicate Report)": the repeat report is closed
+    await _handleActionTaken(reqId);
+  }
+
+  Future<void> _handleDismissDuplicate(int reqId, int originalId) async {
+    setState(() => _isActionInProgress = true);
+    try {
+      await DuplicateDetection.dismiss(reqId, originalId);
+      if (mounted) setState(() => _duplicates.remove(reqId));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update report.'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+    if (mounted) setState(() => _isActionInProgress = false);
+  }
+
   // ==========================================
   // COLUMN 2: SELECTED REQUEST DETAIL VIEW
   // ==========================================
@@ -1123,6 +1232,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             title: reqIdStr,
           ),
           const SizedBox(height: 16),
+          if (_duplicates[reqIdNum] != null) ...[
+            _buildDuplicateBanner(reqIdNum, _duplicates[reqIdNum]!),
+            const SizedBox(height: 16),
+          ],
 
           // Header Row
           Row(

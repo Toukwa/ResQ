@@ -43,6 +43,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   bool _incidentUpdates = true;
   bool _systemNotifications = false;
   bool _soundAlerts = true;
+  bool _duplicateDetection = true;
   bool _emailNotifications = true;
   bool _smsAlerts = false;
   // Map Settings state (backed by user_settings table)
@@ -122,6 +123,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _incidentUpdates = _toBool(settings['incident_updates'], defaultValue: true);
           _systemNotifications = _toBool(settings['system_notifications']);
           _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
+          _duplicateDetection = _toBool(settings['duplicate_detection'], defaultValue: true);
           _emailNotifications = _toBool(settings['email_notifications'], defaultValue: true);
           _smsAlerts = _toBool(settings['sms_alerts']);
           _autoCenterOnIncident = _toBool(settings['auto_center_on_incident'], defaultValue: true);
@@ -949,6 +951,18 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         'onChanged': (bool v) {
           setState(() => _systemNotifications = v);
           _saveSetting({'system_notifications': v ? 1 : 0});
+        },
+      },
+      {
+        'icon': Icons.content_copy_rounded,
+        'title': 'Duplicate Report Detection',
+        'subtitle': 'Flag reports filed within 200 m and 30 min of an open one',
+        'value': _duplicateDetection,
+        'color': accentBlue,
+        'key': 'duplicate_detection',
+        'onChanged': (bool v) {
+          setState(() => _duplicateDetection = v);
+          _saveSetting({'duplicate_detection': v ? 1 : 0});
         },
       },
       {
