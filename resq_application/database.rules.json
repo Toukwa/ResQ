@@ -78,7 +78,7 @@
         // Citizens can only file a new Pending report as themselves; staff update it afterwards
         ".write": "auth != null && ((!data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('reqStatus').val() === 'Pending') || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
         ".validate": "newData.hasChildren(['Req_ID', 'citizenUid', 'incType', 'latitude', 'longitude', 'reqStatus'])",
-        "Req_ID": { ".validate": "newData.isNumber() && newData.val() == $reqId" },
+        "Req_ID": { ".validate": "newData.isNumber()" },
         "incType": { ".validate": "newData.isString() && newData.val().length <= 64" },
         "description": { ".validate": "newData.isString() && newData.val().length <= 2000" },
         "residentName": { ".validate": "newData.isString() && newData.val().length <= 100" },
