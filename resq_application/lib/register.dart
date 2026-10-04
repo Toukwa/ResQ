@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'services/theme_service.dart';
 import 'shared/resq_logo.dart';
+import 'services/password_policy.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -56,9 +57,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // 3. Validation Check: Ensure reasonable baseline criteria length
-    if (password.length < 6) {
-      _showFeedbackMessage('Password must be at least 6 characters long.');
+    // 3. Validation Check: Enforce the shared password policy
+    final passwordError = PasswordPolicy.check(password);
+    if (passwordError != null) {
+      _showFeedbackMessage(passwordError);
       return;
     }
 

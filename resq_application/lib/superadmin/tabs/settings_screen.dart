@@ -7,6 +7,7 @@ import '../../shared/sound_preview.dart';
 import '../../services/sound_service.dart';
 import '../../shared/tab_activity.dart';
 import '../../shared/display_settings.dart';
+import '../../services/password_policy.dart';
 enum SettingsCategory {
   appearance,
   alerts,
@@ -1006,7 +1007,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Ensure your account is using a secure password with at least 6 characters.',
+                    'Ensure your account is using a secure password with ${PasswordPolicy.hint}.',
                     style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 16),
@@ -1129,8 +1130,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         setDialogState(() => errorMessage = 'Please enter your current password.');
                         return;
                       }
-                      if (newPass.length < 6) {
-                        setDialogState(() => errorMessage = 'New password must be at least 6 characters.');
+                      final passwordError = PasswordPolicy.check(newPass);
+                      if (passwordError != null) {
+                        setDialogState(() => errorMessage = passwordError);
                         return;
                       }
                       if (newPass != confirmPass) {

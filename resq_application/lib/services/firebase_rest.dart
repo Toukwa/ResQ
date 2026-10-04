@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
+import 'password_policy.dart';
 
 const Duration _kTimeout = Duration(seconds: 15);
 
@@ -46,7 +47,7 @@ class FirebaseAuthRest {
       return 'Invalid email or password.';
     }
     if (code.startsWith('EMAIL_EXISTS')) return 'Email is already registered.';
-    if (code.startsWith('WEAK_PASSWORD')) return 'Password must be at least 6 characters.';
+    if (code.startsWith('WEAK_PASSWORD')) return 'Password must be ${PasswordPolicy.hint}.';
     if (code.startsWith('INVALID_EMAIL')) return 'Please enter a valid email address.';
     if (code.startsWith('USER_DISABLED')) return 'This account has been disabled.';
     if (code.startsWith('TOO_MANY_ATTEMPTS')) return 'Too many attempts. Try again later.';

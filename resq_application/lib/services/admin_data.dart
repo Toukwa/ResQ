@@ -12,6 +12,7 @@ import '../config.dart';
 import 'firebase_rest.dart';
 import 'incident_data.dart';
 import 'live_socket.dart';
+import 'password_policy.dart';
 
 /// Dashboard, audit logs, user settings/profile and account management.
 class AdminData {
@@ -97,9 +98,8 @@ class AdminData {
 
   /// Changes the signed-in user's own password after checking the current one.
   static Future<({bool success, String message})> changePassword(String currentPassword, String newPassword) async {
-    if (newPassword.length < 6) {
-      return (success: false, message: 'New password must be at least 6 characters.');
-    }
+    final passwordError = PasswordPolicy.check(newPassword);
+    if (passwordError != null) return (success: false, message: passwordError);
     final me = await IncidentData.me();
     final key = AppConfig.firebaseApiKey;
 
@@ -373,6 +373,8 @@ class AdminData {
     if (name == null || name.isEmpty || email == null || email.isEmpty || password == null) {
       throw const HttpException('Name, email and password are required');
     }
+    final passwordError = PasswordPolicy.check(password);
+    if (passwordError != null) throw HttpException(passwordError);
 
     final res = await http.post(
       Uri.parse('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${AppConfig.firebaseApiKey}'),
@@ -381,7 +383,7 @@ class AdminData {
     if (res.statusCode != 200) {
       final code = (jsonDecode(res.body)['error']?['message'] ?? '').toString();
       if (code.startsWith('EMAIL_EXISTS')) return _reactivate(email, name, data);
-      if (code.startsWith('WEAK_PASSWORD')) throw const HttpException('Password must be at least 6 characters.');
+      if (code.startsWith('WEAK_PASSWORD')) throw HttpException('Password must be ${PasswordPolicy.hint}.');
       if (code.startsWith('INVALID_EMAIL')) throw const HttpException('Please enter a valid email address.');
       throw HttpException('Could not create account ($code).');
     }
