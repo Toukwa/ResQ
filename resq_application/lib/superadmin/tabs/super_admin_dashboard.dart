@@ -1454,7 +1454,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final dept = vehicle['deptName']?.toString() ?? '';
     final plateNo = vehicle['plate_no']?.toString() ?? 'Unknown';
     final vehicleType = vehicle['vehicle_type']?.toString() ?? 'Vehicle';
-    final status = vehicle['status']?.toString() ?? 'Available';
+    final status = vehicleStatus(vehicle);
     final isAvailable = status.toLowerCase() == 'available';
     final isEnRoute = status.toLowerCase().contains('route') ||
         status.toLowerCase().contains('dispatch');

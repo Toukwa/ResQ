@@ -13,6 +13,7 @@ import 'firebase_rest.dart';
 import 'incident_data.dart';
 import 'live_socket.dart';
 import 'password_policy.dart';
+import 'vehicle_data.dart';
 
 /// Dashboard, audit logs, user settings/profile and account management.
 class AdminData {
@@ -128,11 +129,16 @@ class AdminData {
       Rtdb.get('vehicles'),
       Rtdb.get('departments'),
       Rtdb.get('users', query: {'shallow': 'true'}),
+      Rtdb.get('trackers'),
     ]);
     final incidents = IncidentData.rows(results[0]);
     final vehicles = IncidentData.rows(results[1]);
     final depts = IncidentData.rows(results[2]);
-    String st(Map v) => (v['status'] ?? '').toString().toLowerCase();
+    final trackers = (results[4] as Map?) ?? {};
+    // A vehicle whose tracker has gone quiet counts as offline, whatever its stored status
+    String st(Map v) => VehicleData.isTrackerOffline((trackers[v['trackerUid']] as Map?) ?? {})
+        ? 'offline'
+        : (v['status'] ?? '').toString().toLowerCase();
 
     final active = incidents
         .where((i) => ['pending', 'in_progress', 'en route', 'active'].contains((i['reqStatus'] ?? '').toString().toLowerCase()))

@@ -233,10 +233,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       } else {
         if (mounted) {
+          final hadIncident = _activeIncident != null;
           setState(() {
             _activeIncident = null;
             _dispatchedVehicles = [];
           });
+          // The pin was locked to the incident spot; move it back to the citizen's GPS position
+          if (hadIncident) _initializeLiveTracking();
         }
       }
     }

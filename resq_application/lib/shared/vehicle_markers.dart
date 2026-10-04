@@ -16,6 +16,9 @@ import 'display_settings.dart';
   return (icon: Icons.directions_car_rounded, color: const Color(0xFF64748B));
 }
 
+/// The status to show for a vehicle: 'Offline' when its tracker has gone quiet, else its stored status.
+String vehicleStatus(Map v) => (v['computed_status'] ?? v['status'] ?? v['Status'] ?? 'Available').toString();
+
 /// One pin per vehicle with a GPS fix. Offline vehicles are drawn faded at their last position.
 /// Keyed by vehicle_ID for [AnimatedMarkerLayer].
 Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {

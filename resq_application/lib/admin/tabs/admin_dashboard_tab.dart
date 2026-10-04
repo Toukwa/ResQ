@@ -380,8 +380,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   int get _availableUnitsCount {
     if (_dept == 'ALL') return _metrics['availableUnits'] ?? 0;
     return _filteredVehicles.where((v) {
-      final st = (v['Status'] ?? v['status'] ?? '').toString().toLowerCase();
-      return st == 'available';
+      return vehicleStatus(v).toLowerCase() == 'available';
     }).length;
   }
 
@@ -697,7 +696,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   void _showDispatchDialog(Map<String, dynamic> incident) {
     final reqId = int.tryParse(incident['Req_ID']?.toString() ?? incident['req_ID']?.toString() ?? incident['id']?.toString() ?? '0') ?? 0;
     final selectedVehicleIds = <int>{};
-    final availableVehicles = _vehicles.where((v) => ((v['Status'] ?? v['status'] ?? '').toString().toLowerCase() == 'available') && _isVehicleForDepartment(v)).toList();
+    final availableVehicles = _vehicles.where((v) => vehicleStatus(v).toLowerCase() == 'available' && _isVehicleForDepartment(v)).toList();
 
     showDialog(
       context: context,
@@ -1806,7 +1805,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final dept = (v['Department_Name'] ?? v['deptName'] ?? v['department_name'] ?? '').toString();
     final plateNo = (v['Call_Sign'] ?? v['call_sign'] ?? v['plate_no'] ?? 'Unknown').toString();
     final vehicleType = (v['Vehicle_Type'] ?? v['vehicle_type'] ?? 'Vehicle').toString();
-    final status = (v['Status'] ?? v['status'] ?? 'Available').toString();
+    final status = vehicleStatus(v);
     final isAvailable = status.toLowerCase() == 'available';
     final isEnRoute = status.toLowerCase().contains('route') || status.toLowerCase().contains('dispatch');
 
@@ -2197,9 +2196,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   Widget _buildAgencyStatusSection() {
     final ts = ThemeService.instance;
-    final pnpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('PNP') && ((v['Status'] ?? v['status']) == 'Available')).length;
-    final bfpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('BFP') && ((v['Status'] ?? v['status']) == 'Available')).length;
-    final cdrrmoAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('CDRRMO') && ((v['Status'] ?? v['status']) == 'Available')).length;
+    final pnpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('PNP') && vehicleStatus(v) == 'Available').length;
+    final bfpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('BFP') && vehicleStatus(v) == 'Available').length;
+    final cdrrmoAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('CDRRMO') && vehicleStatus(v) == 'Available').length;
 
     final List<Widget> items = [];
     if (_dept == 'ALL' || _dept == 'PNP') {

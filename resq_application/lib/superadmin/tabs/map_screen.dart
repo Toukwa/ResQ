@@ -13,6 +13,7 @@ import '../../services/theme_service.dart';
 import '../../shared/vehicle_history_dialog.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
+import '../../shared/vehicle_markers.dart';
 
 class MapScreen extends StatefulWidget {
   final String searchFilter;
@@ -123,6 +124,8 @@ class _MapScreenState extends State<MapScreen> {
                 updated['longitude'] = lon;
                 if (data['speed_kph'] != null) updated['speed_kph'] = data['speed_kph'];
                 if (data['course_deg'] != null) updated['course_deg'] = data['course_deg'];
+                // A tracker that reports is back online
+                if (updated['computed_status'] == 'Offline') updated['computed_status'] = updated['status'];
                 _vehicles[idx] = updated;
               } else {
                 _realtimeSubject.add(data);
@@ -394,9 +397,13 @@ class _MapScreenState extends State<MapScreen> {
                                                 width: size.width,
                                                 height: size.height,
                                                 child: DisplaySettings.labeledPin(
-                                                  _VehiclePinMarker(
-                                                    icon: markerConfig['icon'] as IconData,
-                                                    color: markerConfig['color'] as Color,
+                                                  // Offline vehicles are drawn faded at their last position
+                                                  Opacity(
+                                                    opacity: vehicle['computed_status'] == 'Offline' ? 0.45 : 1,
+                                                    child: _VehiclePinMarker(
+                                                      icon: markerConfig['icon'] as IconData,
+                                                      color: markerConfig['color'] as Color,
+                                                    ),
                                                   ),
                                                   vehicle['plate_no'],
                                                 ),
@@ -703,8 +710,9 @@ class _MapScreenState extends State<MapScreen> {
                                           final vehicle = _vehicles[index];
                                           final unitCode = vehicle['plate_no']?.toString() ?? 'Unknown';
                                           final vehicleType = vehicle['vehicle_type']?.toString() ?? 'Unknown';
-                                          final status = vehicle['status']?.toString() ?? 'Available';
+                                          final status = vehicleStatus(vehicle);
                                           final isAvailable = status.toLowerCase() == 'available';
+                                          final isOffline = status == 'Offline';
                                           final isHovered = _hoveredUnitIndex == index;
                                           final isSelected = _selectedItem == vehicle;
 
@@ -775,7 +783,7 @@ class _MapScreenState extends State<MapScreen> {
                                                                 width: 6,
                                                                 height: 6,
                                                                 decoration: BoxDecoration(
-                                                                  color: isAvailable ? const Color(0xFF10B981) : primaryOrange,
+                                                                  color: isOffline ? Colors.grey : (isAvailable ? const Color(0xFF10B981) : primaryOrange),
                                                                   shape: BoxShape.circle,
                                                                 ),
                                                               ),
@@ -785,7 +793,7 @@ class _MapScreenState extends State<MapScreen> {
                                                                 style: TextStyle(
                                                                   fontSize: 11,
                                                                   fontWeight: FontWeight.bold,
-                                                                  color: isAvailable ? const Color(0xFF10B981) : primaryOrange,
+                                                                  color: isOffline ? Colors.grey : (isAvailable ? const Color(0xFF10B981) : primaryOrange),
                                                                 ),
                                                               ),
                                                             ],

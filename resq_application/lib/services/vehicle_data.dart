@@ -72,6 +72,13 @@ class VehicleData {
   }
 
   /// Vehicles joined with department name and last GPS fix
+  /// True when a tracker hasn't reported for [_offlineAfter] (or never has).
+  static bool isTrackerOffline(Map t) {
+    final fix = DateTime.tryParse(t['fix_timestamp']?.toString() ?? '');
+    final lastHeard = t['received_at'] is int ? DateTime.fromMillisecondsSinceEpoch(t['received_at']) : fix;
+    return lastHeard == null || DateTime.now().difference(lastHeard) >= _offlineAfter;
+  }
+
   /// (what `/admin/vehicles-with-dept` and `/admin/vehicles-manage` returned).
   static Future<List<Map<String, dynamic>>> getVehicles() async {
     try {
@@ -84,9 +91,7 @@ class VehicleData {
 
     final list = IncidentData.rows(results[0]).map((v) {
       final t = (trackers[v['trackerUid']] as Map?) ?? {};
-      final fix = DateTime.tryParse(t['fix_timestamp']?.toString() ?? '');
-      final lastHeard = t['received_at'] is int ? DateTime.fromMillisecondsSinceEpoch(t['received_at']) : fix;
-      final offline = lastHeard == null || DateTime.now().difference(lastHeard) >= _offlineAfter;
+      final offline = isTrackerOffline(t);
       return <String, dynamic>{
         ...v,
         'plate_no': v['plate_no'] ?? 'Unit #${v['vehicle_ID']}',
