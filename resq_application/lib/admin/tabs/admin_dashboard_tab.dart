@@ -355,17 +355,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return [raw];
   }
 
-  bool _isVehicleForDepartment(dynamic v) {
-    if (_dept == 'ALL' || _dept.isEmpty) return true;
-    final deptName = (v['deptName'] ?? v['Department_Name'] ?? v['agency'] ?? v['department'] ?? '').toString().toUpperCase().trim();
-    final deptId = (v['dept_ID'] ?? v['deptId'] ?? '').toString().trim();
-
-    if (_dept == 'PNP') return deptName.contains('PNP') || deptId == '1' || deptName.contains('POLICE');
-    if (_dept == 'BFP') return deptName.contains('BFP') || deptId == '2' || deptName.contains('FIRE');
-    if (_dept == 'CDRRMO') return deptName.contains('CDRRMO') || deptId == '3' || deptName.contains('MEDICAL') || deptName.contains('RESCUE');
-
-    return deptName.contains(_dept);
-  }
+  bool _isVehicleForDepartment(dynamic v) => isVehicleForDepartment(v, _dept);
 
   List<dynamic> get _filteredVehicles => _vehicles.where((v) => _isVehicleForDepartment(v)).toList();
 
@@ -696,7 +686,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   void _showDispatchDialog(Map<String, dynamic> incident) {
     final reqId = int.tryParse(incident['Req_ID']?.toString() ?? incident['req_ID']?.toString() ?? incident['id']?.toString() ?? '0') ?? 0;
     final selectedVehicleIds = <int>{};
-    final availableVehicles = _vehicles.where((v) => vehicleStatus(v).toLowerCase() == 'available' && _isVehicleForDepartment(v)).toList();
+    final availableVehicles = availableVehiclesFor(_vehicles, _dept);
 
     showDialog(
       context: context,

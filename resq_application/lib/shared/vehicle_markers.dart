@@ -19,6 +19,24 @@ import 'display_settings.dart';
 /// The status to show for a vehicle: 'Offline' when its tracker has gone quiet, else its stored status.
 String vehicleStatus(Map v) => (v['computed_status'] ?? v['status'] ?? v['Status'] ?? 'Available').toString();
 
+/// Whether vehicle [v] belongs to [dept] (PNP, BFP, CDRRMO); 'ALL' or empty matches every vehicle.
+bool isVehicleForDepartment(dynamic v, String dept) {
+  if (dept == 'ALL' || dept.isEmpty) return true;
+  final deptName = (v['deptName'] ?? v['Department_Name'] ?? v['agency'] ?? v['department'] ?? '').toString().toUpperCase().trim();
+  final deptId = (v['dept_ID'] ?? v['deptId'] ?? '').toString().trim();
+
+  if (dept == 'PNP') return deptName.contains('PNP') || deptId == '1' || deptName.contains('POLICE');
+  if (dept == 'BFP') return deptName.contains('BFP') || deptId == '2' || deptName.contains('FIRE');
+  if (dept == 'CDRRMO') return deptName.contains('CDRRMO') || deptId == '3' || deptName.contains('MEDICAL') || deptName.contains('RESCUE');
+
+  return deptName.contains(dept);
+}
+
+/// The vehicles of [dept] that can be dispatched right now.
+List<dynamic> availableVehiclesFor(List<dynamic> vehicles, String dept) => vehicles
+    .where((v) => vehicleStatus(v).toLowerCase() == 'available' && isVehicleForDepartment(v, dept))
+    .toList();
+
 /// One pin per vehicle with a GPS fix. Offline vehicles are drawn faded at their last position.
 /// Keyed by vehicle_ID for [AnimatedMarkerLayer].
 Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {

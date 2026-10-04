@@ -35,6 +35,9 @@ class IncidentData {
 
   static String _nowIso() => DateTime.now().toUtc().toIso8601String();
 
+  /// SOS time for a new report: when it was reported if given (offline calls), else now, in UTC ISO-8601.
+  static String sosTimestamp([DateTime? reportedAt]) => reportedAt?.toUtc().toIso8601String() ?? _nowIso();
+
   static Map<String, dynamic>? _me;
 
   /// The signed-in user's profile (users/{uid}), cached per session.
@@ -111,6 +114,18 @@ class IncidentData {
     ];
   }
 
+  /// Overall request status from each involved department's status: stays
+  /// "Pending" until every department has responded.
+  static String overallStatus(Iterable<String> deptStatuses) {
+    final values = deptStatuses.map((s) => s.toLowerCase()).toList();
+    if (values.any((s) => s == 'pending')) return 'Pending';
+    if (values.every((s) => s == 'cancelled' || s == 'declined')) return 'Declined';
+    final active = values.where((s) => s != 'cancelled' && s != 'declined').toList();
+    if (active.every((s) => s == 'completed')) return 'Completed';
+    if (active.every((s) => ['en route', 'dispatched', 'en_route', 'completed'].contains(s))) return 'En Route';
+    return 'Accepted';
+  }
+
   /// Sets [actingDept]'s status on the incident, then recomputes the overall
   /// status: it only leaves "Pending" once every involved department responded.
   static Future<void> _syncDepartmentStatus(int reqId, String? actingDept, String newStatus) async {
@@ -135,22 +150,7 @@ class IncidentData {
     }
     statuses[target] = newStatus;
 
-    final values = statuses.values.map((s) => s.toLowerCase()).toList();
-    var overall = 'Pending';
-    if (values.every((s) => s != 'pending')) {
-      if (values.every((s) => s == 'cancelled' || s == 'declined')) {
-        overall = 'Declined';
-      } else {
-        final active = values.where((s) => s != 'cancelled' && s != 'declined').toList();
-        if (active.every((s) => s == 'completed')) {
-          overall = 'Completed';
-        } else if (active.every((s) => ['en route', 'dispatched', 'en_route', 'completed'].contains(s))) {
-          overall = 'En Route';
-        } else {
-          overall = 'Accepted';
-        }
-      }
-    }
+    final overall = overallStatus(statuses.values);
 
     await Rtdb.update('incidents/$reqId', {
       'dept_status': statuses,
@@ -213,7 +213,7 @@ class IncidentData {
       'longitude': longitude,
       'reqStatus': 'Pending',
       'image_path': urls.isEmpty ? null : urls.join(','),
-      'SOS_timeStamp': reportedAt?.toUtc().toIso8601String() ?? _nowIso(),
+      'SOS_timeStamp': sosTimestamp(reportedAt),
       'createdAt': {'.sv': 'timestamp'},
       'source': ?source,
       'dept_status': {for (final d in involvedDepartments(incidentType)) d: 'Pending'},
