@@ -8,6 +8,7 @@ import 'services/firebase_rest.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'shared/resq_logo.dart';
+import 'shared/role_home.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -132,12 +133,13 @@ class _SessionInitializerState extends State<SessionInitializer> with SingleTick
       final role = session['role'] as String;
       final fullName = session['fullName'] as String;
 
-      if (role == 'Superadmin') {
+      final home = homeForRole(role);
+      if (home == RoleHome.superAdmin) {
         _go(SuperAdminShell(
               isSuperAdmin: true,
               userId: userId,
             ));
-      } else if (role == 'Admin') {
+      } else if (home == RoleHome.admin) {
         _go(AdminShell(
               userId: userId,
             ));

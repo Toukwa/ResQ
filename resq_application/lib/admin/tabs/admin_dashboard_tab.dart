@@ -262,56 +262,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   // ── DEPARTMENT-BASED FILTERING ──────────────────────────────────────────────
 
-  /// Returns true if the incident matches this admin's department jurisdiction.
-  /// BFP   → fire, arson, explosion
-  /// PNP   → crime, accident, police, violence, theft, robbery, assault
-  /// CDRRMO→ medical, rescue, disaster, flood, earthquake, landslide, health
-  /// ALL   → every incident (superadmin / no restriction)
-  bool _matchesDepartment(dynamic incident) {
-    if (_dept == 'ALL') return true;
-
-    if (incident is Map) {
-      final rawStatuses = incident['department_statuses'];
-      if (rawStatuses is List && rawStatuses.isNotEmpty) {
-        final deptNames = rawStatuses.map((e) => (e['dept_name'] ?? e['dept'] ?? '').toString().toUpperCase().trim()).toList();
-        return deptNames.contains(_dept.toUpperCase());
-      }
-    }
-
-    final types = _parseEmergencyTypes(incident);
-    return types.any((t) => _typeMatchesDept(t, _dept));
-  }
-
-  bool _typeMatchesDept(String type, String dept) {
-    final t = type.toLowerCase();
-    switch (dept) {
-      case 'BFP':
-        return t.contains('fire') || t.contains('arson') || t.contains('explosion');
-      case 'PNP':
-        return t.contains('crime') ||
-            t.contains('accident') ||
-            t.contains('police') ||
-            t.contains('violence') ||
-            t.contains('theft') ||
-            t.contains('robbery') ||
-            t.contains('assault') ||
-            t.contains('homicide') ||
-            t.contains('murder');
-      case 'CDRRMO':
-        return t.contains('medical') ||
-            t.contains('rescue') ||
-            t.contains('disaster') ||
-            t.contains('flood') ||
-            t.contains('earthquake') ||
-            t.contains('landslide') ||
-            t.contains('health') ||
-            t.contains('injury') ||
-            t.contains('storm') ||
-            t.contains('typhoon');
-      default:
-        return false;
-    }
-  }
+  /// True if the incident was routed to this admin's department (ALL sees every incident).
+  bool _matchesDepartment(dynamic incident) => IncidentData.isForDepartment(incident, _dept);
 
   // ── MULTI-EMERGENCY TYPE SUPPORT ────────────────────────────────────────────
 

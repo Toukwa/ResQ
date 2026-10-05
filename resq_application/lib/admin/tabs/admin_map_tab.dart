@@ -172,31 +172,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
     }
   }
 
-  bool _isIncidentForDepartment(dynamic inc) {
-    final dept = widget.department.toUpperCase().trim();
-    if (dept == 'ALL' || dept.isEmpty) return true;
-    if (inc is! Map) return false;
-
-    final rawStatuses = inc['department_statuses'];
-    if (rawStatuses is List && rawStatuses.isNotEmpty) {
-      final deptNames = rawStatuses.map((e) => (e['dept_name'] ?? e['dept'] ?? '').toString().toUpperCase().trim()).toList();
-      return deptNames.contains(dept);
-    }
-
-    final type = (inc['Emergency_Type'] ?? inc['type'] ?? inc['incType'] ?? '').toString().toUpperCase().trim();
-    final agency = (inc['Department_Name'] ?? inc['agency'] ?? inc['agencyType'] ?? inc['deptName'] ?? inc['dept'] ?? '').toString().toUpperCase().trim();
-
-    if (dept == 'BFP') {
-      return type.contains('FIRE') || type.contains('ARSON') || type.contains('EXPLOSION') || agency.contains('BFP');
-    }
-    if (dept == 'CDRRMO') {
-      return type.contains('MED') || type.contains('RESCUE') || type.contains('AMBULANCE') || type.contains('DISASTER') || agency.contains('CDRRMO');
-    }
-    if (dept == 'PNP') {
-      return type.contains('POL') || type.contains('ACCIDENT') || type.contains('CRIME') || agency.contains('PNP');
-    }
-    return false;
-  }
+  bool _isIncidentForDepartment(dynamic inc) => IncidentData.isForDepartment(inc, widget.department);
 
   bool _isVehicleForDepartment(dynamic v) {
     // Assigned vehicles should be shown in all admins map regardless of department

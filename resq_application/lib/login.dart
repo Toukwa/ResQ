@@ -10,6 +10,7 @@ import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'shared/resq_logo.dart';
 import 'shared/call_agencies_sheet.dart';
+import 'shared/role_home.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -393,7 +394,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    if (userRole == 'Superadmin') {
+    final home = homeForRole(userRole);
+    if (home == RoleHome.superAdmin) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -403,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       );
-    } else if (userRole == 'Admin') {
+    } else if (home == RoleHome.admin) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

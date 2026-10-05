@@ -103,6 +103,21 @@ class IncidentData {
     return s;
   }
 
+  /// Whether [incident] was routed to [dept]. 'ALL' (or no department) sees everything.
+  static bool isForDepartment(dynamic incident, String? dept) {
+    final mine = normalizeDepartment(dept);
+    if (mine == 'ALL') return true;
+    if (incident is! Map) return false;
+    final listed = incident['department_statuses'];
+    final routed = listed is List && listed.isNotEmpty
+        ? listed.map((e) => normalizeDepartment('${e['dept_name'] ?? e['dept'] ?? ''}'))
+        : _deptStatusList({
+            ...Map<String, dynamic>.from(incident),
+            'incType': incident['incType'] ?? incident['type'] ?? incident['Emergency_Type'],
+          }).map((e) => e['dept_name'] as String);
+    return routed.contains(mine);
+  }
+
   static List<Map<String, dynamic>> _deptStatusList(Map<String, dynamic> incident) {
     final raw = incident['dept_status'];
     if (raw is Map && raw.isNotEmpty) {
@@ -308,12 +323,7 @@ class IncidentData {
   static Future<void> _ensureMyDepartment(dynamic incident) async {
     final user = await me();
     if (user['role'] != 'Admin') return;
-    final mine = normalizeDepartment(user['department']?.toString());
-    if (mine == 'ALL') return;
-    final routed = incident is Map && incident['dept_status'] is Map
-        ? (incident['dept_status'] as Map).keys.map((k) => '$k').toList()
-        : involvedDepartments(incident is Map ? incident['incType'] : null);
-    if (!routed.contains(mine)) {
+    if (!isForDepartment(incident, user['department']?.toString())) {
       throw const HttpException('This request is not assigned to your department.');
     }
   }
@@ -371,6 +381,10 @@ class IncidentData {
     final vehicle = await Rtdb.get('vehicles/$vehicleId');
     // Writing status to a missing id would create a ghost "Unit #null" vehicle
     if (vehicle == null || vehicle['vehicle_ID'] == null) throw const HttpException('Vehicle not found.');
+    // The list only offers available vehicles, but another admin may have just sent this one
+    if ('${vehicle['status'] ?? 'Available'}'.toLowerCase() != 'available') {
+      throw const HttpException('Vehicle is not available.');
+    }
     final id = await Rtdb.nextId('counters/dispatches');
 
     await Rtdb.set('dispatches/$id', {

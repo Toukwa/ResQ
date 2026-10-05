@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../services/incident_data.dart';
 import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
@@ -248,35 +249,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     return 'Pending';
   }
 
-  bool _isIncidentForDepartment(dynamic req) {
-    final dept = widget.department.toUpperCase().trim();
-    if (dept == 'ALL' || dept.isEmpty) return true;
-
-    if (req is! Map) return false;
-
-    // 1. The departments the incident was routed to decide it (same rule as the dashboard)
-    final rawStatuses = req['department_statuses'];
-    if (rawStatuses is List && rawStatuses.isNotEmpty) {
-      final deptNames = rawStatuses.map((e) => (e['dept_name'] ?? e['dept'] ?? '').toString().toUpperCase().trim()).toList();
-      return deptNames.contains(dept);
-    }
-
-    // 2. Older records without routing: fall back to emergency type / agency keywords
-    final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? '').toString().toUpperCase().trim();
-    final agency = (req['Department_Name'] ?? req['agency'] ?? req['agencyType'] ?? req['deptName'] ?? '').toString().toUpperCase().trim();
-
-    if (dept == 'BFP') {
-      if (type.contains('FIRE') || type.contains('ARSON') || type.contains('EXPLOSION') || agency.contains('BFP')) return true;
-    }
-    if (dept == 'CDRRMO') {
-      if (type.contains('MED') || type.contains('RESCUE') || type.contains('AMBULANCE') || type.contains('DISASTER') || type.contains('FLOOD') || type.contains('HEALTH') || agency.contains('CDRRMO')) return true;
-    }
-    if (dept == 'PNP') {
-      if (type.contains('POL') || type.contains('ACCIDENT') || type.contains('CRIME') || type.contains('VIOLENCE') || type.contains('THEFT') || type.contains('ROBBERY') || agency.contains('PNP')) return true;
-    }
-
-    return false;
-  }
+  bool _isIncidentForDepartment(dynamic req) => IncidentData.isForDepartment(req, widget.department);
 
   /// Department-filtered list of ALL incidents.
   List<dynamic> get _departmentIncidents {

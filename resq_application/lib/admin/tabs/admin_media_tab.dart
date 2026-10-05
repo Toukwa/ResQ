@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../services/incident_data.dart';
 import '../../services/live_socket.dart' as io;
 import 'dart:io';
 import 'dart:async';
@@ -42,31 +43,7 @@ class _AdminMediaTabState extends State<AdminMediaTab> {
   List<dynamic> _allIncidents = [];
   String _bottomTabFilter = 'Cancelled'; // 'Cancelled' | 'Completed'
 
-  bool _isIncidentForDepartment(dynamic inc) {
-    final dept = widget.department.trim().toUpperCase();
-    if (dept == 'ALL' || dept.isEmpty) return true;
-    if (inc is! Map) return false;
-
-    final rawStatuses = inc['department_statuses'];
-    if (rawStatuses is List && rawStatuses.isNotEmpty) {
-      final deptNames = rawStatuses.map((e) => (e['dept_name'] ?? e['dept'] ?? '').toString().toUpperCase().trim()).toList();
-      return deptNames.contains(dept);
-    }
-
-    final type = (inc['Emergency_Type'] ?? inc['type'] ?? inc['incType'] ?? inc['Incident_Type'] ?? '').toString().toUpperCase().trim();
-    final agency = (inc['Department_Name'] ?? inc['agency'] ?? inc['agencyType'] ?? inc['deptName'] ?? inc['dept'] ?? '').toString().toUpperCase().trim();
-
-    if (dept == 'BFP') {
-      return type.contains('FIRE') || type.contains('BURN') || agency.contains('BFP');
-    }
-    if (dept == 'CDRRMO') {
-      return type.contains('MED') || type.contains('RESCUE') || type.contains('AMBULANCE') || type.contains('DISASTER') || agency.contains('CDRRMO');
-    }
-    if (dept == 'PNP') {
-      return type.contains('POL') || type.contains('ACCIDENT') || type.contains('CRIME') || type.contains('THEFT') || type.contains('ROBBERY') || agency.contains('PNP');
-    }
-    return false;
-  }
+  bool _isIncidentForDepartment(dynamic inc) => IncidentData.isForDepartment(inc, widget.department);
 
   bool _isMediaForDepartment(Map<String, dynamic> item) {
     final dept = widget.department.trim().toUpperCase();

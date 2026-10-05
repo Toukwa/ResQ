@@ -65,7 +65,8 @@
         // Anyone signed in can add a log entry about themselves; nobody can edit or delete logs
         ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
         // The role on a log must be your real role, so citizens can't pose as admins
-        ".validate": "newData.child('role').val() === root.child('users/' + auth.uid + '/role').val() && newData.child('action').isString() && newData.child('action').val().length <= 64"
+        // ...and the time must be the server's, so entries can't be backdated
+        ".validate": "newData.child('role').val() === root.child('users/' + auth.uid + '/role').val() && newData.child('action').isString() && newData.child('action').val().length <= 64 && newData.child('timestamp').val() === now"
       }
     },
 
