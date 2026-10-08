@@ -151,9 +151,6 @@ class FirebaseService {
     await FirebaseAuthRest.signOut();
   }
 
-  static Future<String?> uploadImage(File file) async {
-    return null;
-  }
 
   static Future<String> createIncident({
     required String citizenId,

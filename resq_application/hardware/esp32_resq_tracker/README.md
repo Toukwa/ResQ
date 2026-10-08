@@ -24,7 +24,7 @@ Once the SIM7600 is wired, has its own suitable power supply, and holds a SIM wi
 4. Check the modem pins in the sketch match your wiring: `MODEM_RX_PIN` (16, from SIM7600 TX), `MODEM_TX_PIN` (17, to SIM7600 RX). Set `MODEM_PWRKEY_PIN` to the GPIO wired to PWRKEY, or leave it at `-1` if the module powers on by itself.
 5. Re-upload and open Serial Monitor (115200). You should see `[SIM] Mobile data connected.`
 
-Updates are sent every 3 s on Wi-Fi and every 10 s on mobile data to save load.
+Updates are sent every 1 s on Wi-Fi and every 3 s on mobile data (about 1 MB of data per hour), when there is a new GPS fix (otherwise a check-in every 30 s). The GPS is set to 5 fixes per second at boot, which needs the GPS RX wire (ESP32 pin 2).
 
 ## Troubleshooting
 

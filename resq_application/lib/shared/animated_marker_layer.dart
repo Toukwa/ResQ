@@ -13,7 +13,7 @@ class AnimatedMarkerLayer extends StatefulWidget {
   const AnimatedMarkerLayer({
     super.key,
     required this.markers,
-    this.duration = const Duration(seconds: 9),
+    this.duration = const Duration(seconds: 3),
   });
 
   @override
@@ -92,7 +92,7 @@ class _AnimatedMarkerLayerState extends State<AnimatedMarkerLayer> with SingleTi
           ..from = current
           ..to = target
           ..start = now
-          ..ms = (gap.inMilliseconds * 1.15).round().clamp(1000, 15000)
+          ..ms = (gap.inMilliseconds * 1.15).round().clamp(800, 15000)
           ..lastUpdate = now;
       }
       // Otherwise: unrelated rebuild or jitter — leave the glide untouched.

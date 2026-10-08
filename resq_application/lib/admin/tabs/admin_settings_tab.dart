@@ -8,6 +8,7 @@ import '../../services/sound_service.dart';
 import '../../shared/tab_activity.dart';
 import '../../shared/display_settings.dart';
 import '../../services/password_policy.dart';
+import '../../shared/incident_format.dart';
 enum SettingsCategory {
   profile,
   appearance,
@@ -113,30 +114,23 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         setState(() {
           _themeMode = (settings['theme_mode'] as String?) ?? 'Light';
           ThemeService.instance.setThemeMode(_themeMode);
-          _reducedMotion = _toBool(settings['reduced_motion']);
-          _criticalEmergencyAlerts = _toBool(settings['critical_emergency_alerts'], defaultValue: true);
-          _unitStatusUpdates = _toBool(settings['unit_status_updates'], defaultValue: true);
-          _incidentUpdates = _toBool(settings['incident_updates'], defaultValue: true);
-          _soundAlerts = _toBool(settings['sound_alerts'], defaultValue: true);
-          _tabActivityDots = _toBool(settings['tab_activity_dots'], defaultValue: true);
-          _duplicateDetection = _toBool(settings['duplicate_detection'], defaultValue: true);
-          _autoCenterOnIncident = _toBool(settings['auto_center_on_incident'], defaultValue: true);
-          _showUnitLabels = _toBool(settings['show_unit_labels'], defaultValue: true);
-          _mfa = _toBool(settings['mfa_enabled'], defaultValue: true);
+          _reducedMotion = toBool(settings['reduced_motion']);
+          _criticalEmergencyAlerts = toBool(settings['critical_emergency_alerts'], defaultValue: true);
+          _unitStatusUpdates = toBool(settings['unit_status_updates'], defaultValue: true);
+          _incidentUpdates = toBool(settings['incident_updates'], defaultValue: true);
+          _soundAlerts = toBool(settings['sound_alerts'], defaultValue: true);
+          _tabActivityDots = toBool(settings['tab_activity_dots'], defaultValue: true);
+          _duplicateDetection = toBool(settings['duplicate_detection'], defaultValue: true);
+          _autoCenterOnIncident = toBool(settings['auto_center_on_incident'], defaultValue: true);
+          _showUnitLabels = toBool(settings['show_unit_labels'], defaultValue: true);
+          _mfa = toBool(settings['mfa_enabled'], defaultValue: true);
           _sessionTimeout = (settings['session_timeout'] as String?) ?? '15 min';
-          _autoLogout = _toBool(settings['auto_logout'], defaultValue: true);
+          _autoLogout = toBool(settings['auto_logout'], defaultValue: true);
         });
       }
     } catch (e) {
       debugPrint('Error loading admin settings: $e');
     }
-  }
-  bool _toBool(dynamic val, {bool defaultValue = false}) {
-    if (val == null) return defaultValue;
-    if (val is bool) return val;
-    if (val is int) return val == 1;
-    if (val is String) return val == '1' || val.toLowerCase() == 'true';
-    return defaultValue;
   }
   Future<void> _loadUserProfile() async {
     try {

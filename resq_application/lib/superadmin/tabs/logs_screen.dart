@@ -9,6 +9,7 @@ import '../../admin/admin_service.dart';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
+import '../../shared/incident_format.dart';
 
 class LogsScreen extends StatefulWidget {
   final String searchFilter;
@@ -1343,7 +1344,7 @@ class _LogsScreenState extends State<LogsScreen> {
 
   Widget _buildStaticLogTile(Map<String, dynamic> event, {required bool isLast}) {
     final ts = ThemeService.instance;
-    final iconData = _getIconData(event['icon'] as String);
+    final iconData = logIconData(event['icon'] as String);
 
     return IntrinsicHeight(
       child: Row(
@@ -1572,22 +1573,6 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'local_shipping_outlined':
-        return Icons.local_shipping_outlined;
-      case 'warning_amber_rounded':
-        return Icons.warning_amber_rounded;
-      case 'location_on_rounded':
-        return Icons.location_on_rounded;
-      case 'check_circle_rounded':
-        return Icons.check_circle_rounded;
-      case 'sync_rounded':
-        return Icons.sync_rounded;
-      default:
-        return Icons.notifications_none;
-    }
-  }
 
   Color _parseColor(String colorString) {
     try {

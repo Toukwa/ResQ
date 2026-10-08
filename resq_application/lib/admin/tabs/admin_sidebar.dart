@@ -89,12 +89,6 @@ class AdminSidebar extends StatelessWidget {
                         inactiveIconColor,
                       ),
                       _buildSidebarIcon(
-                        Icons.perm_media_outlined,
-                        5,
-                        "Evidence / Media Gallery",
-                        inactiveIconColor,
-                      ),
-                      _buildSidebarIcon(
                         Icons.manage_accounts_outlined,
                         6,
                         "Department Fleet Management",

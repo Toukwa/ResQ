@@ -1903,27 +1903,3 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
 
 }
-
-class UnitCard extends StatelessWidget {
-  final String callSign;
-  final String type;
-  final String officer;
-  final String distance;
-  final String eta;
-  final bool isAvailable;
-
-  const UnitCard({
-    super.key,
-    required this.callSign,
-    required this.type,
-    required this.officer,
-    required this.distance,
-    required this.eta,
-    required this.isAvailable,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox.shrink();
-  }
-}

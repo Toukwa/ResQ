@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/theme_service.dart';
+import '../../shared/incident_format.dart';
 
 class AdminHeader extends StatefulWidget {
   final String title;
@@ -76,20 +77,6 @@ class _AdminHeaderState extends State<AdminHeader> {
     return name.substring(0, name.length >= 2 ? 2 : name.length).toUpperCase();
   }
 
-  String _formatTimeAgo(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} min ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -368,7 +355,7 @@ class _AdminHeaderState extends State<AdminHeader> {
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Text(
-                                                    _formatTimeAgo(timestamp),
+                                                    formatTimeAgo(timestamp),
                                                     style: TextStyle(
                                                       fontSize: 10,
                                                       color: popupSubText,

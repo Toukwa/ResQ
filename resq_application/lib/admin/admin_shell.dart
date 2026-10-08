@@ -18,7 +18,6 @@ import 'tabs/admin_vehicles_tab.dart';
 import 'tabs/admin_map_tab.dart';
 import 'tabs/admin_incidents_tab.dart';
 import 'tabs/admin_logs_tab.dart';
-import 'tabs/admin_media_tab.dart';
 import 'tabs/admin_management_screen.dart';
 import 'tabs/admin_settings_tab.dart';
 import '../shared/reports_screen.dart';
@@ -26,52 +25,6 @@ import '../services/sound_service.dart';
 import '../shared/tab_activity.dart';
 import '../shared/display_settings.dart';
 
-
-void main() {
-  runApp(const ResQDashboardApp());
-}
-
-class ResQDashboardApp extends StatelessWidget {
-  const ResQDashboardApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeService.instance,
-      builder: (context, _) {
-        final isDark = ThemeService.instance.isDark;
-        return MaterialApp(
-          title: 'ResQ Admin Dashboard',
-          debugShowCheckedModeBanner: false,
-          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-          theme: ThemeData(
-            fontFamily: 'Inter',
-            brightness: Brightness.light,
-            scaffoldBackgroundColor: const Color(0xFFF4F3F0),
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF5C00),
-              surface: const Color(0xFFF4F3F0),
-            ),
-          ),
-          darkTheme: ThemeData(
-            fontFamily: 'Inter',
-            brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF111827),
-            cardColor: const Color(0xFF1F2937),
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF5C00),
-              brightness: Brightness.dark,
-              surface: const Color(0xFF1F2937),
-            ),
-          ),
-          home: const AdminShell(),
-        );
-      },
-    );
-  }
-}
-
-typedef DashboardScreen = AdminShell;
 
 class AdminShell extends StatefulWidget {
   final int? userId;
@@ -216,7 +169,7 @@ class _AdminShellState extends State<AdminShell> {
     if (!TabActivity.enabled.value) return;
     final tabs = switch (activity) {
       TabActivity.incidents => const [1, 3], // request queue, incident log
-      TabActivity.media => const [5],
+      TabActivity.media => const <int>[],
       TabActivity.management => const [6],
       null => const <int>[],
     };
@@ -384,8 +337,6 @@ class _AdminShellState extends State<AdminShell> {
         return 'Incident Log Management';
       case 4:
         return 'Audit & Activity Logs';
-      case 5:
-        return 'Evidence & Media Gallery';
       case 6:
         return 'Department Fleet & Unit Management';
       case 7:
@@ -409,8 +360,6 @@ class _AdminShellState extends State<AdminShell> {
         return 'Comprehensive emergency incident reports';
       case 4:
         return 'System audit trail and real-time activity tracking';
-      case 5:
-        return 'Photo and video evidence archive by incident';
       case 6:
         return 'View and add emergency fleet vehicles for your department';
       case 7:
@@ -495,10 +444,7 @@ class _AdminShellState extends State<AdminShell> {
                         onRefreshNeeded: () => setState(() {}),
                       ),
                       AdminLogsTab(searchFilter: _currentSearchQuery, department: _effectiveDepartment),
-                      AdminMediaTab(
-                        searchFilter: _currentSearchQuery,
-                        department: _effectiveDepartment,
-                      ),
+                      const SizedBox.shrink(), // 5: media gallery removed
                       AdminManagementScreen(
                         searchFilter: _currentSearchQuery,
                         department: _effectiveDepartment,

@@ -66,11 +66,6 @@ class SessionService {
     }
   }
 
-  /// Check if user is currently logged in
-  static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyIsLoggedIn) ?? false;
-  }
 
   // ─── TRUSTED DEVICE METHODS ─────────────────────────────────
 
@@ -108,11 +103,5 @@ class SessionService {
     return prefs.getInt(_keyTrustedUserId());
   }
 
-  /// Remove the trusted device token for [userId] (e.g. when user turns off "remember me")
-  static Future<void> clearDeviceToken(int userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyDeviceToken(userId));
-    await prefs.remove(_keyTrustedUserId());
-  }
 }
 

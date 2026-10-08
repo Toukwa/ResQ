@@ -11,11 +11,11 @@ import '../../admin/admin_service.dart';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
-import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
+import '../../shared/incident_format.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -57,7 +57,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   // Tab-specific dynamic data
   List<dynamic> _vehiclesList = [];
   List<Map<String, dynamic>> _activityLogs = [];
-  List<Map<String, dynamic>> _mediaItems = [];
 
   Timer? _refreshTimer;
   io.Socket? _socket;
@@ -181,7 +180,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
       _socket!.on('refreshIncidentQueueEvent', handleRefresh);
       _socket!.on('refreshManagementData', handleRefresh);
-      _socket!.on('refreshMediaGalleryEvent', handleRefresh);
       _socket!.on('newNotification', handleRefresh);
       _socket!.on('vehicleLocationUpdated', (data) {
         if (!mounted) return;
@@ -208,14 +206,12 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         AdminService.getActiveIncidentsList(),
         AdminService.getAllVehicles(),
         AdminService.getActivityLogs(limit: 50),
-        FirebaseService.getMediaGallery().catchError((_) => <dynamic>[]),
       ]);
 
       final metricsData = results[0] as Map<String, dynamic>?;
       final listData = results[1] as List<dynamic>?;
       final vehicleData = results[2] as List<dynamic>?;
       final rawLogs = results[3] as List<dynamic>?;
-      final rawMedia = results[4] as List<dynamic>;
 
       if (mounted) {
         final focus = DisplaySettings.newIncidentPosition(_unfilteredIncidentQueueList, listData ?? []);
@@ -240,8 +236,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
           if (rawLogs != null) {
             _activityLogs = _parseActivityLogs(rawLogs);
           }
-          // Always update media items
-          _mediaItems = rawMedia.map((m) => Map<String, dynamic>.from(m as Map)).toList();
           _isLoading = false;
         });
       }
@@ -523,54 +517,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     return rawType.isEmpty ? 'General Emergency' : rawType;
   }
 
-  Map<String, dynamic> _getEmergencyTypeStyle(dynamic incidentInput) {
-    String rawType = '';
-    if (incidentInput is Map) {
-      rawType = (incidentInput['Incident_Type'] ?? incidentInput['type'] ?? incidentInput['incType'] ?? '').toString();
-    } else {
-      rawType = (incidentInput ?? '').toString();
-    }
-
-    final lower = rawType.toLowerCase();
-    final isMultiple = rawType.contains(',');
-
-    if (isMultiple) {
-      return {
-        'icon': Icons.priority_high_rounded,
-        'color': const Color(0xFFF97316),
-        'bgColor': const Color(0xFFFFEDD5),
-        'agency': 'MULTI',
-      };
-    } else if (lower.contains('fire')) {
-      return {
-        'icon': Icons.local_fire_department_rounded,
-        'color': const Color(0xFFEF4444),
-        'bgColor': const Color(0xFFFEE2E2),
-        'agency': 'BFP',
-      };
-    } else if (lower.contains('police') || lower.contains('crime') || lower.contains('accident') || lower.contains('traffic')) {
-      return {
-        'icon': Icons.warning_amber_rounded,
-        'color': const Color(0xFFF59E0B),
-        'bgColor': const Color(0xFFFEF3C7),
-        'agency': 'PNP',
-      };
-    } else if (lower.contains('medical') || lower.contains('health')) {
-      return {
-        'icon': Icons.favorite_rounded,
-        'color': const Color(0xFF10B981),
-        'bgColor': const Color(0xFFD1FAE5),
-        'agency': 'CDRRMO',
-      };
-    } else {
-      return {
-        'icon': Icons.priority_high_rounded,
-        'color': const Color(0xFFF97316),
-        'bgColor': const Color(0xFFFFEDD5),
-        'agency': 'RESCUE',
-      };
-    }
-  }
 
   List<String> _getInvolvedDepartments(dynamic incident) {
     if (incident == null) return ['CDRRMO'];
@@ -636,13 +582,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     return depts.toList();
   }
 
-  Color _getDepartmentBadgeColor(String dept) {
-    final d = dept.toUpperCase();
-    if (d.contains('BFP') || d.contains('FIRE')) return const Color(0xFFDC2626);
-    if (d.contains('PNP') || d.contains('POLICE')) return const Color(0xFF2563EB);
-    if (d.contains('CDRRMO') || d.contains('RESCUE') || d.contains('MEDICAL')) return const Color(0xFF059669);
-    return const Color(0xFFEA580C);
-  }
 
 
   Map<String, dynamic> _getStatusConfig(String? rawStatus) {
@@ -1180,11 +1119,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                 ),
                                 _buildTopTabItem(
                                   index: 3,
-                                  label: "Media",
-                                  icon: Icons.description_outlined,
-                                ),
-                                _buildTopTabItem(
-                                  index: 4,
                                   label: "Requests",
                                   icon: Icons.mail_outline_rounded,
                                   badgeCount: _pendingCount,
@@ -1254,10 +1188,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                               // ------------------ TAB 2: ACTIVITY ------------------
                               _buildActivityTabView(),
 
-                              // ------------------ TAB 3: MEDIA ------------------
-                              _buildMediaTabView(),
-
-                              // ------------------ TAB 4: REQUESTS ------------------
+                              // ------------------ TAB 3: REQUESTS ------------------
                               _buildRequestsTabView(),
                             ],
                           ),
@@ -1781,116 +1712,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     }
   }
 
-  // Media Tab View — dynamic from media-gallery API
-  Widget _buildMediaTabView() {
-    final ts = ThemeService.instance;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Text(
-                'Recent Evidence (${_mediaItems.length})',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _refreshSingleTab(3),
-                child: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF94A3B8)),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _mediaItems.isEmpty
-              ? _buildEmptyState(Icons.photo_library_outlined, 'No media uploaded', 'Evidence photos will appear here when uploaded')
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                  itemCount: _mediaItems.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => _buildDynamicMediaItem(_mediaItems[i]),
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDynamicMediaItem(Map<String, dynamic> item) {
-    final ts = ThemeService.instance;
-    final filename = item['filename']?.toString() ?? item['file_name']?.toString() ?? 'Unknown';
-    final incidentId = item['incidentId']?.toString() ?? item['Req_ID']?.toString() ?? '';
-    final category = item['category']?.toString() ?? '';
-    final uploadedAt = item['uploadedAt']?.toString() ?? item['uploaded_at']?.toString();
-    final dt = uploadedAt != null ? DateTime.tryParse(uploadedAt) : null;
-    final timeLabel = dt != null ? DateFormat('HH:mm').format(dt) : '--:--';
-    final meta = '${incidentId.isNotEmpty ? 'INC-$incidentId' : category} · $timeLabel';
-
-    // Display thumbnail from server if path provided
-    final imagePath = item['image_path']?.toString() ?? item['file_path']?.toString() ?? item['imagePath']?.toString();
-    final imageUrl = resolveFirstImageUrl(imagePath);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFFAFAFA),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ts.borderColor),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: imageUrl != null && imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
-                    width: 36,
-                    height: 36,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _mediaPlaceholderIcon(ts),
-                  )
-                : _mediaPlaceholderIcon(ts),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  filename,
-                  style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(meta,
-                    style: TextStyle(fontSize: 10, color: ts.textSecondary)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mediaPlaceholderIcon([ThemeService? ts]) {
-    final activeTs = ts ?? ThemeService.instance;
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: activeTs.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Icon(Icons.image_outlined, color: activeTs.textSecondary, size: 18),
-    );
-  }
-
   // Incoming Requests Tab View — dynamic from active incidents (pending/in_progress)
   Widget _buildRequestsTabView() {
     final ts = ThemeService.instance;
@@ -1967,7 +1788,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final timeLabel = _formatTimeString(incident['SOS_timeStamp'] ?? incident['rawTimestamp']);
     final rawStatus = (incident['reqStatus'] ?? incident['status'] ?? 'pending').toString();
     final statusConfig = _getStatusConfig(rawStatus);
-    final typeStyle = _getEmergencyTypeStyle(rawType);
+    final typeStyle = emergencyTypeStyle(rawType);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -2011,7 +1832,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: _getInvolvedDepartments(incident).map((dept) {
-                  final bColor = _getDepartmentBadgeColor(dept);
+                  final bColor = departmentBadgeColor(dept);
                   return Container(
                     margin: const EdgeInsets.only(left: 3),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -2111,16 +1932,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         if (mounted && logs != null) {
           setState(() {
             _activityLogs = _parseActivityLogs(logs);
-          });
-        }
-      } catch (_) {}
-    } else if (tabIndex == 3) {
-      try {
-        final media = await FirebaseService.getMediaGallery();
-        if (mounted) {
-          setState(() {
-            _mediaItems =
-                media.map((m) => Map<String, dynamic>.from(m as Map)).toList();
           });
         }
       } catch (_) {}
@@ -2401,7 +2212,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   ) {
     final ts = ThemeService.instance;
     final statusConfig = _getStatusConfig(item['status'] ?? item['reqStatus']);
-    final typeStyle = _getEmergencyTypeStyle(
+    final typeStyle = emergencyTypeStyle(
       item['type'] ?? item['incType'] ?? '',
     );
     final reqIdText = _formatRequestId(item);

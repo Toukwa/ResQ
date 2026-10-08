@@ -14,7 +14,7 @@
 // Set to false to use mobile data only (Wi-Fi stays off).
 #define ENABLE_WIFI false
 // Shown at boot so you can confirm the right file was uploaded.
-#define SKETCH_VERSION "v6-history"
+#define SKETCH_VERSION "v7-fast"
 
 #if ENABLE_CELLULAR
 #define TINY_GSM_MODEM_SIM7600
@@ -47,7 +47,7 @@ const char* TOKEN_HOST = "securetoken.googleapis.com";
 // ---------- Pins ----------
 // NEO-M8L GPS on UART1
 constexpr int GPS_RX_PIN = 4; // ESP32 RX <- GPS TX
-constexpr int GPS_TX_PIN = 2; // ESP32 TX -> GPS RX (optional)
+constexpr int GPS_TX_PIN = 2; // ESP32 TX -> GPS RX (needed for the 5 Hz setup below)
 constexpr uint32_t GPS_BAUD = 9600;
 
 // SIM7600 on UART2. Must be different pins from the GPS.
@@ -58,8 +58,10 @@ constexpr uint32_t MODEM_BAUD = 115200;
 
 // ---------- Timing ----------
 // Every update is streamed to every open admin map; mobile data also costs load.
-constexpr unsigned long WIFI_INTERVAL_MS = 3000;
-constexpr unsigned long CELLULAR_INTERVAL_MS = 10000;
+constexpr unsigned long WIFI_INTERVAL_MS = 1000;
+constexpr unsigned long CELLULAR_INTERVAL_MS = 3000;
+constexpr unsigned long HEARTBEAT_INTERVAL_MS = 30000;          // Write even without a new fix so the app keeps it Online
+constexpr uint16_t GPS_RATE_MS = 200;                            // 5 position fixes per second
 constexpr unsigned long WIFI_RETRY_INTERVAL_MS = 10000;
 constexpr unsigned long CELLULAR_RETRY_INTERVAL_MS = 30000;
 constexpr unsigned long HISTORY_INTERVAL_MS = 30000;            // How often a point is added to the route history
@@ -85,6 +87,7 @@ unsigned long lastCellularAttempt = 0;
 #endif
 
 unsigned long lastLocationAttempt = 0;
+unsigned long lastLocationSent = 0;
 unsigned long lastHistoryPoint = 0;
 unsigned long lastWifiAttempt = 0;
 unsigned long lastGpsStatusPrint = 0;
@@ -105,6 +108,33 @@ String trackerEmail() {
   mac.replace(":", "");
   mac.toLowerCase();
   return "tracker-" + mac + "@resq-tracker.app";
+}
+
+// ---------- GPS setup ----------
+
+// Sends one u-blox UBX command (adds the header and checksum).
+void sendUbx(uint8_t cls, uint8_t id, const uint8_t* payload, uint16_t len) {
+  uint8_t ckA = 0, ckB = 0;
+  const uint8_t head[] = {cls, id, (uint8_t)(len & 0xFF), (uint8_t)(len >> 8)};
+  GPSSerial.write(0xB5);
+  GPSSerial.write(0x62);
+  for (uint8_t b : head) { GPSSerial.write(b); ckA += b; ckB += ckA; }
+  for (uint16_t i = 0; i < len; i++) { GPSSerial.write(payload[i]); ckA += payload[i]; ckB += ckA; }
+  GPSSerial.write(ckA);
+  GPSSerial.write(ckB);
+  delay(50);
+}
+
+// The NEO-M8L sends 1 fix per second by default. Turn off the sentences we don't use
+// (so 9600 baud has room) and raise it to 5 fixes per second.
+void configureGps() {
+  const uint8_t unused[] = {0x01, 0x02, 0x03, 0x05}; // GLL, GSA, GSV, VTG
+  for (uint8_t msg : unused) {
+    const uint8_t off[] = {0xF0, msg, 0};
+    sendUbx(0x06, 0x01, off, sizeof(off));
+  }
+  const uint8_t rate[] = {(uint8_t)(GPS_RATE_MS & 0xFF), (uint8_t)(GPS_RATE_MS >> 8), 1, 0, 1, 0};
+  sendUbx(0x06, 0x08, rate, sizeof(rate));
 }
 
 // ---------- Connectivity ----------
@@ -167,26 +197,6 @@ void connectCellular() {
   cellularReady = true;
   Serial.println("[SIM] Mobile data connected.");
   Serial.printf("[SIM] IP: %s\n", modem.localIP().toString().c_str());
-  // Diagnostic: ask the modem about its data state directly.
-  const char* diagCmds[] = {"+CPSI?", "+CGDCONT?", "+CGACT?", "+NETOPEN?", "+IPADDR", "+CPING=\"8.8.8.8\",1,4"};
-  for (const char* cmd : diagCmds) {
-    String reply;
-    modem.sendAT(cmd);
-    const bool isPing = strncmp(cmd, "+CPING", 6) == 0;
-    modem.waitResponse(5000L, reply);
-    if (isPing) delay(8000); // ping results arrive after OK
-    while (ModemSerial.available()) reply += (char)ModemSerial.read();
-    reply.trim();
-    Serial.printf("[DIAG] AT%s -> %s\n", cmd, reply.c_str());
-  }
-  // Diagnostic: plain TCP (no TLS) to the auth server. If this fails, TLS is not the problem.
-  const bool tcpOk = gsmAuthBase.connect(AUTH_HOST, 443);
-  Serial.printf("[SIM] TCP test to %s:443 - %s\n", AUTH_HOST, tcpOk ? "OK" : "FAILED");
-  gsmAuthBase.stop();
-  // Diagnostic: TCP straight to an IP (no DNS). OK here but FAILED above = DNS problem.
-  const bool ipOk = gsmAuthBase.connect(IPAddress(1, 1, 1, 1), 80);
-  Serial.printf("[SIM] TCP test to 1.1.1.1:80 (no DNS) - %s\n", ipOk ? "OK" : "FAILED");
-  gsmAuthBase.stop();
 }
 
 bool cellularUp() {
@@ -410,7 +420,9 @@ void printGpsIndicator() {
 
 void setup() {
   Serial.begin(115200);
+  GPSSerial.setRxBufferSize(2048); // keeps fixes while an upload blocks the loop
   GPSSerial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  configureGps();
 
   wifiRtdb.setInsecure(); // no CA bundle on the board; traffic is still encrypted
   wifiAuth.setInsecure();
@@ -461,8 +473,10 @@ void loop() {
 #endif
 
   const unsigned long interval = wifiUp() ? WIFI_INTERVAL_MS : CELLULAR_INTERVAL_MS;
-  if (online() && now - lastLocationAttempt >= interval) {
+  // Send when there is a new fix, or a heartbeat so the app doesn't mark it Offline.
+  if (online() && now - lastLocationAttempt >= interval &&
+      (gps.location.isUpdated() || now - lastLocationSent >= HEARTBEAT_INTERVAL_MS)) {
     lastLocationAttempt = now;
-    sendLocation();
+    if (sendLocation()) lastLocationSent = now;
   }
 }

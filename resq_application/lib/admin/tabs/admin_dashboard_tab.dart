@@ -8,13 +8,13 @@ import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
 import '../../config.dart';
-import '../../services/firebase_services.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../services/theme_service.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
+import '../../shared/incident_format.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
 
@@ -43,7 +43,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   bool _isLoading = true;
   io.Socket? _socket;
   double _mapZoom = 15.0;
-  int _selectedTabIndex = 0; // 0: Requests, 1: Units, 2: Activity, 3: Media
+  int _selectedTabIndex = 0; // 0: Requests, 1: Units, 2: Activity
 
   // RxDart: batches rapid socket refresh signals into a single data fetch
   final PublishSubject<String> _refreshStream = PublishSubject<String>();
@@ -60,7 +60,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   List<dynamic> _incidents = [];
   List<dynamic> _vehicles = [];
   List<dynamic> _activityLogs = [];
-  List<dynamic> _mediaItems = [];
 
   AdminIncidentFilter _selectedQueueFilter = AdminIncidentFilter.all;
   bool _isSortOldestFirst = true;
@@ -130,7 +129,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       for (final event in [
         'refreshIncidentQueueEvent',
         'refreshManagementData',
-        'refreshMediaGalleryEvent',
         'newNotification',
         'refreshActivityLogsEvent',
         'emergency_request_created',
@@ -163,14 +161,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         AdminService.getActiveIncidentsList(),
         AdminService.getAllVehicles(),
         AdminService.getSystemLogs(limit: 50).catchError((_) => <dynamic>[]),
-        FirebaseService.getMediaGallery().catchError((_) => <dynamic>[]),
       ]);
 
       final metricsData = results[0] as Map<String, dynamic>?;
       final incidentsData = results[1] as List<dynamic>?;
       final vehiclesData = results[2] as List<dynamic>?;
       final logsData = results[3] as List<dynamic>?;
-      final mediaData = results[4] as List<dynamic>?;
 
       if (mounted) {
         final focus = DisplaySettings.newIncidentPosition(_incidents, incidentsData ?? []);
@@ -188,7 +184,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           _incidents = incidentsData ?? [];
           _vehicles = vehiclesData ?? [];
           _activityLogs = logsData ?? [];
-          _mediaItems = mediaData ?? [];
           _isLoading = false;
         });
       }
@@ -344,60 +339,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   List<dynamic> get _filteredActivityLogs => _activityLogs;
 
-  String? _resolveImageUrl(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return null;
-    final path = raw.trim();
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
-    final base = AppConfig.baseUrl.endsWith('/')
-        ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
-        : AppConfig.baseUrl;
-    final cleanPath = path.startsWith('/') ? path : '/$path';
-    return '$base$cleanPath';
-  }
-
-  List<dynamic> get _allMediaItems {
-    final List<Map<String, dynamic>> items = [];
-
-    // Extract photo evidence attached to emergency reports
-    // Each incident may have multiple comma-separated image paths
-    for (var inc in _incidents) {
-      final img = inc['image_path'] ?? inc['photo'] ?? inc['proof'] ?? inc['evidence'];
-      if (img != null && img.toString().isNotEmpty) {
-        final reqId = _formatRequestId(inc);
-        final type = (inc['Incident_Type'] ?? inc['type'] ?? 'Evidence').toString();
-        // Split comma-separated paths into individual items
-        final paths = img.toString().split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
-        for (int i = 0; i < paths.length; i++) {
-          items.add({
-            'filename': paths.length > 1 ? '$reqId Photo ${i + 1}/${paths.length}' : '$reqId Photo Evidence',
-            'incidentId': inc['Req_ID'] ?? inc['req_ID'] ?? '',
-            'category': type,
-            'image_path': paths[i],
-            'created_at': inc['time'] ?? inc['created_at'] ?? '',
-            'Incident_Type': type,
-            'emergency_types': inc['emergency_types'],
-          });
-        }
-      }
-    }
-
-    // Combine with server media gallery list
-    for (var m in _mediaItems) {
-      if (m is Map) {
-        items.add(Map<String, dynamic>.from(m));
-      }
-    }
-
-    return items;
-  }
-
-  List<dynamic> get _filteredMediaItems {
-    if (_dept == 'ALL') return _allMediaItems;
-    return _allMediaItems.where((item) => _matchesDepartment(item)).toList();
-  }
-
   List<LatLng> get _reportedIncidentPoints => _filteredIncidents
       .map((item) {
         final lat = double.tryParse(item['Latitude']?.toString() ?? item['latitude']?.toString() ?? '');
@@ -511,54 +452,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     }
   }
 
-  Map<String, dynamic> _getEmergencyTypeStyle(dynamic incidentInput) {
-    String rawType = '';
-    if (incidentInput is Map) {
-      rawType = (incidentInput['Incident_Type'] ?? incidentInput['type'] ?? incidentInput['incType'] ?? '').toString();
-    } else {
-      rawType = (incidentInput ?? '').toString();
-    }
-
-    final lower = rawType.toLowerCase();
-    final isMultiple = rawType.contains(',');
-
-    if (isMultiple) {
-      return {
-        'icon': Icons.priority_high_rounded,
-        'color': const Color(0xFFF97316),
-        'bgColor': const Color(0xFFFFEDD5),
-        'agency': 'MULTI',
-      };
-    } else if (lower.contains('fire')) {
-      return {
-        'icon': Icons.local_fire_department_rounded,
-        'color': const Color(0xFFEF4444),
-        'bgColor': const Color(0xFFFEE2E2),
-        'agency': 'BFP',
-      };
-    } else if (lower.contains('police') || lower.contains('crime') || lower.contains('accident') || lower.contains('traffic')) {
-      return {
-        'icon': Icons.warning_amber_rounded,
-        'color': const Color(0xFFF59E0B),
-        'bgColor': const Color(0xFFFEF3C7),
-        'agency': 'PNP',
-      };
-    } else if (lower.contains('medical') || lower.contains('health')) {
-      return {
-        'icon': Icons.favorite_rounded,
-        'color': const Color(0xFF10B981),
-        'bgColor': const Color(0xFFD1FAE5),
-        'agency': 'CDRRMO',
-      };
-    } else {
-      return {
-        'icon': Icons.priority_high_rounded,
-        'color': const Color(0xFFF97316),
-        'bgColor': const Color(0xFFFFEDD5),
-        'agency': 'RESCUE',
-      };
-    }
-  }
 
   List<String> _getInvolvedDepartments(dynamic incident) {
     if (incident == null) return ['CDRRMO'];
@@ -624,13 +517,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return depts.toList();
   }
 
-  Color _getDepartmentBadgeColor(String dept) {
-    final d = dept.toUpperCase();
-    if (d.contains('BFP') || d.contains('FIRE')) return const Color(0xFFDC2626);
-    if (d.contains('PNP') || d.contains('POLICE')) return const Color(0xFF2563EB);
-    if (d.contains('CDRRMO') || d.contains('RESCUE') || d.contains('MEDICAL')) return const Color(0xFF059669);
-    return const Color(0xFFEA580C);
-  }
 
 
 
@@ -1020,11 +906,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         label: "Activity",
                         icon: Icons.show_chart_rounded,
                       ),
-                      _buildTopTabItem(
-                        index: 3,
-                        label: "Media",
-                        icon: Icons.description_outlined,
-                      ),
                     ],
                   ),
                 ),
@@ -1040,7 +921,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     _buildRequestsTabView(),
                     _buildUnitsTabView(),
                     _buildActivityTabView(),
-                    _buildMediaTabView(),
                   ],
                 ),
               ),
@@ -1277,54 +1157,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     );
   }
 
-  // TAB 3: MEDIA TAB VIEW
-  Widget _buildMediaTabView() {
-    final media = _filteredMediaItems;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Text(
-                'Recent Evidence (${media.length})',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: ThemeService.instance.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A)),
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () async {
-                  await _loadDashboardData(showLoading: true);
-                },
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF94A3B8)),
-                        )
-                      : const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF94A3B8)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: media.isEmpty
-              ? _buildEmptyState(Icons.photo_library_outlined, 'No media uploaded', 'Evidence photos will appear here when uploaded')
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                  itemCount: media.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => _buildDynamicMediaItem(Map<String, dynamic>.from(media[i] as Map)),
-                ),
-        ),
-      ],
-    );
-  }
-
   // TAB 0: REQUESTS TAB VIEW (FIFO/LIFO-ordered, with inline accept→dispatch flow)
   Widget _buildRequestsTabView() {
     final list = _pendingIncidents;
@@ -1443,7 +1275,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final descSnippet = desc.length > 100 ? '${desc.substring(0, 100)}...' : desc;
     final rawStatus = (incident['reqStatus'] ?? incident['status'] ?? incident['Status'] ?? 'pending').toString();
     final statusConfig = _getStatusConfig(rawStatus);
-    final typeStyle = _getEmergencyTypeStyle(rawType);
+    final typeStyle = emergencyTypeStyle(rawType);
     final timeReported = (incident['time'] ?? incident['created_at'] ?? '').toString();
     // Multi-emergency type support — may return 1 or more types
     final emergencyTypes = _parseEmergencyTypes(incident);
@@ -1610,7 +1442,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: _getInvolvedDepartments(incident).map((dept) {
-                            final bColor = _getDepartmentBadgeColor(dept);
+                            final bColor = departmentBadgeColor(dept);
                             return Container(
                               margin: const EdgeInsets.only(left: 3),
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1912,72 +1744,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     );
   }
 
-  Widget _buildDynamicMediaItem(Map<String, dynamic> item) {
-    final ts = ThemeService.instance;
-    final filename = item['filename']?.toString() ?? item['file_name']?.toString() ?? 'Media Evidence';
-    final incidentId = item['incidentId']?.toString() ?? item['Req_ID']?.toString() ?? '';
-    final category = item['category']?.toString() ?? item['incident_type']?.toString() ?? 'Evidence';
-    final imagePath = item['image_path']?.toString() ?? item['file_path']?.toString() ?? item['photo']?.toString();
-    final imageUrl = _resolveImageUrl(imagePath);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: ts.subtleBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ts.borderColor),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: imageUrl != null
-                ? Image.network(
-                    imageUrl,
-                    width: 36,
-                    height: 36,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _mediaPlaceholderIcon(),
-                  )
-                : _mediaPlaceholderIcon(),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  filename,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${incidentId.isNotEmpty ? 'INC-$incidentId · ' : ''}$category',
-                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mediaPlaceholderIcon() {
-    final ts = ThemeService.instance;
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: ts.inputBackground,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Icon(Icons.image_outlined, color: ts.textSecondary, size: 18),
-    );
-  }
-
   Widget _buildEmptyState(IconData icon, String title, String subtitle) {
     final ts = ThemeService.instance;
     return Center(
@@ -2073,7 +1839,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       final lat = double.tryParse(item['Latitude']?.toString() ?? item['latitude']?.toString() ?? '') ?? 13.4215;
       final lng = double.tryParse(item['Longitude']?.toString() ?? item['longitude']?.toString() ?? '') ?? 123.4842;
       final rawType = (item['Incident_Type'] ?? item['type'] ?? 'Emergency').toString();
-      final config = _getEmergencyTypeStyle(rawType);
+      final config = emergencyTypeStyle(rawType);
 
       markers.add(
         Marker(

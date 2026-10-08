@@ -24,11 +24,6 @@ List<String> parseImageUrls(String? rawPath) {
       .toList();
 }
 
-/// Builds the first resolved URL (used for banner thumbnails).
-String? resolveFirstImageUrl(String? rawPath) {
-  final urls = parseImageUrls(rawPath);
-  return urls.isEmpty ? null : urls.first;
-}
 
 // ---------------------------------------------------------------------------
 // PagedImageGalleryBanner — interactive banner with Next/Prev & Page Counter

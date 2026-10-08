@@ -13,13 +13,13 @@ import './tabs/super_admin_dashboard.dart'; // Tab 1: Live Map Overview
 import './tabs/map_screen.dart'; // Tab 2: Larger Map View
 import './tabs/incidents_screen.dart'; // Tab 3: Active Incidents Monitor
 import './tabs/logs_screen.dart'; // Tab 4: Live Activity Logs
-import './tabs/media_screen.dart'; // Tab 5: Evidence/Media Gallery
 import './tabs/management_screen.dart'; // Tab 6: Account/Agency Management
 import './tabs/settings_screen.dart'; // Tab 7: Settings Panel
 import '../shared/reports_screen.dart';
 import '../services/sound_service.dart';
 import '../shared/tab_activity.dart';
 import '../shared/display_settings.dart';
+import '../shared/incident_format.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -93,7 +93,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
         if (settings['theme_mode'] != null) {
           ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
         }
-        final autoLogout = _toBool(settings['auto_logout'], defaultValue: true);
+        final autoLogout = toBool(settings['auto_logout'], defaultValue: true);
         final timeoutStr = (settings['session_timeout'] as String?) ?? '15 min';
         final duration = _parseTimeoutDuration(timeoutStr);
 
@@ -129,13 +129,6 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     return const Duration(minutes: 15);
   }
 
-  bool _toBool(dynamic val, {bool defaultValue = false}) {
-    if (val == null) return defaultValue;
-    if (val is bool) return val;
-    if (val is int) return val == 1;
-    if (val is String) return val == '1' || val.toLowerCase() == 'true';
-    return defaultValue;
-  }
 
   void _resetInactivityTimer() {
     _inactivityTimer?.cancel();
@@ -243,7 +236,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     if (!TabActivity.enabled.value) return;
     final tabs = switch (activity) {
       TabActivity.incidents => const [2],
-      TabActivity.media => const [4],
+      TabActivity.media => const <int>[],
       TabActivity.management => const [5],
       null => const <int>[],
     };
@@ -417,7 +410,6 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                               _buildSidebarIcon(Icons.gpp_maybe_outlined, 2, "Active Incidents", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.receipt_long_rounded, 3, "Live Activity Logs", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.bar_chart_rounded, 7, "Analytics Reports", inactiveColor: sidebarIconInactive),
-                              _buildSidebarIcon(Icons.perm_media_outlined, 4, "Evidence / Media Gallery", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.manage_accounts_outlined, 5, "Account & Agency Management", inactiveColor: sidebarIconInactive),
                               _buildSidebarIcon(Icons.settings_outlined, 6, "Settings", inactiveColor: sidebarIconInactive),
                             ],
@@ -495,7 +487,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                             LogsScreen(
                               searchFilter: _currentSearchQuery,
                             ),
-                            MediaScreen(searchFilter: _currentSearchQuery),
+                            const SizedBox.shrink(), // 4: media gallery removed
                             ManagementScreen(searchFilter: _currentSearchQuery),
                             SettingsScreen(
                               searchFilter: _currentSearchQuery,

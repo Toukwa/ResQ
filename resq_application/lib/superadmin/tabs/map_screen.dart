@@ -14,6 +14,8 @@ import '../../shared/vehicle_history_dialog.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
 import '../../shared/vehicle_markers.dart';
+import '../../shared/incident_format.dart';
+import '../../shared/animated_marker_layer.dart';
 
 class MapScreen extends StatefulWidget {
   final String searchFilter;
@@ -107,7 +109,7 @@ class _MapScreenState extends State<MapScreen> {
       _socket!.on('refreshManagementData', (data) {
         if (mounted) _realtimeSubject.add(data);
       });
-      // GPS trackers emit this after every accepted one-second location fix.
+      // GPS trackers emit this on every location write (1 s on Wi-Fi, 3 s on mobile data).
       _socket!.on('vehicleLocationUpdated', (data) {
         if (!mounted) return;
         if (data is Map) {
@@ -234,37 +236,6 @@ class _MapScreenState extends State<MapScreen> {
     };
   }
 
-  Map<String, dynamic> _getVehicleMarkerConfig(dynamic vehicleInput) {
-    String deptStr = '';
-    if (vehicleInput is Map) {
-      deptStr = (vehicleInput['deptName'] ?? vehicleInput['Department_Name'] ?? vehicleInput['agency'] ?? vehicleInput['department'] ?? vehicleInput['dept_ID'] ?? vehicleInput['dept'] ?? '').toString().toUpperCase();
-    } else {
-      deptStr = (vehicleInput ?? '').toString().toUpperCase();
-    }
-
-    if (deptStr.contains('BFP') || deptStr.contains('FIRE') || deptStr == '2') {
-      return {
-        'icon': Icons.fire_truck,
-        'color': const Color(0xFFFF6B00),
-      };
-    }
-    if (deptStr.contains('PNP') || deptStr.contains('POLICE') || deptStr == '1') {
-      return {
-        'icon': Icons.local_police,
-        'color': const Color(0xFF2563EB),
-      };
-    }
-    if (deptStr.contains('CDRRMO') || deptStr.contains('RESCUE') || deptStr.contains('MEDICAL') || deptStr == '3') {
-      return {
-        'icon': Icons.medical_services_rounded,
-        'color': const Color(0xFF10B981),
-      };
-    }
-    return {
-      'icon': Icons.directions_car_rounded,
-      'color': const Color(0xFF64748B),
-    };
-  }
 
   void _showReportedIncidents() {
     if (_incidents.isEmpty) {
@@ -382,17 +353,15 @@ class _MapScreenState extends State<MapScreen> {
                                             .whereType<Marker>()
                                             .toList(),
                                       ),
-                                      MarkerLayer(
-                                        markers: _vehicles
+                                      AnimatedMarkerLayer(
+                                        markers: Map.fromEntries(_vehicles
                                             .map((vehicle) {
-                                              // Vehicles would need latitude/longitude from GPS
-                                              // For now, we'll skip vehicle markers if coordinates aren't available
                                               final latitude = double.tryParse('${vehicle['latitude']}');
                                               final longitude = double.tryParse('${vehicle['longitude']}');
                                               if (latitude == null || longitude == null) return null;
-                                              final markerConfig = _getVehicleMarkerConfig(vehicle['dept_ID']?.toString() ?? '');
+                                              final markerConfig = vehicleMarkerConfig(vehicle['dept_ID']?.toString() ?? '');
                                               final size = DisplaySettings.labeledSize(36, 40);
-                                              return Marker(
+                                              return MapEntry('${vehicle['vehicle_ID'] ?? vehicle['plate_no']}', Marker(
                                                 point: LatLng(latitude, longitude),
                                                 width: size.width,
                                                 height: size.height,
@@ -407,10 +376,10 @@ class _MapScreenState extends State<MapScreen> {
                                                   ),
                                                   vehicle['plate_no'],
                                                 ),
-                                              );
+                                              ));
                                             })
-                                            .whereType<Marker>()
-                                            .toList(),
+                                            .whereType<MapEntry<String, Marker>>()
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -556,7 +525,7 @@ class _MapScreenState extends State<MapScreen> {
                                           final incident = _activeIncidents[index];
                                           final type = _formatEmergencyType(incident['type']?.toString() ?? incident['incType']?.toString() ?? 'General', incident: incident);
                                           final location = _getLocationLabel(incident);
-                                          final status = _formatStatus(incident['status']?.toString() ?? incident['reqStatus']?.toString() ?? 'Pending');
+                                          final status = formatStatus(incident['status']?.toString() ?? incident['reqStatus']?.toString() ?? 'Pending');
                                           final statusColor = _getStatusColor(status);
                                           final statusBg = _getStatusBgColor(status);
                                           final isHovered = _hoveredIncidentIndex == index;
@@ -789,7 +758,7 @@ class _MapScreenState extends State<MapScreen> {
                                                               ),
                                                               const SizedBox(width: 4),
                                                               Text(
-                                                                _formatStatus(status),
+                                                                formatStatus(status),
                                                                 style: TextStyle(
                                                                   fontSize: 11,
                                                                   fontWeight: FontWeight.bold,
@@ -923,7 +892,7 @@ class _MapScreenState extends State<MapScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              _formatStatus(data['status']?.toString() ?? data['reqStatus']?.toString() ?? 'Unknown'),
+              formatStatus(data['status']?.toString() ?? data['reqStatus']?.toString() ?? 'Unknown'),
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -1178,13 +1147,6 @@ class _MapScreenState extends State<MapScreen> {
     return rawType.isEmpty ? 'General Emergency' : rawType;
   }
 
-  String _formatStatus(String? rawStatus) {
-    if (rawStatus == null) return 'Unknown';
-    final s = rawStatus.trim().toLowerCase();
-    if (s == 'en route' || s == 'en_route') return 'En Route';
-    if (s == 'declined' || s == 'denied') return 'Declined';
-    return rawStatus;
-  }
 
   String _getLocationLabel(Map<String, dynamic> item) {
     if (item['addressLabel'] != null &&
@@ -1362,7 +1324,7 @@ class _MapScreenState extends State<MapScreen> {
     final reqId = req['Request_ID'] ?? req['Req_ID'] ?? req['reqId'] ?? req['id'] ?? req['emergency_id'];
     final reqIdStr = reqId != null ? (reqId.toString().startsWith('REQ-') ? reqId.toString() : 'REQ-${reqId.toString().padLeft(4, '0')}') : 'REQ-000';
     final type = _formatEmergencyType(req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency');
-    final status = _formatStatus(req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined');
+    final status = formatStatus(req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined');
     final isCompleted = status.toLowerCase() == 'completed';
 
     final primaryColor = isCompleted

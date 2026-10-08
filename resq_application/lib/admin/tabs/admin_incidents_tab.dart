@@ -7,6 +7,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../services/theme_service.dart';
+import '../../shared/incident_format.dart';
 
 // ==========================================
 // DB DATA MODEL (MAPPED EXACTLY TO resq_db)
@@ -909,17 +910,6 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
     );
   }
 
-  Color _getAgencyColor(String? agency) {
-    switch (agency) {
-      case 'BFP':
-        return const Color(0xFFFF6B00);
-      case 'CDRRMO':
-        return const Color(0xFF10B981);
-      case 'PNP':
-      default:
-        return const Color(0xFF2563EB);
-    }
-  }
 
 
 
@@ -1085,7 +1075,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            _getIncidentIcon(incident.incType),
+                            incidentIcon(incident.incType),
                             size: 20,
                             color: const Color(0xFFFF5200),
                           ),
@@ -1508,25 +1498,10 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
     );
   }
 
-  int _getStepperStatusIndex(String status) {
-    final s = status.trim().toLowerCase();
-    if (s == 'completed') return 3;
-    if (s.contains('en route') ||
-        s.contains('en_route') ||
-        s.contains('dispatched') ||
-        s.contains('arrived') ||
-        s.contains('active') ||
-        s.contains('in_progress') ||
-        s.contains('in progress')) {
-      return 2;
-    }
-    if (s.contains('accepted') || s.contains('ack')) return 1;
-    return 0;
-  }
 
   Widget _buildProgressStepper(String status) {
     final ts = ThemeService.instance;
-    final int currentIndex = _getStepperStatusIndex(status);
+    final int currentIndex = stepperStatusIndex(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -1652,22 +1627,6 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
     );
   }
 
-  IconData _getIncidentIcon(String incidentType) {
-    final lower = incidentType.toLowerCase();
-    if (lower.contains(',') || lower.contains('multi')) {
-      return Icons.priority_high_rounded;
-    }
-    if (lower.contains('fire')) {
-      return Icons.local_fire_department_rounded;
-    }
-    if (lower.contains('medical') || lower.contains('health')) {
-      return Icons.favorite_rounded;
-    }
-    if (lower.contains('police') || lower.contains('crime') || lower.contains('accident') || lower.contains('traffic')) {
-      return Icons.warning_amber_rounded;
-    }
-    return Icons.priority_high_rounded;
-  }
 
   void _showRequestDetailsModal(EmergencyRequestModel req) {
     showDialog(
@@ -1901,7 +1860,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
           margin: const EdgeInsets.only(left: 3),
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
-            color: _getAgencyColor(dept),
+            color: agencyColor(dept),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
