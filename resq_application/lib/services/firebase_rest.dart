@@ -228,8 +228,8 @@ class Rtdb {
     return res.body.isEmpty ? null : jsonDecode(res.body);
   }
 
-  static Future<dynamic> get(String path, {Map<String, String>? query}) async =>
-      _check(await http.get(await _uri(path, query)).timeout(_kTimeout));
+  static Future<dynamic> get(String path, {Map<String, String>? query, Duration timeout = _kTimeout}) async =>
+      _check(await http.get(await _uri(path, query)).timeout(timeout));
 
   static Future<void> set(String path, dynamic value) async => _check(await http
       .put(await _uri(path), body: jsonEncode(value))

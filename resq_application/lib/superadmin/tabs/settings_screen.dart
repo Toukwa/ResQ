@@ -533,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(color: Color(0xFFF3F4F6), height: 1),
+          const SizedBox(height: 20),
           Expanded(
             child: SingleChildScrollView(
               child: contentWidgets.isEmpty
@@ -643,7 +643,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     if (_matchesSearch('Reduced Motion', 'Minimize animations and transitions')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+      if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildRowLayout(
           icon: Icons.autorenew_rounded,
@@ -775,7 +775,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final list = <Widget>[];
     for (final item in items) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
-        if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+        if (list.isNotEmpty) list.add(const SizedBox(height: 10));
         list.add(
           _buildSwitchRow(
             item['icon'] as IconData,
@@ -821,7 +821,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
     for (final item in switches) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
-        if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+        if (list.isNotEmpty) list.add(const SizedBox(height: 10));
         list.add(
           _buildSwitchRow(
             item['icon'] as IconData,
@@ -856,7 +856,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     if (_matchesSearch('Session Timeout', 'Auto-lock after inactivity')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+      if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildRowLayout(
           icon: Icons.lock_outline_rounded,
@@ -898,7 +898,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     if (_matchesSearch('Auto Logout on Inactivity', 'Force logout when session expires')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+      if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildSwitchRow(
           Icons.shield_outlined,
@@ -1202,19 +1202,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textPrimary = ThemeService.instance.textPrimary;
     final textSecondary = ThemeService.instance.textSecondary;
     final inputBg = ThemeService.instance.inputBackground;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: inputBg.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ThemeService.instance.borderColor.withValues(alpha: 0.6)),
+      ),
       child: Row(
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 32,
-            height: 32,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: inputBg,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icon, size: 16, color: textSecondary),
+            child: Icon(icon, size: 18, color: textSecondary),
           ),
           const SizedBox(width: 14),
           Expanded(

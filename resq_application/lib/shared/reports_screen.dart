@@ -149,53 +149,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Date Range',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
-                      const SizedBox(height: 6),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        _dateBox(ts, true),
-                        const SizedBox(width: 8),
-                        _dateBox(ts, false),
-                      ]),
-                    ],
-                  ),
-                  IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: _loading ? null : _load,
-                    icon: Icon(Icons.refresh_rounded, color: ts.textSecondary),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _loading || report == null ? null : _export,
-                    icon: const Icon(Icons.archive_rounded, size: 18),
-                    label: const Text('Download ZIP (PDF Report)'),
-                  ),
-                  if (widget.department != 'ALL')
-                    Text('Department: ${widget.department}', style: TextStyle(color: ts.textSecondary)),
-                ],
-              ),
+              _toolbar(ts, report),
               const SizedBox(height: 16),
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator(color: _accent))
                     : _error != null
-                        ? Center(child: Text(_error!, style: const TextStyle(color: Colors.redAccent)))
+                        ? _errorCard(ts)
                         : report == null
                             ? const SizedBox()
                             : ListView(
                                 children: [
                                   Wrap(spacing: 12, runSpacing: 12, children: [
-                                    _stat(ts, 'Incidents', '${report.totalIncidents}'),
-                                    _stat(ts, 'Units Dispatched', '${report.totalDispatches}'),
-                                    _stat(ts, 'Avg Response Time', Report.duration(report.averageResponse)),
+                                    _stat(ts, Icons.warning_amber_rounded, const Color(0xFFEF4444), 'Incidents',
+                                        '${report.totalIncidents}'),
+                                    _stat(ts, Icons.local_shipping_rounded, const Color(0xFF2563EB),
+                                        'Units Dispatched', '${report.totalDispatches}'),
+                                    _stat(ts, Icons.timer_rounded, const Color(0xFF10B981), 'Avg Response Time',
+                                        Report.duration(report.averageResponse)),
                                   ]),
                                   for (final t in report.all) _table(ts, t),
                                 ],
@@ -208,41 +179,162 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _stat(ThemeService ts, String label, String value) => Container(
-        width: 200,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ts.cardBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: ts.borderColor),
+  static const _accent = Color(0xFFFF5200);
+
+  BoxDecoration _card(ThemeService ts) => BoxDecoration(
+        color: ts.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ts.borderColor),
+      );
+
+  Widget _iconTile(IconData icon, Color color, {double size = 40}) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: color, size: size * 0.52),
+      );
+
+  Widget _toolbar(ThemeService ts, Report? report) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: _card(ts),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.end,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('DATE RANGE',
+                    style: TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: ts.textSecondary)),
+                const SizedBox(height: 6),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  _dateBox(ts, true),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.arrow_forward_rounded, size: 14, color: ts.textSecondary),
+                  ),
+                  _dateBox(ts, false),
+                ]),
+              ],
+            ),
+            IconButton.outlined(
+              tooltip: 'Refresh',
+              onPressed: _loading ? null : _load,
+              style: IconButton.styleFrom(side: BorderSide(color: ts.borderColor)),
+              icon: Icon(Icons.refresh_rounded, color: ts.textSecondary, size: 18),
+            ),
+            FilledButton.icon(
+              onPressed: _loading || report == null ? null : _export,
+              style: FilledButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text('Download ZIP (PDF Report)', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+            if (widget.department != 'ALL')
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration:
+                    BoxDecoration(color: _accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                child: Text(widget.department,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _accent)),
+              ),
+          ],
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(fontSize: 12, color: ts.textSecondary)),
-          const SizedBox(height: 6),
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ts.textPrimary)),
+      );
+
+  Widget _errorCard(ThemeService ts) => Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(20),
+          decoration: _card(ts),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            _iconTile(Icons.cloud_off_rounded, Colors.redAccent, size: 48),
+            const SizedBox(height: 12),
+            Text('Could not load reports',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+            const SizedBox(height: 6),
+            Text(_error!, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: ts.textSecondary)),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: _load,
+              style: FilledButton.styleFrom(backgroundColor: _accent, foregroundColor: Colors.white),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Try again'),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _stat(ThemeService ts, IconData icon, Color color, String label, String value) => Container(
+        width: 240,
+        padding: const EdgeInsets.all(16),
+        decoration: _card(ts),
+        child: Row(children: [
+          _iconTile(icon, color, size: 46),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
+              const SizedBox(height: 4),
+              Text(value,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+            ]),
+          ),
         ]),
       );
 
   Widget _table(ThemeService ts, ReportTable t) => Container(
         margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ts.cardBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: ts.borderColor),
-        ),
+        decoration: _card(ts),
+        clipBehavior: Clip.antiAlias,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(t.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(children: [
+              _iconTile(Icons.insights_rounded, _accent, size: 32),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(t.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                    color: ts.textSecondary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                child: Text('${t.rows.length} rows',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ts.textSecondary)),
+              ),
+            ]),
+          ),
+          Divider(height: 1, color: ts.borderColor),
           if (t.rows.isEmpty)
-            Text('No data for this period.', style: TextStyle(color: ts.textSecondary))
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(children: [
+                Icon(Icons.inbox_rounded, size: 18, color: ts.textSecondary),
+                const SizedBox(width: 8),
+                Text('No data for this period.', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+              ]),
+            )
           else
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingTextStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: ts.textPrimary),
+                headingRowHeight: 40,
+                dataRowMinHeight: 38,
+                dataRowMaxHeight: 44,
+                dividerThickness: 0.5,
+                headingTextStyle:
+                    TextStyle(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.3, color: ts.textSecondary),
                 dataTextStyle: TextStyle(fontSize: 12, color: ts.textPrimary),
-                columns: [for (final c in t.columns) DataColumn(label: Text(c))],
+                columns: [for (final c in t.columns) DataColumn(label: Text(c.toUpperCase()))],
                 rows: [
                   for (final r in t.rows) DataRow(cells: [for (final v in r) DataCell(Text(v))]),
                 ],

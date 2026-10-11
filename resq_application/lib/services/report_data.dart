@@ -10,9 +10,11 @@ class ReportData {
   /// Builds every report for incidents reported between [from] and [to].
   /// [department] limits it to one department (BFP / PNP / CDRRMO); 'ALL' for everything.
   static Future<Report> build(DateTime from, DateTime to, {String department = 'ALL'}) async {
+    // Whole-node reads can be large; the default 15s cuts them off on slower runs
+    const t = Duration(seconds: 60);
     final results = await Future.wait([
-      Rtdb.get('incidents'),
-      Rtdb.get('dispatches'),
+      Rtdb.get('incidents', timeout: t),
+      Rtdb.get('dispatches', timeout: t),
       Rtdb.get('vehicles'),
       Rtdb.get('departments'),
     ]);

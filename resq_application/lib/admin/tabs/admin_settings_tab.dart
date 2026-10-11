@@ -541,7 +541,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(color: Color(0xFFF3F4F6), height: 1),
+          const SizedBox(height: 20),
           Expanded(
             child: SingleChildScrollView(
               child: contentWidgets.isEmpty
@@ -638,156 +638,77 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   List<Widget> _buildProfileContent() {
     final list = <Widget>[];
     if (_matchesSearch('Account Details', _userName) || _matchesSearch('Email', _userEmail)) {
+      final ts = ThemeService.instance;
+      Widget pill(String text, Color color, {IconData? icon}) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (icon != null) ...[Icon(icon, size: 8, color: color), const SizedBox(width: 5)],
+              Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+            ]),
+          );
       list.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: ts.inputBackground.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: ts.borderColor.withValues(alpha: 0.6)),
+          ),
+          child: Row(
             children: [
-              // User Card Header
               Container(
-                padding: const EdgeInsets.all(20),
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: ThemeService.instance.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ThemeService.instance.borderColor),
+                  color: const Color(0xFF0066FF),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: Row(
+                child: Text(
+                  _userInitials,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor: const Color(0xFF0066FF),
-                      child: Text(
-                        _userInitials,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                    Text(
+                      _userName,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ts.textPrimary),
                     ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                _userName,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: ThemeService.instance.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: ThemeService.instance.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: ThemeService.instance.isDark ? const Color(0xFF3B82F6) : const Color(0xFFBFDBFE)),
-                                ),
-                                child: Text(
-                                  _userDepartment,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: ThemeService.instance.isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _userEmail,
-                            style: TextStyle(fontSize: 13, color: ThemeService.instance.textSecondary),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: ThemeService.instance.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Role: $_userRole',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: ThemeService.instance.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: ThemeService.instance.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Status: Active',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: ThemeService.instance.isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 2),
+                    Text(_userEmail, style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 6, runSpacing: 6, children: [
+                      pill(_userDepartment, const Color(0xFF3B82F6)),
+                      pill(_userRole, const Color(0xFF94A3B8)),
+                      pill('Active', const Color(0xFF10B981), icon: Icons.circle),
+                    ]),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              // Profile Settings Row - Change Password
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _showChangePasswordDialog,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: ThemeService.instance.isDark ? const Color(0xFF1E293B) : const Color(0xFFF0F6FF),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: ThemeService.instance.isDark ? const Color(0xFF334155) : const Color(0xFFE0EDFF)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lock_outline_rounded, color: Color(0xFF0066FF), size: 20),
-                      const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Change Password',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0066FF),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Update your account login password securely',
-                            style: TextStyle(fontSize: 12, color: ThemeService.instance.textSecondary),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF0066FF), size: 20),
-                    ],
-                  ),
-                ),
-              ),
             ],
+          ),
+        ),
+      );
+      list.add(const SizedBox(height: 10));
+      list.add(
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: _showChangePasswordDialog,
+            child: _buildRowLayout(
+              icon: Icons.lock_outline_rounded,
+              title: 'Change Password',
+              subtitle: 'Update your account login password securely',
+              trailing: Icon(Icons.chevron_right_rounded, color: ts.textSecondary, size: 20),
+            ),
           ),
         ),
       );
@@ -815,7 +736,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
       );
     }
     if (_matchesSearch('Reduced Motion', 'Minimize animations and transitions')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+      if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildRowLayout(
           icon: Icons.autorenew_rounded,
@@ -947,7 +868,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     final list = <Widget>[];
     for (final item in items) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
-        if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+        if (list.isNotEmpty) list.add(const SizedBox(height: 10));
         list.add(
           _buildSwitchRow(
             item['icon'] as IconData,
@@ -993,7 +914,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     ];
     for (final item in switches) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
-        if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+        if (list.isNotEmpty) list.add(const SizedBox(height: 10));
         list.add(
           _buildSwitchRow(
             item['icon'] as IconData,
@@ -1028,7 +949,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
       );
     }
     if (_matchesSearch('Session Timeout', 'Auto-lock after inactivity')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+      if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildRowLayout(
           icon: Icons.lock_outline_rounded,
@@ -1070,7 +991,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
       );
     }
     if (_matchesSearch('Auto Logout on Inactivity', 'Force logout when session expires')) {
-      if (list.isNotEmpty) list.add(const Divider(color: Color(0xFFF3F4F6), height: 1));
+      if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildSwitchRow(
           Icons.shield_outlined,
@@ -1374,19 +1295,25 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     final textPrimary = ThemeService.instance.textPrimary;
     final textSecondary = ThemeService.instance.textSecondary;
     final inputBg = ThemeService.instance.inputBackground;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: inputBg.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ThemeService.instance.borderColor.withValues(alpha: 0.6)),
+      ),
       child: Row(
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 32,
-            height: 32,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: inputBg,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icon, size: 16, color: textSecondary),
+            child: Icon(icon, size: 18, color: textSecondary),
           ),
           const SizedBox(width: 14),
           Expanded(

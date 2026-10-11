@@ -458,36 +458,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     }
   }
 
-  Future<void> _handleActionTaken(int reqId) async {
-    setState(() => _isActionInProgress = true);
-    final success = await AdminService.updateIncidentStatus(
-      reqId: reqId,
-      status: 'Completed',
-      department: widget.department,
-    );
-    setState(() => _isActionInProgress = false);
-
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showResqSnackBar(
-          const SnackBar(
-            content: Text('Action Taken — Request automatically marked as Completed!'),
-            backgroundColor: Color(0xFF0284C7),
-          ),
-        );
-        _fetchData(showLoading: false);
-        widget.onRefreshNeeded();
-      } else {
-        ScaffoldMessenger.of(context).showResqSnackBar(
-          const SnackBar(
-            content: Text('Failed to update request status.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _handleDispatchUnits(int reqId, List<int> vehicleIds) async {
     if (!await ensureSeverityRated(context, reqId) || !mounted) return;
     setState(() => _isActionInProgress = true);
@@ -1698,27 +1668,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: ts.isDark ? const Color(0xFF1E293B) : Colors.grey.shade200,
                       disabledForegroundColor: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 42,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _handleActionTaken(reqIdNum),
-                    icon: const Icon(Icons.task_alt_rounded, size: 18),
-                    label: const Text(
-                      'Taken Action (Mark as Completed)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0284C7),
-                      foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
