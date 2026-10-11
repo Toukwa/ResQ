@@ -20,6 +20,7 @@ import '../services/sound_service.dart';
 import '../shared/tab_activity.dart';
 import '../shared/display_settings.dart';
 import '../shared/incident_format.dart';
+import '../shared/resq_toast.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -205,6 +206,8 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
           _notifications.clear();
           _notifications.addAll(notifications.map((n) => {
             'message': n['message'],
+            'title': n['title'],
+            'type': n['notificationType'],
             'isRead': n['isRead'] ?? false,
             'timestamp': n['timestamp'] != null
                 ? (n['timestamp'] is DateTime ? n['timestamp'] as DateTime : DateTime.tryParse(n['timestamp'].toString()) ?? DateTime.now())
@@ -236,7 +239,6 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     if (!TabActivity.enabled.value) return;
     final tabs = switch (activity) {
       TabActivity.incidents => const [2],
-      TabActivity.media => const <int>[],
       TabActivity.management => const [5],
       null => const <int>[],
     };
@@ -351,11 +353,16 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
   ];
 
   /// Callback function to update live data records across streams
+  /// "Sync Live Records": every tab reloads its data from the database.
+  int _syncRound = 0;
   void _handleGlobalRefresh() {
-    debugPrint(
-      "Synchronizing database tracking records on index: $_selectedIndex",
-    );
-    // Trigger localized triggers or reset global variables if needed
+    setState(() => _syncRound++);
+    _loadNotifications();
+    ScaffoldMessenger.maybeOf(context)?.showResqSnackBar(const SnackBar(
+      content: Text('Live records synced'),
+      behavior: SnackBarBehavior.floating,
+      duration: Duration(seconds: 2),
+    ));
   }
 
   @override
@@ -466,6 +473,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                       ),
                       Expanded(
                         child: IndexedStack(
+                          key: ValueKey(_syncRound),
                           index: _selectedIndex,
                           children: [
                             OverviewDashboardScreen(

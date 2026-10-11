@@ -33,10 +33,9 @@ class DisplaySettings {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: labelSpace / 2),
-        pin,
+        // Label above the pin: the pin's tip stays at the bottom, on the location
         Container(
-          margin: const EdgeInsets.only(top: 2),
+          margin: const EdgeInsets.only(bottom: 2),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
@@ -47,6 +46,7 @@ class DisplaySettings {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
+        pin,
       ],
     );
   }

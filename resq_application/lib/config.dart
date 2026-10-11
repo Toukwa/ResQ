@@ -9,6 +9,14 @@ class AppConfig {
   /// This key is meant to be public; the database rules are what protect data.
   static const String firebaseApiKey = 'AIzaSyDHBxLSpKSbICYzLekvrysNP7dobVZFK6s';
 
+  /// Google sign-in. Web client: Firebase Console > Authentication > Sign-in
+  /// method > Google > "Web client ID" (the Android app uses it to get a token
+  /// Firebase accepts). Desktop client: Google Cloud Console > Credentials >
+  /// OAuth client of type "Desktop app"; Google treats a desktop app's secret as public.
+  static const String googleWebClientId = '898676150569-lsoplel97k409f0ecuog0uqjmgioe25b.apps.googleusercontent.com';
+  static const String googleDesktopClientId = 'TODO';
+  static const String googleDesktopClientSecret = 'TODO';
+
   /// EmailJS (emailjs.com) - sends the 6-digit login code.
   static const String emailJsServiceId = 'service_faiiwt3';
   static const String emailJsTemplateId = 'template_nj03kkh';

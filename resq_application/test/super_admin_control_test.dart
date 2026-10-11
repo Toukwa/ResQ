@@ -48,7 +48,7 @@ void main() {
           t: {'hardwareId': t, 'latitude': 13.42, 'longitude': 123.48, 'hasFix': true, 'received_at': now.millisecondsSinceEpoch},
       },
       'incidents': {
-        '1': {'Req_ID': 1, 'citizenUid': 'cit1', 'incType': 'Robbery', 'reqStatus': 'Pending', 'latitude': 13.42, 'longitude': 123.48, 'SOS_timeStamp': ago(30), 'dept_status': {'PNP': 'Pending'}},
+        '1': {'Req_ID': 1, 'citizenUid': 'cit1', 'incType': 'Robbery', 'reqStatus': 'Pending', 'severity': 'Urgent', 'latitude': 13.42, 'longitude': 123.48, 'SOS_timeStamp': ago(30), 'dept_status': {'PNP': 'Pending'}},
         '2': {'Req_ID': 2, 'citizenUid': 'cit1', 'incType': 'Fire', 'reqStatus': 'En Route', 'latitude': 13.42, 'longitude': 123.48, 'SOS_timeStamp': ago(20), 'dept_status': {'BFP': 'En Route'}},
         '3': {'Req_ID': 3, 'citizenUid': 'cit1', 'incType': 'Flood', 'reqStatus': 'Completed', 'latitude': 13.42, 'longitude': 123.48, 'SOS_timeStamp': ago(90), 'dept_status': {'CDRRMO': 'Completed'}},
       },

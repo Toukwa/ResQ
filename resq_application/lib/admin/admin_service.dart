@@ -34,6 +34,7 @@ class AdminService {
     required int vehicleId,
     required int adminId,
     String? department,
+    bool help = false,
   }) async {
     try {
       return await FirebaseService.dispatchVehicle(
@@ -41,6 +42,7 @@ class AdminService {
         vehicleId: vehicleId,
         adminId: adminId,
         department: department,
+        help: help,
       );
     } catch (_) {
       return 'Failed to dispatch vehicle';
@@ -235,15 +237,6 @@ class AdminService {
   static Future<bool> updateDispatchStatus(int dispId, String status) async {
     try {
       return await FirebaseService.updateDispatchStatus(dispId, status);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // FCM token management
-  static Future<bool> updateFcmToken(int userId, String fcmToken) async {
-    try {
-      return await FirebaseService.updateFcmToken(userId, fcmToken);
     } catch (_) {
       return false;
     }

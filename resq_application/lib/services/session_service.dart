@@ -32,6 +32,12 @@ class SessionService {
     await prefs.setString(_keyDepartment, department);
   }
 
+  /// Keeps the saved name in step with the account, so the app opens with it next time.
+  static Future<void> updateFullName(String fullName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFullName, fullName);
+  }
+
   /// Get current saved user session
   static Future<Map<String, dynamic>?> getSession() async {
     final prefs = await SharedPreferences.getInstance();

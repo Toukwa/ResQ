@@ -43,6 +43,7 @@ void main() {
   test('Log User Actions', () async {
     await citizenReports();
     await EmulatorFirebase.signInAs('admin1');
+    await db.seed('incidents/1/severity', 'Urgent'); // dispatching needs a rated report
     await db.run(() => IncidentData.dispatchVehicle(reqId: 1, vehicleId: 4, adminId: 2, department: 'BFP'));
     await db.run(() => IncidentData.updateIncidentStatus(1, 'Completed', 'BFP'));
     final logs = (await logsAs('super1')).reversed.toList(); // oldest first

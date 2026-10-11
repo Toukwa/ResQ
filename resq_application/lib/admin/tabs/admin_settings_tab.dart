@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/resq_dropdown.dart';
 import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
 import '../../services/theme_service.dart';
@@ -9,6 +10,7 @@ import '../../shared/tab_activity.dart';
 import '../../shared/display_settings.dart';
 import '../../services/password_policy.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/resq_toast.dart';
 enum SettingsCategory {
   profile,
   appearance,
@@ -48,7 +50,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   bool _incidentUpdates = true;
   bool _soundAlerts = true;
   bool _tabActivityDots = true;
-  bool _duplicateDetection = true;
   // Map Settings state (backed by user_settings table)
   bool _autoCenterOnIncident = true;
   bool _showUnitLabels = true;
@@ -120,7 +121,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _incidentUpdates = toBool(settings['incident_updates'], defaultValue: true);
           _soundAlerts = toBool(settings['sound_alerts'], defaultValue: true);
           _tabActivityDots = toBool(settings['tab_activity_dots'], defaultValue: true);
-          _duplicateDetection = toBool(settings['duplicate_detection'], defaultValue: true);
           _autoCenterOnIncident = toBool(settings['auto_center_on_incident'], defaultValue: true);
           _showUnitLabels = toBool(settings['show_unit_labels'], defaultValue: true);
           _mfa = toBool(settings['mfa_enabled'], defaultValue: true);
@@ -877,7 +877,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     const activeColor = Color(0xFFEF4444);
     const accentOrange = Color(0xFFFF6B00);
     const accentPurple = Color(0xFF8B5CF6);
-    const accentBlue = Color(0xFF0066FF);
     final items = <Map<String, dynamic>>[
       {
         'icon': Icons.notifications_none_rounded,
@@ -916,18 +915,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           setState(() => _incidentUpdates = v);
           AlertCategory.incident.enabled = v;
           _saveSetting({'incident_updates': v ? 1 : 0});
-        },
-      },
-      {
-        'icon': Icons.content_copy_rounded,
-        'title': 'Duplicate Report Detection',
-        'subtitle': 'Flag reports filed within 200 m and 30 min of an open one',
-        'value': _duplicateDetection,
-        'color': accentBlue,
-        'key': 'duplicate_detection',
-        'onChanged': (bool v) {
-          setState(() => _duplicateDetection = v);
-          _saveSetting({'duplicate_detection': v ? 1 : 0});
         },
       },
       {
@@ -973,7 +960,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         );
       }
     }
-    if (_soundAlerts && _matchesSearch('Alert sounds preview', 'sound')) list.add(const SoundPreviewPanel());
+    if (_soundAlerts && _matchesSearch('Alert sounds preview EOC alert siren', 'sound')) list.add(const SoundPreviewPanel());
     return list;
   }
   // --- MAP SETTINGS ---
@@ -1050,29 +1037,22 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _sessionTimeout,
-                    isDense: true,
-                    items: ['30 sec', '1 min', '5 min', '15 min', '30 min', '1 hour']
-                        .map((val) => DropdownMenuItem(
-                              value: val,
-                              child: Text(val, style: const TextStyle(fontSize: 12)),
-                            ))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _sessionTimeout = v);
-                        _saveSetting({'session_timeout': v});
-                      }
-                    },
-                  ),
+              SizedBox(
+                width: 130,
+                child: ResqSelect<String>(
+                  value: _sessionTimeout,
+                  icon: Icons.timer_outlined,
+                  height: 38,
+                  compact: true,
+                  options: [
+                    for (final t in const ['30 sec', '1 min', '5 min', '15 min', '30 min', '1 hour']) ResqOption(t, t),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _sessionTimeout = v);
+                      _saveSetting({'session_timeout': v});
+                    }
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -1337,7 +1317,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                       );
                       if (res['success'] == true) {
                         navigator.pop();
-                        messenger.showSnackBar(
+                        messenger.showResqSnackBar(
                           const SnackBar(
                             content: Text('Password updated successfully!'),
                             backgroundColor: Color(0xFF0E9F6E),

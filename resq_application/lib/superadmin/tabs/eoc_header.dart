@@ -1,3 +1,4 @@
+import '../../shared/staff_notifications_panel.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -205,7 +206,13 @@ class _EocHeaderState extends State<EocHeader> {
           // NOTIFICATION BELL BUTTON WITH DYNAMIC BADGE
           // ==========================================
           PopupMenuButton<String>(
-            offset: const Offset(0, 40),
+            offset: const Offset(0, 44),
+            tooltip: 'Notifications',
+            color: ThemeService.instance.cardBackground,
+            surfaceTintColor: Colors.transparent,
+            elevation: 8,
+            menuPadding: EdgeInsets.zero,
+            shape: staffMenuShape(),
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -246,155 +253,22 @@ class _EocHeaderState extends State<EocHeader> {
             ),
             itemBuilder: (context) {
               // Use notification objects if available, otherwise create simple ones
-              final notifications = widget.notificationObjects ?? 
-                widget.systemNotifications.map((msg) => {
-                  'message': msg,
-                  'unread': false,
-                  'timestamp': DateTime.now(),
-                }).toList();
-
+              final notifications = widget.notificationObjects ??
+                  widget.systemNotifications
+                      .map((msg) => {'message': msg, 'unread': false, 'timestamp': DateTime.now()})
+                      .toList();
               return [
                 PopupMenuItem<String>(
                   enabled: false,
-                  child: SizedBox(
-                    width: 320,
-                    height: 280,
-                    child: Column(
-                      children: [
-                        // Header
-                        Builder(builder: (ctx) {
-                          final tsDyn = ThemeService.instance;
-                          final Color popupText = tsDyn.textPrimary;
-                          final Color popupSubText = tsDyn.textSecondary;
-                          final Color popupBorder = tsDyn.borderColor;
-                          return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: popupBorder, width: 1)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Notifications",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: popupText,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "${notifications.length} total",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: popupSubText,
-                                    ),
-                                  ),
-                                  if (widget.unreadCount > 0) ...[
-                                    const SizedBox(width: 8),
-                                    InkWell(
-                                      onTap: widget.onClearUnread,
-                                      child: const Text(
-                                        "Mark all read",
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: brandOrange,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        );}),
-                        // Scrollable content
-                        Expanded(
-                          child: Builder(builder: (ctx) {
-                            final tsDyn = ThemeService.instance;
-                            final Color popupText = tsDyn.textPrimary;
-                            final Color popupSubText = tsDyn.textSecondary;
-                            final Color popupBorder = tsDyn.borderColor;
-                            return notifications.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    "No notifications",
-                                    style: TextStyle(color: popupSubText, fontSize: 12),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  itemCount: notifications.length,
-                                  separatorBuilder: (context, index) => Divider(
-                                    height: 1,
-                                    indent: 16,
-                                    endIndent: 16,
-                                    color: popupBorder,
-                                  ),
-                                  itemBuilder: (context, index) {
-                                    final notification = notifications[index];
-                                    final isUnread = notification['isRead'] == false || notification['unread'] == true;
-                                    final timestamp = notification['timestamp'] is DateTime 
-                                        ? notification['timestamp'] as DateTime
-                                        : DateTime.now();
-                                    
-                                    return InkWell(
-                                      onTap: () {
-                                        if (notification['id'] != null && notification['id'] is int) {
-                                          widget.onMarkAsRead?.call(notification['id']);
-                                        }
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            if (isUnread)
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                margin: const EdgeInsets.only(top: 6, right: 8),
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFFFF5200),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    notification['message']?.toString() ?? 'No message',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: isUnread ? popupText : popupSubText,
-                                                      fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    formatTimeAgo(timestamp),
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      color: popupSubText,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                          }),
-                        ),
-                      ],
-                    ),
+                  padding: EdgeInsets.zero,
+                  child: StaffNotificationsPanel(
+                    notifications: notifications,
+                    unreadCount: widget.unreadCount,
+                    onMarkAllRead: widget.onClearUnread,
+                    onTap: (n) {
+                      if (n['id'] is int) widget.onMarkAsRead?.call(n['id']);
+                    },
+                    timeAgo: formatTimeAgo,
                   ),
                 ),
               ];

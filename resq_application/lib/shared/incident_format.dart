@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'map_pin.dart';
+import '../services/incident_data.dart';
 
 String formatTimeAgo(DateTime timestamp) {
   final now = DateTime.now();
@@ -48,55 +50,51 @@ Color departmentBadgeColor(String dept) {
   return const Color(0xFFEA580C);
 }
 
+/// The agency symbols, as on the phone app's report cards. Used everywhere an
+/// incident or agency is shown (phone and staff screens) so they always match.
+({IconData icon, Color color, Color bgColor}) agencySymbol(String? agency) => switch (agency) {
+      'BFP' => (icon: Icons.local_fire_department_outlined, color: const Color(0xFFDC2626), bgColor: const Color(0xFFFEE2E2)),
+      'PNP' => (icon: Icons.local_police_outlined, color: const Color(0xFF1E40AF), bgColor: const Color(0xFFDBEAFE)),
+      'CDRRMO' => (icon: Icons.health_and_safety_outlined, color: const Color(0xFF16A34A), bgColor: const Color(0xFFDCFCE7)),
+      // General Emergency: the EOC decides who responds
+      'EOC' => (icon: Icons.support_agent_rounded, color: const Color(0xFFFF6B00), bgColor: const Color(0xFFFFEDD5)),
+      // Several agencies on one report
+      _ => (icon: Icons.priority_high_rounded, color: const Color(0xFFF97316), bgColor: const Color(0xFFFFEDD5)),
+    };
+
+/// Incident severity, set by the EOC (Super Admin) before assigning: most to least serious.
+/// A new report has none until the EOC rates it.
+const severityLevels = ['Immediate', 'Emergent', 'Urgent', 'Semi-urgent', 'Non-urgent'];
+
+/// Badge text and colours for a severity (or "Not rated").
+({String label, Color color, Color bgColor}) severityStyle(String? severity) => switch (severity) {
+      'Immediate' => (label: 'Immediate', color: const Color(0xFFDC2626), bgColor: const Color(0xFFFEE2E2)),
+      'Emergent' => (label: 'Emergent', color: const Color(0xFFEA580C), bgColor: const Color(0xFFFFEDD5)),
+      'Urgent' => (label: 'Urgent', color: const Color(0xFFD97706), bgColor: const Color(0xFFFEF3C7)),
+      'Semi-urgent' => (label: 'Semi-urgent', color: const Color(0xFF2563EB), bgColor: const Color(0xFFDBEAFE)),
+      'Non-urgent' => (label: 'Non-urgent', color: const Color(0xFF16A34A), bgColor: const Color(0xFFDCFCE7)),
+      _ => (label: 'Not rated', color: const Color(0xFF64748B), bgColor: const Color(0xFFF1F5F9)),
+    };
+
+/// Icon and colours for an incident, from the agencies it is sent to (not words in its name).
 Map<String, dynamic> emergencyTypeStyle(dynamic incidentInput) {
   String rawType = '';
+  List<String> depts = const [];
   if (incidentInput is Map) {
     rawType = (incidentInput['Incident_Type'] ?? incidentInput['type'] ?? incidentInput['incType'] ?? '').toString();
+    final status = incidentInput['dept_status'];
+    if (status is Map && status.isNotEmpty) depts = [for (final k in status.keys) '$k'];
   } else {
     rawType = (incidentInput ?? '').toString();
   }
+  if (depts.isEmpty) depts = IncidentData.involvedDepartments(rawType);
 
-  final lower = rawType.toLowerCase();
-  final isMultiple = rawType.contains(',');
-
-  if (isMultiple) {
-    return {
-      'icon': Icons.priority_high_rounded,
-      'color': const Color(0xFFF97316),
-      'bgColor': const Color(0xFFFFEDD5),
-      'agency': 'MULTI',
-    };
-  } else if (lower.contains('fire')) {
-    return {
-      'icon': Icons.local_fire_department_rounded,
-      'color': const Color(0xFFEF4444),
-      'bgColor': const Color(0xFFFEE2E2),
-      'agency': 'BFP',
-    };
-  } else if (lower.contains('police') || lower.contains('crime') || lower.contains('accident') || lower.contains('traffic')) {
-    return {
-      'icon': Icons.warning_amber_rounded,
-      'color': const Color(0xFFF59E0B),
-      'bgColor': const Color(0xFFFEF3C7),
-      'agency': 'PNP',
-    };
-  } else if (lower.contains('medical') || lower.contains('health')) {
-    return {
-      'icon': Icons.favorite_rounded,
-      'color': const Color(0xFF10B981),
-      'bgColor': const Color(0xFFD1FAE5),
-      'agency': 'CDRRMO',
-    };
-  } else {
-    return {
-      'icon': Icons.priority_high_rounded,
-      'color': const Color(0xFFF97316),
-      'bgColor': const Color(0xFFFFEDD5),
-      'agency': 'RESCUE',
-    };
-  }
+  final agency = depts.length == 1 ? depts.first : (depts.isEmpty ? 'EOC' : 'MULTI');
+  final look = agencySymbol(agency);
+  return {'icon': look.icon, 'color': look.color, 'bgColor': look.bgColor, 'agency': agency};
 }
 
+/// A vehicle: its agency's colour with a vehicle symbol (filled pin).
 Map<String, dynamic> vehicleMarkerConfig(dynamic vehicleInput) {
   String deptStr = '';
   if (vehicleInput is Map) {
@@ -104,29 +102,77 @@ Map<String, dynamic> vehicleMarkerConfig(dynamic vehicleInput) {
   } else {
     deptStr = (vehicleInput ?? '').toString().toUpperCase();
   }
-
-  if (deptStr.contains('BFP') || deptStr.contains('FIRE') || deptStr == '2') {
-    return {
-      'icon': Icons.fire_truck,
-      'color': const Color(0xFFFF6B00),
-    };
-  }
-  if (deptStr.contains('PNP') || deptStr.contains('POLICE') || deptStr == '1') {
-    return {
-      'icon': Icons.local_police,
-      'color': const Color(0xFF2563EB),
-    };
-  }
-  if (deptStr.contains('CDRRMO') || deptStr.contains('RESCUE') || deptStr.contains('MEDICAL') || deptStr == '3') {
-    return {
-      'icon': Icons.medical_services_rounded,
-      'color': const Color(0xFF10B981),
-    };
-  }
-  return {
-    'icon': Icons.directions_car_rounded,
-    'color': const Color(0xFF64748B),
+  String? agency;
+  if (deptStr.contains('BFP') || deptStr.contains('FIRE') || deptStr == '2') agency = 'BFP';
+  if (deptStr.contains('PNP') || deptStr.contains('POLICE') || deptStr == '1') agency = 'PNP';
+  if (deptStr.contains('CDRRMO') || deptStr.contains('RESCUE') || deptStr.contains('MEDICAL') || deptStr == '3') agency = 'CDRRMO';
+  if (agency == null) return {'icon': Icons.directions_car_rounded, 'color': const Color(0xFF64748B)};
+  // Agency colour, but a vehicle symbol, so units never look like incidents
+  const vehicleIcon = {
+    'BFP': Icons.fire_truck_rounded,
+    'PNP': Icons.local_police_rounded,
+    'CDRRMO': Icons.airport_shuttle_rounded, // ambulance van
   };
+  return {'icon': vehicleIcon[agency], 'color': agencySymbol(agency).color};
+}
+
+/// Incident marker: an outline circle in the agency colour with a soft pulsing
+/// halo (like the citizen's pin on the phone), so open reports draw the eye.
+/// The halo stays still when the computer has animations turned off.
+class IncidentRingMarker extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  const IncidentRingMarker({super.key, required this.icon, required this.color});
+
+  @override
+  State<IncidentRingMarker> createState() => _IncidentRingMarkerState();
+}
+
+class _IncidentRingMarkerState extends State<IncidentRingMarker> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    // Same rhythm as the citizen's pin: 1.8 s out, 1.8 s back
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return SizedBox(
+      width: kIncidentMarkerSize,
+      height: kIncidentMarkerSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, _) {
+              final t = still ? 0.5 : Curves.easeInOut.transform(_pulse.value);
+              final d = kIncidentSize * (0.9 + 0.75 * t); // halo grows past the ring and back
+              return Container(
+                width: d,
+                height: d,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withValues(alpha: 0.28 * (1 - t) + 0.08),
+                ),
+              );
+            },
+          ),
+          MapPin(icon: widget.icon, color: widget.color, filled: false),
+        ],
+      ),
+    );
+  }
 }
 
 String formatStatus(String? rawStatus) {
@@ -135,50 +181,5 @@ String formatStatus(String? rawStatus) {
   if (s == 'en route' || s == 'en_route') return 'En Route';
   if (s == 'declined' || s == 'denied') return 'Declined';
   return rawStatus;
-}
-
-IconData incidentIcon(String incidentType) {
-  final lower = incidentType.toLowerCase();
-  if (lower.contains(',') || lower.contains('multi')) {
-    return Icons.priority_high_rounded;
-  }
-  if (lower.contains('fire')) {
-    return Icons.local_fire_department_rounded;
-  }
-  if (lower.contains('medical') || lower.contains('health')) {
-    return Icons.favorite_rounded;
-  }
-  if (lower.contains('police') || lower.contains('crime') || lower.contains('accident') || lower.contains('traffic')) {
-    return Icons.warning_amber_rounded;
-  }
-  return Icons.priority_high_rounded;
-}
-
-Color agencyColor(String? agency) {
-  switch (agency) {
-    case 'BFP':
-      return const Color(0xFFFF6B00);
-    case 'CDRRMO':
-      return const Color(0xFF10B981);
-    case 'PNP':
-    default:
-      return const Color(0xFF2563EB);
-  }
-}
-
-int stepperStatusIndex(String status) {
-  final s = status.trim().toLowerCase();
-  if (s == 'completed') return 3;
-  if (s.contains('en route') ||
-      s.contains('en_route') ||
-      s.contains('dispatched') ||
-      s.contains('arrived') ||
-      s.contains('active') ||
-      s.contains('in_progress') ||
-      s.contains('in progress')) {
-    return 2;
-  }
-  if (s.contains('accepted') || s.contains('ack')) return 1;
-  return 0;
 }
 

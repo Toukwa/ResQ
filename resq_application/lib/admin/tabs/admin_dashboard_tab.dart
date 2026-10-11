@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../shared/severity_gate.dart';
+import '../../services/firebase_rest.dart';
+import '../../shared/resq_dropdown.dart';
+import '../../shared/incident_details_dialog.dart';
+import '../../shared/map_pin.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rxdart/rxdart.dart';
@@ -15,12 +20,14 @@ import '../../services/theme_service.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/resq_toast.dart';
 
 enum AdminIncidentFilter { all, pending, enRoute, declined, active }
 
 class AdminDashboardTab extends StatefulWidget {
   final String searchFilter;
   final int adminId;
+
   /// Department code: 'BFP' | 'PNP' | 'CDRRMO' | 'ALL'
   final String department;
   final VoidCallback onRefreshNeeded;
@@ -98,8 +105,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   @override
   void didUpdateWidget(covariant AdminDashboardTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.searchFilter != widget.searchFilter ||
-        oldWidget.department != widget.department) {
+    if (oldWidget.searchFilter != widget.searchFilter || oldWidget.department != widget.department) {
       setState(() {});
     }
   }
@@ -112,19 +118,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         .where((batch) => batch.isNotEmpty)
         .debounceTime(const Duration(milliseconds: 300))
         .listen((_) {
-      if (mounted) _loadDashboardData(showLoading: false);
-    });
+          if (mounted) _loadDashboardData(showLoading: false);
+        });
   }
 
   void _initSocket() {
     try {
-      _socket = io.io(
-        AppConfig.baseUrl,
-        io.OptionBuilder()
-            .setTransports(['websocket'])
-            .enableAutoConnect()
-            .build(),
-      );
+      _socket = io.io(AppConfig.baseUrl, io.OptionBuilder().setTransports(['websocket']).enableAutoConnect().build());
 
       for (final event in [
         'refreshIncidentQueueEvent',
@@ -174,9 +174,14 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         setState(() {
           if (metricsData != null) {
             _metrics = {
-              'activeIncidents': metricsData['activeIncidents'] ?? metricsData['activeIncidentsCount'] ?? metricsData['activeCount'] ?? 0,
+              'activeIncidents':
+                  metricsData['activeIncidents'] ??
+                  metricsData['activeIncidentsCount'] ??
+                  metricsData['activeCount'] ??
+                  0,
               'pendingRequests': metricsData['pendingRequests'] ?? metricsData['pendingCount'] ?? 0,
-              'availableUnits': metricsData['availableUnits'] ?? metricsData['availableCount'] ?? metricsData['activeVehicles'] ?? 0,
+              'availableUnits':
+                  metricsData['availableUnits'] ?? metricsData['availableCount'] ?? metricsData['activeVehicles'] ?? 0,
               'enRouteUnits': metricsData['enRouteUnits'] ?? metricsData['enRouteCount'] ?? 0,
               'dispatchedToday': metricsData['dispatchedToday'] ?? metricsData['dispatchedCount'] ?? 0,
             };
@@ -216,7 +221,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return filtered.where((item) {
       final type = (item['Incident_Type'] ?? item['type'] ?? item['incType'] ?? '').toString().toLowerCase();
       final loc = _getLocationLabel(item).toLowerCase();
-      final caller = (item['residentName'] ?? item['userName'] ?? item['Caller_Name'] ?? item['caller'] ?? '').toString().toLowerCase();
+      final caller = (item['residentName'] ?? item['userName'] ?? item['Caller_Name'] ?? item['caller'] ?? '')
+          .toString()
+          .toLowerCase();
       final reqId = _formatRequestId(item).toLowerCase();
       return type.contains(query) || loc.contains(query) || caller.contains(query) || reqId.contains(query);
     }).toList();
@@ -232,8 +239,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         AdminIncidentFilter.enRoute => st.contains('route') || st.contains('dispatch'),
         AdminIncidentFilter.declined => st.contains('declin') || st.contains('cancel') || st.contains('deny'),
         AdminIncidentFilter.active => st == 'active' || st == 'in_progress' || st == 'in progress',
-        AdminIncidentFilter.all => st == 'pending' || st == 'in_progress' || st == 'in progress' ||
-            st.contains('route') || st.contains('dispatch'),
+        AdminIncidentFilter.all =>
+          st == 'pending' ||
+              st == 'in_progress' ||
+              st == 'in progress' ||
+              st.contains('route') ||
+              st.contains('dispatch'),
       };
       // Department filter — admins only see their jurisdiction's incidents
       return statusOk && _matchesDepartment(i);
@@ -283,11 +294,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     // JSON-array string: '["Fire","Medical"]'
     if (raw.startsWith('[')) {
       try {
-        final parsed = (raw
-            .replaceAll('[', '')
-            .replaceAll(']', '')
-            .replaceAll('"', '')
-            .split(','));
+        final parsed = (raw.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '').split(','));
         final cleaned = parsed.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
         if (cleaned.isNotEmpty) return cleaned;
       } catch (_) {}
@@ -310,7 +317,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     if (_dept == 'ALL') return _metrics['activeIncidents'] ?? 0;
     return _incidents.where((i) {
       final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-      return (st == 'pending' || st == 'in_progress' || st == 'in progress' || st.contains('route') || st.contains('dispatch') || st == 'active') && _matchesDepartment(i);
+      return (st == 'pending' ||
+              st == 'in_progress' ||
+              st == 'in progress' ||
+              st.contains('route') ||
+              st.contains('dispatch') ||
+              st == 'active') &&
+          _matchesDepartment(i);
     }).length;
   }
 
@@ -348,20 +361,31 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       .whereType<LatLng>()
       .toList();
 
+  /// Each press moves the map to the next reported incident, then back to the first.
+  int _reportedIncidentCursor = -1;
   void _showReportedIncidents() {
     final points = _reportedIncidentPoints;
     if (points.isEmpty) {
       _mapController.move(_irigaCenter, 15.0);
       return;
     }
-
-    _mapController.fitCamera(
-      CameraFit.coordinates(
-        coordinates: points,
-        padding: const EdgeInsets.all(48),
-        maxZoom: 15,
-      ),
-    );
+    _reportedIncidentCursor = (_reportedIncidentCursor + 1) % points.length;
+    _mapController.move(points[_reportedIncidentCursor], 16.5);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showResqSnackBar(
+        SnackBar(
+          duration: const Duration(milliseconds: 1500),
+          behavior: SnackBarBehavior.floating,
+          width: 260,
+          backgroundColor: const Color(0xFF1E293B),
+          content: Text(
+            'Incident ${_reportedIncidentCursor + 1} of ${points.length}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      );
   }
 
   void _locateIncidentOnMap(Map<String, dynamic> item) {
@@ -452,7 +476,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     }
   }
 
-
   List<String> _getInvolvedDepartments(dynamic incident) {
     if (incident == null) return ['CDRRMO'];
     final Set<String> depts = {};
@@ -487,19 +510,47 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     }
 
     if (rawType.isNotEmpty) {
-      if (rawType.contains('fire') || rawType.contains('arson') || rawType.contains('explosion') || rawType.contains('bfp')) {
+      if (rawType.contains('fire') ||
+          rawType.contains('arson') ||
+          rawType.contains('explosion') ||
+          rawType.contains('bfp')) {
         depts.add('BFP');
       }
-      if (rawType.contains('crime') || rawType.contains('police') || rawType.contains('shooting') || rawType.contains('robbery') || rawType.contains('accident') || rawType.contains('traffic') || rawType.contains('pnp')) {
+      if (rawType.contains('crime') ||
+          rawType.contains('police') ||
+          rawType.contains('shooting') ||
+          rawType.contains('robbery') ||
+          rawType.contains('accident') ||
+          rawType.contains('traffic') ||
+          rawType.contains('pnp')) {
         depts.add('PNP');
       }
-      if (rawType.contains('medical') || rawType.contains('rescue') || rawType.contains('disaster') || rawType.contains('flood') || rawType.contains('earthquake') || rawType.contains('landslide') || rawType.contains('health') || rawType.contains('injury') || rawType.contains('storm') || rawType.contains('typhoon') || rawType.contains('cdrrmo')) {
+      if (rawType.contains('medical') ||
+          rawType.contains('rescue') ||
+          rawType.contains('disaster') ||
+          rawType.contains('flood') ||
+          rawType.contains('earthquake') ||
+          rawType.contains('landslide') ||
+          rawType.contains('health') ||
+          rawType.contains('injury') ||
+          rawType.contains('storm') ||
+          rawType.contains('typhoon') ||
+          rawType.contains('cdrrmo')) {
         depts.add('CDRRMO');
       }
     }
 
     if (depts.isEmpty && incident is Map) {
-      final agency = (incident['Department_Name'] ?? incident['agency'] ?? incident['agencyType'] ?? incident['deptName'] ?? incident['dept'] ?? '').toString().trim().toUpperCase();
+      final agency =
+          (incident['Department_Name'] ??
+                  incident['agency'] ??
+                  incident['agencyType'] ??
+                  incident['deptName'] ??
+                  incident['dept'] ??
+                  '')
+              .toString()
+              .trim()
+              .toUpperCase();
       if (agency.isNotEmpty) {
         if (agency.contains('BFP')) {
           depts.add('BFP');
@@ -517,12 +568,27 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return depts.toList();
   }
 
+  /// The card may predate the rating just given; the dialog shows the saved one.
+  Future<Map<String, dynamic>> _withLatestSeverity(Map<String, dynamic> incident, int reqId) async {
+    final sev = await Rtdb.get('incidents/$reqId/severity');
+    return {...incident, 'severity': ?sev};
+  }
 
+  Future<void> _dispatchFromMap(dynamic item, {required bool help}) async {
+    final incident = Map<String, dynamic>.from(item as Map);
+    final reqId = int.tryParse('${incident['Req_ID'] ?? incident['req_ID'] ?? incident['id'] ?? ''}') ?? 0;
+    if (await ensureSeverityRated(context, reqId) && mounted) {
+      _showDispatchDialog(await _withLatestSeverity(incident, reqId), help: help);
+    }
+  }
 
-
-
-  void _showDispatchDialog(Map<String, dynamic> incident) {
-    final reqId = int.tryParse(incident['Req_ID']?.toString() ?? incident['req_ID']?.toString() ?? incident['id']?.toString() ?? '0') ?? 0;
+  /// [help]: sending units to another agency's report; this agency joins it.
+  void _showDispatchDialog(Map<String, dynamic> incident, {bool help = false}) {
+    final reqId =
+        int.tryParse(
+          incident['Req_ID']?.toString() ?? incident['req_ID']?.toString() ?? incident['id']?.toString() ?? '0',
+        ) ??
+        0;
     final selectedVehicleIds = <int>{};
     final availableVehicles = availableVehiclesFor(_vehicles, _dept);
 
@@ -530,113 +596,322 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                const Icon(Icons.local_shipping, color: Color(0xFFFF5C00)),
-                const SizedBox(width: 8),
-                Text('Dispatch Unit for ${_formatRequestId(incident)}'),
-              ],
+          final ts = ThemeService.instance;
+          final style = emergencyTypeStyle(incident);
+          final typeColor = style['color'] as Color;
+          final sev = severityStyle(incident['severity']?.toString());
+          Future<void> dispatch() async {
+            final messenger = ScaffoldMessenger.of(context);
+            Navigator.pop(dialogCtx);
+            var failed = 0;
+            for (final vehicleId in selectedVehicleIds) {
+              final res = await AdminService.dispatchVehicle(
+                reqId: reqId,
+                vehicleId: vehicleId,
+                adminId: widget.adminId,
+                department: widget.department,
+                help: help,
+              );
+              if (res == 'Failed to dispatch vehicle') failed++;
+            }
+            final result = failed == 0
+                ? (selectedVehicleIds.length == 1
+                      ? 'Unit dispatched!'
+                      : '${selectedVehicleIds.length} units dispatched!')
+                : '$failed of ${selectedVehicleIds.length} units failed to dispatch';
+            if (!mounted) return;
+            messenger.showResqSnackBar(SnackBar(content: Text(result), backgroundColor: const Color(0xFF27AE60)));
+            _loadDashboardData();
+            widget.onRefreshNeeded();
+          }
+
+          return Dialog(
+            backgroundColor: ts.cardBackground,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: ts.borderColor),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Incident: ${incident['Incident_Type'] ?? incident['type'] ?? 'Emergency'}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                Text(
-                  'Location: ${_getLocationLabel(incident)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Select Response Vehicle:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                availableVehicles.isEmpty
-                    ? const Text(
-                        'No available vehicles at this time.',
-                        style: TextStyle(color: Colors.red, fontSize: 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF5C00).withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.local_shipping_rounded, color: Color(0xFFFF5C00), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                help ? 'Send Units to Help' : 'Dispatch Units',
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: ts.textPrimary),
+                              ),
+                              Text(
+                                _formatRequestId(incident),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ts.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          icon: Icon(Icons.close_rounded, size: 20, color: ts.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // The incident
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: ts.subtleBackground,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: ts.borderColor),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: typeColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(style['icon'] as IconData, color: typeColor, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${incident['Incident_Type'] ?? incident['type'] ?? 'Emergency'}',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ts.textPrimary),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined, size: 13, color: ts.textSecondary),
+                                    const SizedBox(width: 3),
+                                    Expanded(
+                                      child: Text(
+                                        _getLocationLabel(incident),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: ts.isDark ? sev.color : sev.bgColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              sev.label,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: ts.isDark ? Colors.white : sev.color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text(
+                          'Available units',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${selectedVehicleIds.length} selected',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (availableVehicles.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'No available units right now.',
+                          style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
                       )
-                    : ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 260, minWidth: 320),
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 280),
                         child: SingleChildScrollView(
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: availableVehicles.map((v) {
-                              final vId = int.tryParse((v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['vehicle_id'])?.toString() ?? '') ?? 0;
-                              final callSign = v['Call_Sign'] ?? v['call_sign'] ?? v['plate_no'] ?? 'Unit';
-                              final dept = v['Department_Name'] ?? v['deptName'] ?? v['department_name'] ?? 'ResQ';
-                              return CheckboxListTile(
-                                dense: true,
-                                contentPadding: EdgeInsets.zero,
-                                controlAffinity: ListTileControlAffinity.leading,
-                                value: selectedVehicleIds.contains(vId),
-                                title: Text('$callSign ($dept)'),
-                                subtitle: Text('${v['vehicle_type'] ?? ''}'),
-                                onChanged: vId == 0
-                                    ? null
-                                    : (checked) => setDialogState(() {
-                                          if (checked == true) {
-                                            selectedVehicleIds.add(vId);
-                                          } else {
-                                            selectedVehicleIds.remove(vId);
-                                          }
-                                        }),
-                              );
-                            }).toList(),
+                            children: [
+                              for (final v in availableVehicles)
+                                Builder(
+                                  builder: (_) {
+                                    final vId =
+                                        int.tryParse(
+                                          (v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['vehicle_id'])?.toString() ?? '',
+                                        ) ??
+                                        0;
+                                    final callSign = v['Call_Sign'] ?? v['call_sign'] ?? v['plate_no'] ?? 'Unit';
+                                    final dept =
+                                        v['Department_Name'] ?? v['deptName'] ?? v['department_name'] ?? 'ResQ';
+                                    final look = vehicleMarkerConfig(v);
+                                    final c = look['color'] as Color;
+                                    final picked = selectedVehicleIds.contains(vId);
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(12),
+                                          onTap: vId == 0
+                                              ? null
+                                              : () => setDialogState(() {
+                                                  if (picked) {
+                                                    selectedVehicleIds.remove(vId);
+                                                  } else {
+                                                    selectedVehicleIds.add(vId);
+                                                  }
+                                                }),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(milliseconds: 150),
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: picked
+                                                  ? const Color(0xFFFF5C00).withValues(alpha: 0.1)
+                                                  : ts.cardBackground,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: picked ? const Color(0xFFFF5C00) : ts.borderColor,
+                                                width: picked ? 1.5 : 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: c.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Icon(look['icon'] as IconData, color: c, size: 18),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        '$callSign',
+                                                        style: TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.w800,
+                                                          color: ts.textPrimary,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '${v['vehicle_type'] ?? 'Unit'} · $dept',
+                                                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  picked
+                                                      ? Icons.check_circle_rounded
+                                                      : Icons.radio_button_unchecked_rounded,
+                                                  color: picked ? const Color(0xFFFF5C00) : ts.textMuted,
+                                                  size: 22,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
                         ),
                       ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5C00),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: selectedVehicleIds.isEmpty
-                    ? null
-                    : () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(dialogCtx);
-                        var failed = 0;
-                        for (final vehicleId in selectedVehicleIds) {
-                          final res = await AdminService.dispatchVehicle(
-                            reqId: reqId,
-                            vehicleId: vehicleId,
-                            adminId: widget.adminId,
-                            department: widget.department,
-                          );
-                          if (res == 'Failed to dispatch vehicle') failed++;
-                        }
-                        final result = failed == 0
-                            ? (selectedVehicleIds.length == 1 ? 'Unit dispatched!' : '${selectedVehicleIds.length} units dispatched!')
-                            : '$failed of ${selectedVehicleIds.length} units failed to dispatch';
-                        if (!mounted) return;
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(result),
-                            backgroundColor: const Color(0xFF27AE60),
+                    const SizedBox(height: 12),
+                    // Footer
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: ts.textPrimary,
+                              side: BorderSide(color: ts.borderColor),
+                              minimumSize: const Size(0, 44),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
                           ),
-                        );
-                        _loadDashboardData();
-                        widget.onRefreshNeeded();
-                      },
-                icon: const Icon(Icons.send, size: 14),
-                label: const Text('Dispatch'),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF5C00),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: ts.borderColor,
+                              disabledForegroundColor: ts.textMuted,
+                              elevation: 0,
+                              minimumSize: const Size(0, 44),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: selectedVehicleIds.isEmpty ? null : dispatch,
+                            icon: const Icon(Icons.send_rounded, size: 16),
+                            label: Text(
+                              selectedVehicleIds.length > 1
+                                  ? 'Dispatch ${selectedVehicleIds.length} Units'
+                                  : 'Dispatch',
+                              style: const TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           );
         },
       ),
@@ -736,18 +1011,32 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           tileBuilder: ts.isDark
                               ? (context, tileWidget, tile) => ColorFiltered(
                                   colorFilter: const ColorFilter.matrix(<double>[
-                                    -0.2126, -0.7152, -0.0722, 0, 255,
-                                    -0.2126, -0.7152, -0.0722, 0, 255,
-                                    -0.2126, -0.7152, -0.0722, 0, 255,
-                                    0,       0,       0,       1, 0,
+                                    -0.2126,
+                                    -0.7152,
+                                    -0.0722,
+                                    0,
+                                    255,
+                                    -0.2126,
+                                    -0.7152,
+                                    -0.0722,
+                                    0,
+                                    255,
+                                    -0.2126,
+                                    -0.7152,
+                                    -0.0722,
+                                    0,
+                                    255,
+                                    0,
+                                    0,
+                                    0,
+                                    1,
+                                    0,
                                   ]),
                                   child: tileWidget,
                                 )
                               : null,
                         ),
-                        MarkerLayer(
-                          markers: _buildMapMarkers(),
-                        ),
+                        MarkerLayer(markers: _buildMapMarkers()),
                         // Every admin sees the whole fleet live
                         AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehicles)),
                       ],
@@ -884,10 +1173,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   duration: const Duration(milliseconds: 250),
                   height: 64,
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: ts.subtleBackground,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  decoration: BoxDecoration(color: ts.subtleBackground, borderRadius: BorderRadius.circular(16)),
                   child: Row(
                     children: [
                       _buildTopTabItem(
@@ -896,16 +1182,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         icon: Icons.mail_outline_rounded,
                         badgeCount: _pendingCount,
                       ),
-                      _buildTopTabItem(
-                        index: 1,
-                        label: "Units",
-                        icon: Icons.local_shipping_outlined,
-                      ),
-                      _buildTopTabItem(
-                        index: 2,
-                        label: "Activity",
-                        icon: Icons.show_chart_rounded,
-                      ),
+                      _buildTopTabItem(index: 1, label: "Units", icon: Icons.local_shipping_outlined),
+                      _buildTopTabItem(index: 2, label: "Activity", icon: Icons.show_chart_rounded),
                     ],
                   ),
                 ),
@@ -917,11 +1195,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               Expanded(
                 child: IndexedStack(
                   index: _selectedTabIndex,
-                  children: [
-                    _buildRequestsTabView(),
-                    _buildUnitsTabView(),
-                    _buildActivityTabView(),
-                  ],
+                  children: [_buildRequestsTabView(), _buildUnitsTabView(), _buildActivityTabView()],
                 ),
               ),
             ],
@@ -967,12 +1241,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   // Exact Pixel Top Tab Navigation Item Builder from SuperAdmin
-  Widget _buildTopTabItem({
-    required int index,
-    required String label,
-    required IconData icon,
-    int badgeCount = 0,
-  }) {
+  Widget _buildTopTabItem({required int index, required String label, required IconData icon, int badgeCount = 0}) {
     final isSelected = _selectedTabIndex == index;
     final ts = ThemeService.instance;
     const activeColor = Color(0xFFEA580C);
@@ -1000,11 +1269,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(
-                    icon,
-                    size: 18,
-                    color: isSelected ? activeColor : inactiveColor,
-                  ),
+                  Icon(icon, size: 18, color: isSelected ? activeColor : inactiveColor),
                   if (badgeCount > 0)
                     Positioned(
                       top: -6,
@@ -1015,17 +1280,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           color: const Color(0xFFDC2626),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        constraints: const BoxConstraints(
-                          minWidth: 15,
-                          minHeight: 15,
-                        ),
+                        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
                         child: Text(
                           '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1115,7 +1373,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             children: [
               Text(
                 'Live Activity Feed (${logs.length})',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: ThemeService.instance.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: ThemeService.instance.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
+                ),
               ),
               const Spacer(),
               InkWell(
@@ -1147,10 +1409,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: logs.length,
-                  itemBuilder: (_, i) => _buildLogTile(
-                    Map<String, dynamic>.from(logs[i] as Map),
-                    isLast: i == logs.length - 1,
-                  ),
+                  itemBuilder: (_, i) =>
+                      _buildLogTile(Map<String, dynamic>.from(logs[i] as Map), isLast: i == logs.length - 1),
                 ),
         ),
       ],
@@ -1170,7 +1430,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             children: [
               Text(
                 'Incoming Requests',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: ThemeService.instance.isDark ? Colors.white : const Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: ThemeService.instance.isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
               ),
               const Spacer(),
               _buildCustomDropdown(),
@@ -1234,22 +1498,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
               ),
               const Spacer(),
-              if (list.isNotEmpty)
-                _buildSmallBadge(
-                  '${list.length}',
-                  const Color(0xFFDC2626),
-                  const Color(0xFFFEF2F2),
-                ),
+              if (list.isNotEmpty) _buildSmallBadge('${list.length}', const Color(0xFFDC2626), const Color(0xFFFEF2F2)),
             ],
           ),
         ),
         Expanded(
           child: list.isEmpty
-              ? _buildEmptyState(
-                  Icons.inbox_outlined,
-                  'No requests',
-                  'All incidents have been addressed',
-                )
+              ? _buildEmptyState(Icons.inbox_outlined, 'No requests', 'All incidents have been addressed')
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   itemCount: list.length,
@@ -1263,12 +1518,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   // ------------------ CARD & ITEM BUILDERS ------------------
 
-
-
   Widget _buildDynamicRequestCard(Map<String, dynamic> incident) {
     final reqId = _formatRequestId(incident);
     final rawType = (incident['Incident_Type'] ?? incident['type'] ?? 'General Emergency').toString();
-    final callerName = (incident['residentName'] ?? incident['userName'] ?? incident['Caller_Name'] ?? 'Unknown Caller').toString();
+    final callerName = (incident['residentName'] ?? incident['userName'] ?? incident['Caller_Name'] ?? 'Unknown Caller')
+        .toString();
     final phoneNumber = (incident['phoneNumber'] ?? incident['contactNo'] ?? incident['phone'] ?? '').toString();
     final location = _getLocationLabel(incident);
     final desc = (incident['description'] ?? '').toString();
@@ -1288,9 +1542,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final ts = ThemeService.instance;
 
     return InkWell(
-      onTap: () {
-        widget.onSwitchTab?.call(1);
-      },
+      onTap: () => showIncidentDetails(context, incident['Req_ID'] ?? incident['id']),
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -1298,13 +1550,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           color: ts.cardBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: ts.borderColor, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: ts.shadowColor,
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: ts.shadowColor, blurRadius: 10, offset: const Offset(0, 2))],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -1321,151 +1567,189 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                  // Background: network image or colored placeholder
-                  bannerUrl != null
-                      ? Image.network(
-                          bannerUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _buildBannerPlaceholder(typeStyle),
-                        )
-                      : _buildBannerPlaceholder(typeStyle),
-                  // Gradient scrim (bottom fade for readability)
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.55),
-                        ],
-                        stops: const [0.4, 1.0],
+                    // Background: network image or colored placeholder
+                    bannerUrl != null
+                        ? evidenceImage(
+                            bannerUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _buildBannerPlaceholder(typeStyle),
+                          )
+                        : _buildBannerPlaceholder(typeStyle),
+                    // Gradient scrim (bottom fade for readability)
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.55)],
+                          stops: const [0.4, 1.0],
+                        ),
                       ),
                     ),
-                  ),
-                  // Top-left: REQ ID pill
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        borderRadius: BorderRadius.circular(8),
+                    // Top-left: REQ ID pill
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: statusConfig['dotColor'] as Color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              reqId,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                    // Top-right: severity, then status
+                    Positioned(
+                      top: 10,
+                      right: 10,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: statusConfig['dotColor'] as Color,
-                              shape: BoxShape.circle,
-                            ),
+                          Builder(
+                            builder: (_) {
+                              final sev = severityStyle(incident['severity']?.toString());
+                              final dark = ThemeService.instance.isDark;
+                              final fg = dark ? Colors.white : sev.color;
+                              return Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: dark ? sev.color : sev.bgColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: dark ? sev.color : sev.color.withValues(alpha: 0.5)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.priority_high_rounded, size: 11, color: fg),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      sev.label,
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                          const SizedBox(width: 5),
-                          Text(
-                            reqId,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: ThemeService.instance.isDark
+                                  ? statusConfig['dotColor'] as Color
+                                  : statusConfig['bgColor'] as Color,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: ThemeService.instance.isDark
+                                    ? statusConfig['dotColor'] as Color
+                                    : statusConfig['borderColor'] as Color,
+                              ),
+                            ),
+                            child: Text(
+                              statusConfig['label'] as String,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: ThemeService.instance.isDark ? Colors.white : statusConfig['textColor'] as Color,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  // Top-right: Status badge
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusConfig['bgColor'] as Color,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: statusConfig['borderColor'] as Color),
-                      ),
-                      child: Text(
-                        statusConfig['label'] as String,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: statusConfig['textColor'] as Color,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Bottom-left: Multi-type emergency tags + agency badge
-                  Positioned(
-                    bottom: 8,
-                    left: 10,
-                    right: 10,
-                    child: Row(
-                      children: [
-                        // Icon for primary type
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: (typeStyle['color'] as Color).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
+                    // Bottom-left: Multi-type emergency tags + agency badge
+                    Positioned(
+                      bottom: 8,
+                      left: 10,
+                      right: 10,
+                      child: Row(
+                        children: [
+                          // Icon for primary type
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: (typeStyle['color'] as Color).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(typeStyle['icon'] as IconData, size: 14, color: Colors.white),
                           ),
-                          child: Icon(typeStyle['icon'] as IconData, size: 14, color: Colors.white),
-                        ),
-                        const SizedBox(width: 6),
-                        // Type pills — one per emergency type (multi-support)
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: emergencyTypes.map((t) {
-                                return Container(
-                                  margin: const EdgeInsets.only(right: 4),
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.8),
-                                  ),
-                                  child: Text(
-                                    t,
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                                  ),
-                                );
-                              }).toList(),
+                          const SizedBox(width: 6),
+                          // Type pills — one per emergency type (multi-support)
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: emergencyTypes.map((t) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(right: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.18),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.8),
+                                    ),
+                                    child: Text(
+                                      t,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ),
-                        ),
-                        // Agency badges (multi-department support)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: _getInvolvedDepartments(incident).map((dept) {
-                            final bColor = departmentBadgeColor(dept);
-                            return Container(
-                              margin: const EdgeInsets.only(left: 3),
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: bColor.withValues(alpha: 0.85),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 0.8),
-                              ),
-                              child: Text(
-                                dept,
-                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
+                          // Agency badges (multi-department support)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: _getInvolvedDepartments(incident).map((dept) {
+                              final bColor = departmentBadgeColor(dept);
+                              return Container(
+                                margin: const EdgeInsets.only(left: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: bColor.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 0.8),
+                                ),
+                                child: Text(
+                                  dept,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             ), // GestureDetector
-
             // ── DETAILS BODY ──
             Padding(
               padding: const EdgeInsets.all(12),
@@ -1603,13 +1887,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final Color statusColor = isAvailable
         ? const Color(0xFF10B981)
         : isEnRoute
-            ? const Color(0xFF2563EB)
-            : ts.textSecondary;
+        ? const Color(0xFF2563EB)
+        : ts.textSecondary;
     final Color statusBg = isAvailable
         ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5))
         : isEnRoute
-            ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF))
-            : ts.inputBackground;
+        ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF))
+        : ts.inputBackground;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -1648,10 +1932,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  dept.isNotEmpty ? dept : 'Unassigned',
-                  style: TextStyle(fontSize: 11, color: ts.textPrimary),
-                ),
+                Text(dept.isNotEmpty ? dept : 'Unassigned', style: TextStyle(fontSize: 11, color: ts.textPrimary)),
               ],
             ),
           ),
@@ -1686,11 +1967,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(
-                    width: 1,
-                    color: ts.borderColor,
-                    margin: const EdgeInsets.symmetric(vertical: 2),
-                  ),
+                  child: Container(width: 1, color: ts.borderColor, margin: const EdgeInsets.symmetric(vertical: 2)),
                 ),
             ],
           ),
@@ -1713,10 +1990,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: ts.inputBackground,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                        decoration: BoxDecoration(color: ts.inputBackground, borderRadius: BorderRadius.circular(4)),
                         child: Text(
                           actor.toString(),
                           style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: ts.textSecondary),
@@ -1731,10 +2005,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    details.toString(),
-                    style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.2),
-                  ),
+                  Text(details.toString(), style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.2)),
                 ],
               ),
             ),
@@ -1767,66 +2038,47 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     );
   }
 
-  Widget _buildCustomDropdown() {
-    final ts = ThemeService.instance;
-    return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFF6B00), width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<AdminIncidentFilter>(
-          value: _selectedQueueFilter,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFFFF6B00),
-            size: 18,
-          ),
-          elevation: 3,
-          dropdownColor: ts.cardBackground,
-          borderRadius: BorderRadius.circular(10),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFFFF6B00),
-          ),
-          isDense: true,
-          onChanged: (AdminIncidentFilter? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedQueueFilter = newValue;
-              });
-            }
-          },
-          items: const [
-            DropdownMenuItem(value: AdminIncidentFilter.all, child: Text('All')),
-            DropdownMenuItem(value: AdminIncidentFilter.pending, child: Text('Pending')),
-            DropdownMenuItem(value: AdminIncidentFilter.enRoute, child: Text('En Route')),
-            DropdownMenuItem(value: AdminIncidentFilter.declined, child: Text('Declined')),
-            DropdownMenuItem(value: AdminIncidentFilter.active, child: Text('Active')),
-          ],
+  Widget _buildCustomDropdown() => SizedBox(
+    width: 150,
+    child: ResqSelect<AdminIncidentFilter>(
+      value: _selectedQueueFilter,
+      height: 36,
+      compact: true,
+      onChanged: (v) {
+        if (v != null) setState(() => _selectedQueueFilter = v);
+      },
+      options: [
+        ResqOption(AdminIncidentFilter.all, 'All', icon: Icons.all_inclusive_rounded, color: const Color(0xFFFF6B00)),
+        ResqOption(
+          AdminIncidentFilter.pending,
+          'Pending',
+          icon: Icons.schedule_rounded,
+          color: const Color(0xFFF59E0B),
         ),
-      ),
-    );
-  }
+        ResqOption(
+          AdminIncidentFilter.enRoute,
+          'En Route',
+          icon: Icons.local_shipping_rounded,
+          color: const Color(0xFF2563EB),
+        ),
+        ResqOption(
+          AdminIncidentFilter.declined,
+          'Declined',
+          icon: Icons.cancel_rounded,
+          color: const Color(0xFFEF4444),
+        ),
+        ResqOption(AdminIncidentFilter.active, 'Active', icon: Icons.bolt_rounded, color: const Color(0xFFFF6B00)),
+      ],
+    ),
+  );
 
   Widget _buildSmallBadge(String text, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor),
       ),
     );
   }
@@ -1844,14 +2096,26 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       markers.add(
         Marker(
           point: LatLng(lat, lng),
-          width: 40,
-          height: 48,
+          width: kIncidentMarkerSize,
+          height: kIncidentMarkerSize, // centred on the location, room for the pulse
           child: GestureDetector(
-            onTap: () => _showDispatchDialog(Map<String, dynamic>.from(item as Map)),
-            child: CustomPinMarker(
-              icon: config['icon'] as IconData,
-              color: config['color'] as Color,
+            onTap: () => showIncidentDetails(
+              context,
+              item['Req_ID'] ?? item['id'],
+              // Another agency's report: this agency can send units to help (and joins it)
+              action: IncidentData.isForDepartment(item, widget.department)
+                  ? (
+                      label: 'Dispatch Units',
+                      icon: Icons.local_shipping_rounded,
+                      onPressed: () => _dispatchFromMap(item, help: false),
+                    )
+                  : (
+                      label: 'Send Units to Help',
+                      icon: Icons.volunteer_activism_rounded,
+                      onPressed: () => _dispatchFromMap(item, help: true),
+                    ),
             ),
+            child: CustomPinMarker(icon: config['icon'] as IconData, color: config['color'] as Color),
           ),
         ),
       );
@@ -1875,11 +2139,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),
@@ -1904,9 +2164,27 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   Widget _buildAgencyStatusSection() {
     final ts = ThemeService.instance;
-    final pnpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('PNP') && vehicleStatus(v) == 'Available').length;
-    final bfpAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('BFP') && vehicleStatus(v) == 'Available').length;
-    final cdrrmoAvail = _vehicles.where((v) => (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('CDRRMO') && vehicleStatus(v) == 'Available').length;
+    final pnpAvail = _vehicles
+        .where(
+          (v) =>
+              (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('PNP') &&
+              vehicleStatus(v) == 'Available',
+        )
+        .length;
+    final bfpAvail = _vehicles
+        .where(
+          (v) =>
+              (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('BFP') &&
+              vehicleStatus(v) == 'Available',
+        )
+        .length;
+    final cdrrmoAvail = _vehicles
+        .where(
+          (v) =>
+              (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('CDRRMO') &&
+              vehicleStatus(v) == 'Available',
+        )
+        .length;
 
     final List<Widget> items = [];
     if (_dept == 'ALL' || _dept == 'PNP') {
@@ -1927,10 +2205,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: ts.borderColor),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items,
-      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: items),
     );
   }
 
@@ -1938,9 +2213,16 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final ts = ThemeService.instance;
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
-        Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
+        Text(
+          name,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
+        ),
         const SizedBox(width: 12),
         _statusBadge(avail, 'avail', const Color(0xFF27AE60)),
         const SizedBox(width: 6),
@@ -1955,7 +2237,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final ts = ThemeService.instance;
     return Row(
       children: [
-        Text(count, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: clr)),
+        Text(
+          count,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: clr),
+        ),
         const SizedBox(width: 2),
         Text(label, style: TextStyle(fontSize: 10, color: ts.textSecondary)),
       ],
@@ -1970,35 +2255,7 @@ class CustomPinMarker extends StatelessWidget {
   const CustomPinMarker({super.key, required this.icon, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    final ts = ThemeService.instance;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: ts.cardBackground,
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Center(child: Icon(icon, size: 18, color: color)),
-        ),
-        ClipPath(
-          clipper: TriangleClipper(),
-          child: Container(width: 8, height: 5, color: color),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => IncidentRingMarker(icon: icon, color: color);
 }
 
 class TriangleClipper extends CustomClipper<ui.Path> {
@@ -2054,10 +2311,7 @@ class MetricCard extends StatelessWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
+            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, color: accentColor, size: 20),
           ),
           const SizedBox(width: 12),

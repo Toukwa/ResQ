@@ -8,9 +8,11 @@ import 'admin/admin_shell.dart';
 import 'services/firebase_services.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
+import 'shared/profile_details_dialog.dart';
 import 'shared/resq_logo.dart';
 import 'shared/call_agencies_sheet.dart';
 import 'shared/role_home.dart';
+import 'shared/resq_toast.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -66,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         const SnackBar(content: Text('Please fill out all fields.')),
       );
       return;
@@ -76,7 +78,192 @@ class _LoginScreenState extends State<LoginScreen> {
       email: email,
       password: password,
     );
+    _handleLoginResult(result);
+  }
 
+  /// Report Now: name and phone only, then straight to the report screen.
+  Future<void> _openReportNow() async {
+    // This phone already has a guest account: go straight back into it (no new account,
+    // so its one-open-report limit still applies)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFEF4444))),
+    );
+    final existing = await AuthService.resumeGuest();
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    if (existing != null) {
+      await _openGuestHome(existing);
+      return;
+    }
+
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    String? error;
+    bool busy = false;
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialog) {
+          Future<void> submit() async {
+            final name = nameCtrl.text.trim();
+            final phone = phoneCtrl.text.trim();
+            if (name.isEmpty || !RegExp(r'^(09|\+639)\d{9}$').hasMatch(phone)) {
+              setDialog(() => error = 'Enter your name and a valid phone number (09XXXXXXXXX).');
+              return;
+            }
+            setDialog(() {
+              busy = true;
+              error = null;
+            });
+            final result = await AuthService.quickReport(fullName: name, contactNo: phone);
+            if (!dialogContext.mounted) return;
+            if (result.data == null) {
+              setDialog(() {
+                busy = false;
+                error = result.error?.replaceFirst('Exception: ', '') ?? 'Something went wrong.';
+              });
+              return;
+            }
+            Navigator.pop(dialogContext);
+            if (!mounted) return;
+            await _openGuestHome(result.data!);
+          }
+
+          final ts = ThemeService.instance;
+          const red = Color(0xFFEF4444);
+          final textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
+          final borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+          Widget label(String text) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: textDark)),
+              );
+
+          return AlertDialog(
+            backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            actionsPadding: const EdgeInsets.all(24),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.campaign_rounded, color: red, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Report Now',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textDark),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'No account needed. Responders only need a way to reach you.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: ts.isDark ? Colors.grey.shade300 : const Color(0xFF475569),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  label('Full Name'),
+                  TextField(
+                    controller: nameCtrl,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    style: TextStyle(color: textDark),
+                    decoration: _inputDecor('Juan Dela Cruz', Icons.person_outline, borderGrey, red),
+                  ),
+                  const SizedBox(height: 16),
+                  label('Phone Number'),
+                  TextField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    style: TextStyle(color: textDark),
+                    decoration: _inputDecor('09XXXXXXXXX', Icons.phone_outlined, borderGrey, red),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline, size: 16, color: red),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(error!, style: const TextStyle(color: red, fontSize: 13))),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: busy ? null : () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        side: BorderSide(color: borderGrey),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: Text('Cancel', style: TextStyle(color: textDark, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: busy ? null : submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: red,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: busy
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Saves the guest's session (so reopening the app keeps them in) and opens the report screen.
+  Future<void> _openGuestHome(Map<String, dynamic> user) async {
+    final userId = int.tryParse('${user['id']}') ?? 0;
+    final name = '${user['fullName'] ?? 'Guest'}';
+    await SessionService.saveSession(userId: userId, fullName: name, email: '', role: 'Citizen');
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(citizenId: '$userId', userName: name),
+      ),
+    );
+  }
+
+  void _handleLoginResult(({Map<String, dynamic>? data, String? error}) result) {
     if (!mounted) return;
 
     if (result.data != null) {
@@ -99,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final cleanError = rawError
           .replaceFirst('HttpException: ', '')
           .replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(
           content: Text(cleanError),
           backgroundColor: Colors.redAccent,
@@ -357,6 +544,25 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _navigateToRoleScreen(Map<String, dynamic> userData) async {
+    // Citizens from Google sign-in (or older accounts) still need a birthdate and address
+    final missingDetails = (userData['birthdate'] ?? '').toString().isEmpty ||
+        (userData['barangay'] ?? '').toString().isEmpty;
+    final isCitizen = (userData['role'] ?? 'Citizen') == 'Citizen' && userData['guest'] != true;
+    final needsPassword = isCitizen && await FirebaseService.needsPassword();
+    if (!mounted) return;
+    if (isCitizen && (missingDetails || needsPassword)) {
+      final saved = await showProfileDetailsDialog(
+        context,
+        askDetails: missingDetails,
+        askPassword: needsPassword,
+        email: (userData['email'] ?? '').toString(),
+      );
+      if (!saved) {
+        await FirebaseService.signOut();
+        return;
+      }
+      if (!mounted) return;
+    }
     final userId = int.tryParse(userData['id']?.toString() ?? '0') ?? 0;
     final fullName = userData['fullName']?.toString() ?? 'User';
     final email = userData['email']?.toString() ?? '';
@@ -432,7 +638,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         const SnackBar(content: Text('Enter your email address first.')),
       );
       return;
@@ -441,12 +647,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await FirebaseService.sendPasswordReset(email);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(content: Text('Password reset link sent to $email.')),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('HttpException: ', '')),
           backgroundColor: Colors.redAccent,
@@ -564,46 +770,36 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "Don't have an account? ",
-                style: TextStyle(color: textGrey),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterScreen(),
-                  ),
-                ),
-                child: const Text(
-                  'Create one',
-                  style: TextStyle(
-                    color: brandOrange,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // Phones only: emergency hotlines that work with no internet
+          // Phones only: sign-up is for citizens; the desktop app is for staff
           if (!isDesktop) ...[
-            const SizedBox(height: 28),
-            OutlinedButton.icon(
-              onPressed: () => showCallAgenciesSheet(context),
-              icon: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
-              label: const Text(
-                'Call Agencies',
-                style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                side: const BorderSide(color: Color(0xFFEF4444)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  "Don't have an account? ",
+                  style: TextStyle(color: textGrey),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    // Register returns a result when the user picked Google there
+                    final googleResult = await Navigator.push<({Map<String, dynamic>? data, String? error})>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterScreen(),
+                      ),
+                    );
+                    if (googleResult != null) _handleLoginResult(googleResult);
+                  },
+                  child: const Text(
+                    'Create one',
+                    style: TextStyle(
+                      color: brandOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -629,6 +825,52 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: isDesktop ? pageBg : cardContainerBg,
+      // Phones only: emergency hotlines pinned to the bottom, apart from the login form
+      bottomNavigationBar: isDesktop
+          ? null
+          : SafeArea(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: borderGrey)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _openReportNow,
+                        icon: const Icon(Icons.campaign_rounded, color: Colors.white),
+                        label: const Text(
+                          'Report Now',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => showCallAgenciesSheet(context),
+                        icon: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
+                        label: const Text(
+                          'Call Agencies',
+                          style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          side: const BorderSide(color: Color(0xFFEF4444)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),

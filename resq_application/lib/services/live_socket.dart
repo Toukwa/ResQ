@@ -159,7 +159,9 @@ class LiveEvents {
   }
 
   /// Announce that something changed, e.g. `emit('refreshIncidentQueueEvent')`.
+  /// This app's own screens update at once; other apps hear it through the database.
   static Future<void> emit(String event, [dynamic data]) async {
+    _dispatch(event, data);
     try {
       await Rtdb.set('live/$event', {
         'ts': {'.sv': 'timestamp'},
@@ -267,12 +269,7 @@ Socket io(String url, [dynamic options]) {
 class OptionBuilder {
   final Map<String, dynamic> _opts = {'autoConnect': true};
   OptionBuilder setTransports(List<String> _) => this;
-  OptionBuilder setExtraHeaders(Map<String, dynamic> _) => this;
   OptionBuilder enableAutoConnect() => this.._opts['autoConnect'] = true;
   OptionBuilder disableAutoConnect() => this.._opts['autoConnect'] = false;
-  OptionBuilder enableReconnection() => this;
-  OptionBuilder setReconnectionDelay(int _) => this;
-  OptionBuilder setReconnectionAttempts(int _) => this;
-  OptionBuilder enableForceNew() => this;
   Map<String, dynamic> build() => _opts;
 }

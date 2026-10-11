@@ -107,6 +107,8 @@ class PhoneCallReports {
           source: 'Phone Call (${c['agency']})',
         );
       } catch (e) {
+        // Refused because a report is already open: that report covers this emergency
+        if ('$e'.contains('Permission denied')) continue;
         debugPrint('Phone call upload failed, will retry: $e');
         remaining.add(c);
       }

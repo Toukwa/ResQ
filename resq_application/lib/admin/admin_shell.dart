@@ -22,8 +22,10 @@ import 'tabs/admin_management_screen.dart';
 import 'tabs/admin_settings_tab.dart';
 import '../shared/reports_screen.dart';
 import '../services/sound_service.dart';
+import '../services/incident_data.dart';
 import '../shared/tab_activity.dart';
 import '../shared/display_settings.dart';
+import '../shared/resq_toast.dart';
 
 
 class AdminShell extends StatefulWidget {
@@ -84,6 +86,7 @@ class _AdminShellState extends State<AdminShell> {
     _socket?.disconnect();
     _socket?.dispose();
     SoundService.stop();
+    SoundService.agency = null;
     TabActivity.enabled.removeListener(_onTabDotsSetting);
     super.dispose();
   }
@@ -128,6 +131,7 @@ class _AdminShellState extends State<AdminShell> {
         }
       }
       final settings = await AdminService.getUserSettings(_effectiveUserId);
+      SoundService.agency = IncidentData.normalizeDepartment(_effectiveDepartment);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
       AlertCategory.load(settings);
       DisplaySettings.load(settings);
@@ -169,7 +173,6 @@ class _AdminShellState extends State<AdminShell> {
     if (!TabActivity.enabled.value) return;
     final tabs = switch (activity) {
       TabActivity.incidents => const [1, 3], // request queue, incident log
-      TabActivity.media => const <int>[],
       TabActivity.management => const [6],
       null => const <int>[],
     };
@@ -203,6 +206,18 @@ class _AdminShellState extends State<AdminShell> {
     } catch (e) {
       debugPrint('AdminShell socket error: $e');
     }
+  }
+
+  /// "Sync Live Records": every tab reloads its data from the database.
+  int _syncRound = 0;
+  void _syncLiveRecords() {
+    setState(() => _syncRound++);
+    _fetchNotifications();
+    ScaffoldMessenger.maybeOf(context)?.showResqSnackBar(const SnackBar(
+      content: Text('Live records synced'),
+      behavior: SnackBarBehavior.floating,
+      duration: Duration(seconds: 2),
+    ));
   }
 
   Future<void> _fetchNotifications() async {
@@ -409,7 +424,7 @@ class _AdminShellState extends State<AdminShell> {
                   onNotificationPressed: _showNotificationModal,
                   onMarkNotificationRead: _markNotificationRead,
                   onMarkAllNotificationsRead: _markAllNotificationsRead,
-                  onRefreshPressed: () => setState(() {}),
+                  onRefreshPressed: _syncLiveRecords,
                   onSearchChanged: (query) {
                     setState(() {
                       _currentSearchQuery = query;
@@ -418,6 +433,7 @@ class _AdminShellState extends State<AdminShell> {
                 ),
                 Expanded(
                   child: IndexedStack(
+                    key: ValueKey(_syncRound),
                     index: _selectedIndex,
                     children: [
                       AdminDashboardTab(

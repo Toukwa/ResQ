@@ -1,10 +1,12 @@
 import 'dart:io';
+import '../shared/iriga_address.dart';
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'email_otp_service.dart';
 import 'admin_data.dart';
 import 'firebase_rest.dart';
+import 'google_auth.dart';
 import 'incident_data.dart';
 import 'session_service.dart';
 import 'vehicle_data.dart';
@@ -32,6 +34,124 @@ class FirebaseService {
     required String password,
   }) async {
     final uid = await FirebaseAuthRest.signIn(email, password);
+    return _afterSignIn(uid);
+  }
+
+  /// Google sign-in. A first-time Google user gets a Citizen profile.
+  /// Returns null if the user closed the Google window.
+  static Future<Map<String, dynamic>?> loginWithGoogle() async {
+    final googleToken = await GoogleAuth.getIdToken();
+    if (googleToken == null) return null;
+    final account = await FirebaseAuthRest.signInWithGoogle(googleToken);
+
+    if (await Rtdb.get('users/${account.uid}') == null) {
+      final id = await Rtdb.nextId('counters/users');
+      final user = {
+        'id': id,
+        'fullName': (account.name ?? account.email.split('@').first).trim(),
+        'email': account.email.toLowerCase(),
+        'contactNo': '',
+        'role': 'Citizen',
+        'createdAt': {'.sv': 'timestamp'},
+      };
+      await Rtdb.set('users/${account.uid}', user);
+      await Rtdb.set('user_ids/$id', account.uid);
+      await _logEvent(user, 'REGISTER', {'email': account.email, 'method': 'google'});
+    }
+    return _afterSignIn(account.uid);
+  }
+
+  /// Report Now on a phone that already has a guest account: back into it.
+  /// Returns null when there is none (or it has since become a full account).
+  static Future<Map<String, dynamic>?> resumeGuest() async {
+    final uid = await FirebaseAuthRest.resumeGuest();
+    if (uid == null) return null;
+    try {
+      final user = await _profile(uid);
+      if (user['guest'] == true) return user;
+    } catch (_) {}
+    await FirebaseAuthRest.forgetGuest();
+    await FirebaseAuthRest.signOut();
+    return null;
+  }
+
+  /// Turns the signed-in guest into a full citizen account: same uid and reports,
+  /// now with an email, password, birthdate and address.
+  static Future<void> upgradeGuest({
+    required String email,
+    required String password,
+    required String birthdate,
+    required String barangay,
+  }) async {
+    await FirebaseAuthRest.linkEmailPassword(email, password);
+    final uid = FirebaseAuthRest.uid!;
+    await Rtdb.update('users/$uid', {
+      'email': email.trim().toLowerCase(),
+      'birthdate': birthdate,
+      'barangay': barangay,
+      'address': '$barangay, ${IrigaAddress.city}',
+      'guest': null,
+    });
+    await FirebaseAuthRest.forgetGuest();
+    await _logEvent(await _profile(uid), 'GUEST_REGISTERED', {'email': email});
+  }
+
+  /// Report Now: a guest Citizen profile with only a name and phone number,
+  /// so someone can report an emergency without registering first.
+  static Future<Map<String, dynamic>> quickReport({
+    required String fullName,
+    required String contactNo,
+  }) async {
+    final uid = await FirebaseAuthRest.signInAnonymously();
+    final id = await Rtdb.nextId('counters/users');
+    final user = {
+      'id': id,
+      'fullName': fullName.trim(),
+      'email': '',
+      'contactNo': contactNo.trim(),
+      'role': 'Citizen',
+      'guest': true,
+      'createdAt': {'.sv': 'timestamp'},
+    };
+    await Rtdb.set('users/$uid', user);
+    await Rtdb.set('user_ids/$id', uid);
+    await _logEvent(user, 'REGISTER', {'method': 'report_now'});
+    return {...user, 'uid': uid};
+  }
+
+  /// True for a Google account that has no password yet, so it can't use the
+  /// email + password login.
+  static Future<bool> needsPassword() async {
+    try {
+      final providers = await FirebaseAuthRest.providers();
+      return providers.contains('google.com') && !providers.contains('password');
+    } catch (_) {
+      return false; // don't block sign-in over this check
+    }
+  }
+
+  static Future<void> setPassword(String password) async {
+    await FirebaseAuthRest.setPassword(password);
+    await _logEvent(await _profile(FirebaseAuthRest.uid!), 'PASSWORD_ADDED', {'method': 'google_account'});
+  }
+
+  /// Fills in the birthdate and address for accounts made without the sign-up
+  /// form (Google, or accounts created before these fields existed).
+  static Future<void> saveProfileDetails({
+    required String birthdate,
+    required String barangay,
+  }) async {
+    final uid = FirebaseAuthRest.uid!;
+    await Rtdb.update('users/$uid', {
+      'birthdate': birthdate,
+      'barangay': barangay,
+      'address': '$barangay, ${IrigaAddress.city}',
+    });
+    await _logEvent(await _profile(uid), 'PROFILE_COMPLETED', {'barangay': barangay});
+  }
+
+  /// Shared by password and Google login: load the profile, then the email code check.
+  static Future<Map<String, dynamic>?> _afterSignIn(String uid) async {
     final user = await _profile(uid);
 
     final settings = await Rtdb.get('user_settings/$uid');
@@ -133,7 +253,8 @@ class FirebaseService {
     required String contactNo,
     required String email,
     required String password,
-    String? fcmToken,
+    required String birthdate,
+    required String barangay,
   }) async {
     final uid = await FirebaseAuthRest.signUp(email, password);
     final id = await Rtdb.nextId('counters/users');
@@ -142,6 +263,9 @@ class FirebaseService {
       'fullName': fullName.trim(),
       'email': email.trim().toLowerCase(),
       'contactNo': contactNo.trim(),
+      'birthdate': birthdate,
+      'barangay': barangay,
+      'address': '$barangay, ${IrigaAddress.city}',
       'role': 'Citizen',
       'createdAt': {'.sv': 'timestamp'},
     };
@@ -160,6 +284,7 @@ class FirebaseService {
     required double longitude,
     File? image,
     List<File>? images,
+    File? voiceNote,
   }) {
     final allImages = <File>[
       if (images != null && images.isNotEmpty) ...images else ?image,
@@ -171,6 +296,7 @@ class FirebaseService {
       latitude: latitude,
       longitude: longitude,
       images: allImages,
+      voiceNote: voiceNote,
     );
   }
 
@@ -179,14 +305,6 @@ class FirebaseService {
       return await IncidentData.getIncident(reqId);
     } catch (_) {
       return null;
-    }
-  }
-
-  static Future<List<Map<String, dynamic>>> getCitizenEmergencyRequests(String citizenId) async {
-    try {
-      return await IncidentData.getMyIncidents();
-    } catch (_) {
-      return [];
     }
   }
 
@@ -210,12 +328,14 @@ class FirebaseService {
     required int vehicleId,
     required int adminId,
     String? department,
+    bool help = false,
   }) async {
     final id = await IncidentData.dispatchVehicle(
       reqId: reqId,
       vehicleId: vehicleId,
       adminId: adminId,
       department: department,
+      help: help,
     );
     return 'Dispatch #$id created successfully';
   }
@@ -246,17 +366,6 @@ class FirebaseService {
       return null;
     }
   }
-  static Future<List<dynamic>> getMediaGallery() async {
-    final rawList = await IncidentData.getMediaGallery();
-    final weekStart = getStartOfCurrentWeekMonday();
-
-    return _loose(rawList.where((raw) {
-      final ts = DateTime.tryParse(raw['uploadedAt']?.toString() ?? '')?.toLocal();
-      if (ts == null) return true;
-      return ts.isAfter(weekStart) || ts.isAtSameMomentAs(weekStart);
-    }));
-  }
-
   static Future<List<dynamic>> getMediaFilters() => IncidentData.getMediaFilters().then(_loose);
 
   static Future<Map<String, dynamic>?> getIncidentDispatch(int reqId) async {
@@ -429,7 +538,6 @@ class FirebaseService {
   }
 
   // Push tokens are only useful with a server to send pushes; nothing to store on the free plan.
-  static Future<bool> updateFcmToken(int userId, String fcmToken) async => true;
 
   // System logs
   static Future<List<dynamic>> getSystemLogs({

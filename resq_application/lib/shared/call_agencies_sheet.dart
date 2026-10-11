@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../config.dart';
+import '../services/agency_hotlines.dart';
 import '../services/phone_call_reports.dart';
 import '../services/theme_service.dart';
+import 'resq_toast.dart';
 
 /// Lists the PNP / BFP / CDRRMO hotlines; tapping one opens the phone dialer
 /// with the number filled in. Needs no internet, so it works offline.
@@ -13,8 +14,27 @@ Future<void> showCallAgenciesSheet(BuildContext context) => showModalBottomSheet
       builder: (_) => const _CallAgenciesSheet(),
     );
 
-class _CallAgenciesSheet extends StatelessWidget {
+class _CallAgenciesSheet extends StatefulWidget {
   const _CallAgenciesSheet();
+
+  @override
+  State<_CallAgenciesSheet> createState() => _CallAgenciesSheetState();
+}
+
+class _CallAgenciesSheetState extends State<_CallAgenciesSheet> {
+  // Saved numbers first (instant, offline), then the EOC's latest if online
+  List<Hotline> _hotlines = AgencyHotlines.merge(const {});
+
+  @override
+  void initState() {
+    super.initState();
+    AgencyHotlines.cached().then((h) {
+      if (mounted) setState(() => _hotlines = h);
+    });
+    AgencyHotlines.refresh().then((h) {
+      if (mounted) setState(() => _hotlines = h);
+    });
+  }
 
   static const _colors = {
     'PNP': Color(0xFF2563EB),
@@ -32,7 +52,7 @@ class _CallAgenciesSheet extends StatelessWidget {
     await PhoneCallReports.record(agency);
     final ok = await launchUrl(Uri(scheme: 'tel', path: number));
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(content: Text('Could not open the dialer. Call $number manually.')),
       );
     }
@@ -54,7 +74,7 @@ class _CallAgenciesSheet extends StatelessWidget {
             Text('Works without internet. Tap an agency to call.',
                 style: TextStyle(fontSize: 12, color: ts.textSecondary)),
             const SizedBox(height: 16),
-            for (final h in AppConfig.agencyHotlines) ...[
+            for (final h in _hotlines) ...[
               Material(
                 color: (_colors[h.agency] ?? Colors.grey).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),

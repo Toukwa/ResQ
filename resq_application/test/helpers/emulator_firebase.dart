@@ -71,7 +71,11 @@ class _Redirect extends http.BaseClient {
     if (url.host == 'identitytoolkit.googleapis.com') {
       final body = jsonDecode((request as http.Request).body) as Map;
       final email = '${body['email']}';
-      final uid = url.path.endsWith('signUp') ? 'new-${email.split('@').first}' : email.split('@').first;
+      // 'update', or signUp with the current token (linking), adds an email to the signed-in
+      // account (a guest registering), keeping its uid
+      final uid = url.path.endsWith('update') || body['idToken'] != null
+          ? FirebaseAuthRest.uid!
+          : url.path.endsWith('signUp') ? 'new-${email.split('@').first}' : email.split('@').first;
       final res = {'localId': uid, 'idToken': EmulatorFirebase.token(uid, email: email), 'refreshToken': 'r', 'expiresIn': '3600'};
       return http.StreamedResponse(Stream.value(utf8.encode(jsonEncode(res))), 200);
     }

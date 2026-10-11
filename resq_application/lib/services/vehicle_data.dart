@@ -206,12 +206,17 @@ class VehicleData {
       IncidentData.rows(await Rtdb.get('departments'))
         ..sort((a, b) => (a['deptName'] ?? '').toString().compareTo((b['deptName'] ?? '').toString()));
 
+  /// Saves Edit Agency. The contact number is also published as the agency's hotline,
+  /// which the phone app's Call Agencies button dials.
   static Future<void> updateDepartment(Map<String, dynamic> data) async {
     final id = data['dept_ID'] ?? data['id'];
-    await Rtdb.update('departments/$id', {
-      'deptName': data['deptName'],
-      'deptLocation': data['deptLocation'],
-      'contactInfo': data['contactInfo'],
+    final agency = IncidentData.normalizeDepartment('${data['deptName'] ?? ''}');
+    final contactNo = '${data['contactNo'] ?? ''}'.trim(); // text, so a leading 0 is kept
+    await Rtdb.update('', {
+      'departments/$id/agencyType': data['agencyType'],
+      'departments/$id/contactPerson': data['contactPerson'],
+      'departments/$id/contactNo': contactNo.isEmpty ? null : contactNo,
+      if (const ['PNP', 'BFP', 'CDRRMO'].contains(agency)) 'hotlines/$agency': contactNo.isEmpty ? null : contactNo,
     });
     await IncidentData.log('DEPARTMENT_UPDATED', 'department', id, {'deptName': data['deptName']});
     LiveEvents.emit('refreshManagementData', {'type': 'department_updated'});

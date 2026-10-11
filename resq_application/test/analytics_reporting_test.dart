@@ -115,4 +115,33 @@ void main() {
     expect(csv, contains('TOTAL,4,2,1,1'));
     file.deleteSync();
   });
+
+  test('Splits a report into its distinct emergency types', () {
+    expect(emergencyTypesOf('BFP: Vehicular Fire; LPG Leak · CDRRMO: Flash Flood'),
+        ['BFP: Vehicular Fire', 'BFP: LPG Leak', 'CDRRMO: Flash Flood']);
+    expect(emergencyTypesOf('General Emergency (PNP: Theft; CDRRMO: Medical Emergency (Asthma, Fainting))'),
+        ['PNP: Theft', 'CDRRMO: Medical Emergency (Asthma, Fainting)']);
+    expect(emergencyTypesOf('General Emergency'), ['General Emergency']);
+    expect(emergencyTypesOf('Fire'), ['Fire']); // older reports
+  });
+
+  test('Response metrics grouped by emergency type', () {
+    // Fire: #1 (5 min, completed), #2 (20 min, open). Robbery: #3 (12 min, done). Flood: #4 declined.
+    final rows = {for (final r in report.responseByType.rows) r[0]: r};
+    expect(rows['Fire'], ['Fire', '2', '2 (100.0%)', '12m 30s', '5m 0s', '20m 0s', '45m 0s', '50.0%']);
+    expect(rows['Robbery'], ['Robbery', '1', '1 (100.0%)', '12m 0s', '12m 0s', '12m 0s', '48m 0s', '100.0%']);
+    expect(rows['Flood'], ['Flood', '1', '0 (0.0%)', '-', '-', '-', '-', '-']);
+    expect(report.averageResponseMinutesByType, {'Fire': 12.5, 'Robbery': 12.0});
+  });
+
+  test('A report with two emergency types counts under each, but once in the total', () {
+    final two = ReportData.fromData([
+      {
+        '1': {'Req_ID': 1, 'incType': 'BFP: Grass Fire · CDRRMO: Flash Flood', 'reqStatus': 'Pending', 'SOS_timeStamp': at(5, 9, 0)},
+      },
+      {}, {}, {},
+    ], from, to);
+    expect(two.countsByType, {'BFP: Grass Fire': 1, 'CDRRMO: Flash Flood': 1});
+    expect(two.emergencyCount.rows.last, ['TOTAL', '1', '0', '1', '0']);
+  });
 }

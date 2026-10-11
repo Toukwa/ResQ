@@ -1,15 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/voice_note.dart';
+import '../../shared/not_sure_card.dart';
+import '../../shared/severity_gate.dart';
+import '../../shared/resq_dropdown.dart';
+import '../../shared/incident_details_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../services/arrival_geofence.dart';
 import '../../services/incident_data.dart';
+import '../../shared/incident_format.dart';
 import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../services/theme_service.dart';
-import '../../services/duplicate_detection.dart';
+import '../../shared/resq_toast.dart';
 
 class AdminVehiclesTab extends StatefulWidget {
   final String searchFilter;
@@ -36,8 +43,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isActionInProgress = false;
-  /// Likely duplicate reports by Req_ID; empty when the setting is off.
-  Map<int, DuplicateMatch> _duplicates = {};
 
   String _localSearchQuery = '';
   int? _selectedRequestId;
@@ -111,11 +116,42 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       return;
     }
     final v = Map<String, dynamic>.from(_vehicles[idx] as Map);
-    if (v['computed_status'] != 'Offline') return;
-    v['computed_status'] = v['status'];
+    if (v['computed_status'] == 'Offline') v['computed_status'] = v['status'];
+    // Keep every position current: the arrival check below needs it
     v['latitude'] = data['latitude'];
     v['longitude'] = data['longitude'];
     setState(() => _vehicles[idx] = v);
+    _announceUnitsNearScene();
+  }
+
+  /// Reports whose "near the scene" prompt was already announced, or dismissed with "Not yet".
+  final Set<int> _arrivalAnnounced = {};
+  final Set<int> _arrivalDismissed = {};
+
+  /// This department's units within the geofence of [req], unless already arrived or dismissed.
+  List<NearbyUnit> _unitsNearScene(dynamic req) {
+    if (req is! Map || _arrivalDismissed.contains(_getReqId(req))) return const [];
+    final s = IncidentData.statusFor(req, widget.department).toLowerCase();
+    if (!['en route', 'en_route', 'dispatched', 'in progress'].contains(s)) return const [];
+    return ArrivalGeofence.unitsNearScene(req, _vehicles, widget.department);
+  }
+
+  /// First time a unit enters a report's geofence: a one-off prompt. Nothing is marked
+  /// as arrived until the admin confirms.
+  void _announceUnitsNearScene() {
+    if (!mounted) return;
+    for (final req in _departmentIncidents) {
+      final units = _unitsNearScene(req);
+      final id = _getReqId(req);
+      if (units.isEmpty || !_arrivalAnnounced.add(id)) continue;
+      ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(
+        backgroundColor: const Color(0xFF6D28D9),
+        duration: const Duration(seconds: 12),
+        behavior: SnackBarBehavior.floating,
+        content: Text('Report #$id: System detects responders are near the scene. Confirm their arrival?'),
+        action: SnackBarAction(label: 'CONFIRM', textColor: Colors.white, onPressed: () => _handleArrived(id)),
+      ));
+    }
   }
 
   Future<void> _fetchData({bool showLoading = true}) async {
@@ -129,22 +165,18 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       final results = await Future.wait([
         AdminService.getActiveIncidentsList(),
         AdminService.getVehicles(),
-        AdminService.getUserSettings(widget.adminId),
       ]);
-      final settings = results[2] as Map<String, dynamic>?;
-      final detect = settings == null || '${settings['duplicate_detection']}' != '0';
-      final incidents = (results[0] as List<dynamic>?) ?? [];
-      final duplicates = detect ? DuplicateDetection.find(incidents) : <int, DuplicateMatch>{};
+      final incidents = results[0] ?? [];
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
               _incidents = incidents;
-              _vehicles = (results[1] as List<dynamic>?) ?? [];
-              _duplicates = duplicates;
+              _vehicles = results[1] ?? [];
               _isLoading = false;
               _errorMessage = null;
             });
+            _announceUnitsNearScene();
           }
         });
       }
@@ -223,22 +255,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     }
   }
 
-  IconData _getEmergencyIcon(dynamic req) {
-    if (req is! Map) return Icons.warning_amber_rounded;
-    final type =
-        (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? '')
-            .toString()
-            .toUpperCase();
-    if (type.contains('FIRE')) return Icons.local_fire_department;
-    if (type.contains('MED') || type.contains('AMBULANCE')) {
-      return Icons.medical_services;
-    }
-    if (type.contains('POL') || type.contains('CRIME') ||
-        type.contains('ACCIDENT')) {
-      return Icons.local_police;
-    }
-    return Icons.warning_amber_rounded;
-  }
+  IconData _getEmergencyIcon(dynamic req) => emergencyTypeStyle(req)['icon'] as IconData;
 
   String _displayStatus(dynamic rawStatus) {
     final s = (rawStatus ?? 'pending').toString().trim().toLowerCase();
@@ -263,7 +280,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     return _departmentIncidents.where((req) {
       if (req is! Map) return false;
 
-      final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString();
+      final status = IncidentData.statusFor(req, widget.department, 'Pending');
       final statusLow = status.toLowerCase();
 
       // Filter by selected Queue dropdown filter
@@ -307,7 +324,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     return _departmentIncidents.where((req) {
       if (req is! Map) return false;
 
-      final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? '').toString().toLowerCase();
+      final status = IncidentData.statusFor(req, widget.department, '').toLowerCase();
       if (status != 'cancelled' && status != 'declined') return false;
 
       if (query.isNotEmpty) {
@@ -329,7 +346,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     return _departmentIncidents.where((req) {
       if (req is! Map) return false;
 
-      final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? '').toString().toLowerCase();
+      final status = IncidentData.statusFor(req, widget.department, '').toLowerCase();
       if (status != 'completed') return false;
 
       if (query.isNotEmpty) {
@@ -392,7 +409,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Request accepted successfully!'),
             backgroundColor: Color(0xFF27AE60),
@@ -401,7 +418,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         _fetchData(showLoading: false);
         widget.onRefreshNeeded();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to accept request.'),
             backgroundColor: Colors.redAccent,
@@ -422,7 +439,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Request declined.'),
             backgroundColor: Color(0xFFEB5757),
@@ -431,7 +448,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         _fetchData(showLoading: false);
         widget.onRefreshNeeded();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to decline request.'),
             backgroundColor: Colors.redAccent,
@@ -452,7 +469,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Action Taken — Request automatically marked as Completed!'),
             backgroundColor: Color(0xFF0284C7),
@@ -461,7 +478,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         _fetchData(showLoading: false);
         widget.onRefreshNeeded();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to update request status.'),
             backgroundColor: Colors.redAccent,
@@ -472,21 +489,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleDispatchUnits(int reqId, List<int> vehicleIds) async {
-    final dup = _duplicates[reqId];
-    if (dup != null) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Possible duplicate report'),
-          content: Text('${dup.label}. Units may already be handling it.\n\nDispatch anyway?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Dispatch Anyway')),
-          ],
-        ),
-      );
-      if (proceed != true || !mounted) return;
-    }
+    if (!await ensureSeverityRated(context, reqId) || !mounted) return;
     setState(() => _isActionInProgress = true);
     var failed = 0;
     for (final vehicleId in vehicleIds) {
@@ -507,12 +510,88 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(
           content: Text(message),
           backgroundColor: const Color(0xFFFF5C00),
         ),
       );
+      await _fetchData(showLoading: false);
+      widget.onRefreshNeeded();
+    }
+  }
+
+  /// Soft prompt when a unit is inside the geofence: the admin confirms or waits.
+  Widget _buildNearScenePrompt(dynamic reqIdNum, List<NearbyUnit> units) {
+    final id = int.parse(reqIdNum.toString());
+    final who = units.map((u) => '${u.plate} (${u.meters} m)').join(', ');
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF8B5CF6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.radar_rounded, color: Color(0xFF8B5CF6), size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'System detects responders are near the scene. Confirm their arrival?',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Within ${ArrivalGeofence.radiusMeters} m: $who',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED))),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => setState(() => _arrivalDismissed.add(id)),
+                child: const Text('Not yet', style: TextStyle(color: Color(0xFF7C3AED))),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _isActionInProgress ? null : () => _handleArrived(id),
+                icon: const Icon(Icons.place_rounded, size: 16),
+                label: const Text('Confirm Arrival', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B5CF6),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// This department's units reached the scene; the citizen sees "Arrived".
+  Future<void> _handleArrived(int reqId) async {
+    setState(() => _isActionInProgress = true);
+    final success = await AdminService.updateIncidentStatus(
+      reqId: reqId,
+      status: 'Arrived',
+      department: widget.department,
+    );
+    setState(() => _isActionInProgress = false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(
+      content: Text(success ? 'Marked as arrived. The citizen has been notified.' : 'Failed to mark as arrived.'),
+      backgroundColor: success ? const Color(0xFF8B5CF6) : Colors.redAccent,
+    ));
+    if (success) {
       await _fetchData(showLoading: false);
       widget.onRefreshNeeded();
     }
@@ -529,7 +608,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Incident completed! Assigned vehicle is now Available.'),
             backgroundColor: Color(0xFF27AE60),
@@ -538,7 +617,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         await _fetchData(showLoading: false);
         widget.onRefreshNeeded();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to complete incident.'),
             backgroundColor: Colors.redAccent,
@@ -877,7 +956,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   Widget _buildCancelledCard(Map<String, dynamic> req, bool isSelected) {
     final reqIdStr = _formatReqIdStr(req);
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency').toString();
-    final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined').toString();
+    final status = IncidentData.statusFor(req, widget.department, 'Declined');
     final isCompleted = status.toLowerCase() == 'completed';
     final ts = ThemeService.instance;
 
@@ -960,7 +1039,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency').toString();
     final location = (req['Barangay'] ?? req['location'] ?? req['location_name'] ?? 'Iriga City').toString();
     final timeStr = _formatTime(req);
-    final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString();
+    final status = IncidentData.statusFor(req, widget.department, 'Pending');
     final ts = ThemeService.instance;
 
     final displayStatusText = _displayStatus(status);
@@ -1017,19 +1096,11 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     color: ts.isDark ? Colors.white : const Color(0xFF212121),
                   ),
                 ),
-                if (_duplicates[_getReqId(req)] != null) ...[
-                  const Spacer(),
+                if (_linkedTo(req).isNotEmpty) ...[
+                  const SizedBox(width: 6),
                   Tooltip(
-                    message: _duplicates[_getReqId(req)]!.label,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3E8FF),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text('Possible duplicate',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED))),
-                    ),
+                    message: 'Linked with ${_linkedTo(req).map((i) => '#$i').join(', ')}',
+                    child: const Icon(Icons.link_rounded, size: 15, color: Color(0xFF8B5CF6)),
                   ),
                 ],
               ],
@@ -1089,72 +1160,249 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
 
 
-  Widget _buildDuplicateBanner(int reqId, DuplicateMatch dup) {
+  /// Severity next to the status (asked for when dispatching); once rated it is locked.
+  Widget _severityBadge(Map<String, dynamic> req, int reqId, ThemeService ts) {
+    final rated = req['severity'] != null;
+    final sev = severityStyle(req['severity']?.toString());
+    final fill = ts.isDark ? sev.color : sev.bgColor;
+    final fg = ts.isDark ? Colors.white : sev.color;
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: rated ? fill : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: rated ? fill : sev.color),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(rated ? Icons.lock_rounded : Icons.help_outline_rounded, size: 12, color: rated ? fg : ts.textSecondary),
+        const SizedBox(width: 4),
+        Text(
+          rated ? sev.label : 'Not rated',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: rated ? fg : ts.textSecondary),
+        ),
+      ]),
+    );
+    return Tooltip(
+      message: rated ? 'Severity is locked once set' : 'You will be asked for the severity when dispatching',
+      child: badge,
+    );
+  }
+
+  /// The reporter's voice message (required when they picked "Not sure").
+  Widget _buildVoiceMessage(String url, ThemeService ts) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: ts.subtleBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ts.borderColor),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.mic_rounded, size: 16, color: Color(0xFFFF5C00)),
+            const SizedBox(width: 6),
+            Text('Voice message', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+          ]),
+          const SizedBox(height: 8),
+          VoiceNotePlayer(url: url),
+        ]),
+      );
+
+  // ── Linked reports: the same emergency reported more than once ──────────────
+
+  /// Report ids linked with [req] (same link group), from the loaded list.
+  List<int> _linkedTo(Map req) {
+    final group = req['linkGroup'];
+    if (group == null) return const [];
+    final me = _getReqId(req);
+    return [
+      for (final i in _incidents)
+        if (i is Map && '${i['linkGroup']}' == '$group' && _getReqId(Map<String, dynamic>.from(i)) != me)
+          _getReqId(Map<String, dynamic>.from(i)),
+    ]..sort();
+  }
+
+  /// Open reports of this agency that [reqId] could be linked with.
+  List<Map<String, dynamic>> _linkCandidates(int reqId, Map req) {
+    final already = _linkedTo(req).toSet();
+    final list = [
+      for (final i in _incidents)
+        if (i is Map)
+          Map<String, dynamic>.from(i),
+    ].where((i) {
+      final id = _getReqId(i);
+      if (id == reqId || already.contains(id)) return false;
+      if (!IncidentData.isForDepartment(i, widget.department)) return false;
+      final st = IncidentData.statusFor(i, widget.department, 'Pending').toLowerCase();
+      return !const ['completed', 'declined', 'cancelled'].contains(st);
+    }).toList();
+    return list;
+  }
+
+  Widget _buildLinkedReports(Map<String, dynamic> req, int reqId, ThemeService ts) {
+    const purple = Color(0xFF8B5CF6);
+    final linked = _linkedTo(req);
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E8FF),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD8B4FE)),
+        color: purple.withValues(alpha: ts.isDark ? 0.12 : 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: purple.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.content_copy_rounded, size: 16, color: Color(0xFF7C3AED)),
-            const SizedBox(width: 8),
+            const Icon(Icons.link_rounded, size: 18, color: purple),
+            const SizedBox(width: 6),
             Expanded(
-              child: Text(dup.label,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF5B21B6))),
+              child: Text(
+                linked.isEmpty ? 'Not linked to other reports' : 'Linked reports (actions & dispatches sync)',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _isActionInProgress ? null : () => _showLinkPicker(req, reqId),
+              icon: const Icon(Icons.add_link_rounded, size: 16),
+              label: const Text('Link similar report', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              style: TextButton.styleFrom(foregroundColor: purple),
             ),
           ]),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            OutlinedButton(
-              onPressed: _isActionInProgress ? null : () => setState(() => _selectedRequestId = dup.originalId),
-              child: const Text('View Original', style: TextStyle(fontSize: 12)),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
-              onPressed: _isActionInProgress ? null : () => _handleConfirmDuplicate(reqId, dup.originalId),
-              child: const Text('Mark as Duplicate', style: TextStyle(fontSize: 12)),
-            ),
-            TextButton(
-              onPressed: _isActionInProgress ? null : () => _handleDismissDuplicate(reqId, dup.originalId),
-              child: const Text('Not a Duplicate', style: TextStyle(fontSize: 12)),
-            ),
-          ]),
+          if (linked.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final id in linked)
+                InputChip(
+                  label: Text('REQ-${id.toString().padLeft(4, '0')}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                  avatar: const Icon(Icons.link_rounded, size: 14, color: purple),
+                  onPressed: () => setState(() => _selectedRequestId = id),
+                  onDeleted: _isActionInProgress ? null : () => _unlink(id),
+                  deleteButtonTooltipMessage: 'Unlink',
+                  backgroundColor: ts.cardBackground,
+                  side: BorderSide(color: purple.withValues(alpha: 0.4)),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ]),
+          ],
         ],
       ),
     );
   }
 
-  Future<void> _handleConfirmDuplicate(int reqId, int originalId) async {
-    try {
-      await DuplicateDetection.confirm(reqId, originalId);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to mark as duplicate.'), backgroundColor: Colors.redAccent),
-        );
-      }
-      return;
-    }
-    // Same outcome as "Taken Action (Duplicate Report)": the repeat report is closed
-    await _handleActionTaken(reqId);
+  Future<void> _showLinkPicker(Map<String, dynamic> req, int reqId) async {
+    final candidates = _linkCandidates(reqId, req);
+    final ts = ThemeService.instance;
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: ts.cardBackground,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: ts.borderColor)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 520),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.add_link_rounded, color: Color(0xFF8B5CF6), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Link a similar report',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                      Text('Actions and dispatches on one will apply to both',
+                          style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: 14),
+                if (candidates.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text('No other open reports to link.', style: TextStyle(color: ts.textSecondary, fontSize: 12)),
+                  )
+                else
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final c in candidates)
+                          Builder(builder: (_) {
+                            final id = _getReqId(c);
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => Navigator.pop(ctx, id),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: ts.borderColor),
+                                  ),
+                                  child: Row(children: [
+                                    Icon(_getEmergencyIcon('${c['type'] ?? c['incType'] ?? ''}'),
+                                        size: 18, color: const Color(0xFFFF5C00)),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                        Text(_formatReqIdStr(c),
+                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                                        Text('${c['type'] ?? c['incType'] ?? 'Emergency'} · ${_formatTime(c)}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(fontSize: 11, color: ts.textSecondary)),
+                                      ]),
+                                    ),
+                                  ]),
+                                ),
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await _runLinkAction(() => IncidentData.linkIncidents(reqId, picked), 'Reports linked.');
   }
 
-  Future<void> _handleDismissDuplicate(int reqId, int originalId) async {
+  Future<void> _unlink(int id) => _runLinkAction(() => IncidentData.unlinkIncident(id), 'Report unlinked.');
+
+  Future<void> _runLinkAction(Future<void> Function() action, String done) async {
     setState(() => _isActionInProgress = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await DuplicateDetection.dismiss(reqId, originalId);
-      if (mounted) setState(() => _duplicates.remove(reqId));
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update report.'), backgroundColor: Colors.redAccent),
-        );
-      }
+      await action();
+      messenger.showResqSnackBar(SnackBar(content: Text(done), behavior: SnackBarBehavior.floating));
+      await _fetchData(showLoading: false);
+    } catch (e) {
+      messenger.showResqSnackBar(SnackBar(
+        content: Text('$e'.replaceFirst(RegExp(r'^\w*Exception: '), '')),
+        backgroundColor: Colors.redAccent,
+      ));
     }
     if (mounted) setState(() => _isActionInProgress = false);
   }
@@ -1173,20 +1421,24 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final reportedBy = (req['Citizen_Name'] ?? req['reportedBy'] ?? req['residentName'] ?? req['userName'] ?? 'Citizen Resident').toString();
     final timeStr = _formatTime(req);
     final description = (req['Description'] ?? req['description'] ?? req['notes'] ?? 'Emergency assistance requested by citizen.').toString();
-    final status = (req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Pending').toString();
+    final status = IncidentData.statusFor(req, widget.department, 'Pending');
 
     final rawImagePath = (req['image_path'] ?? req['imagePath'] ?? req['photo'] ?? req['file_path'] ?? req['proof'] ?? req['evidence'] ?? '').toString();
 
     final statusLow = status.toLowerCase();
     final isPending = statusLow == 'pending';
     final isAccepted = statusLow == 'accepted';
-    final isDispatched = statusLow == 'dispatched' || statusLow == 'en route' || statusLow == 'en_route' || statusLow == 'in progress' || statusLow == 'arrived';
+    final isArrived = statusLow == 'arrived';
+    final isDispatched = statusLow == 'dispatched' || statusLow == 'en route' || statusLow == 'en_route' || statusLow == 'in progress' || isArrived;
     final isCancelled = statusLow == 'cancelled' || statusLow == 'declined';
     final isCompleted = statusLow == 'completed';
 
     final ts = ThemeService.instance;
 
-    return AnimatedContainer(
+    return InkWell(
+      onTap: () => showIncidentDetails(context, reqIdNum),
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1197,19 +1449,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Responder / Incident Photo Evidence Banner with Paged Gallery & Counter
-          PagedImageGalleryBanner(
-            rawImagePath: rawImagePath,
-            height: 160,
-            type: type,
-            title: reqIdStr,
-          ),
-          const SizedBox(height: 16),
-          if (_duplicates[reqIdNum] != null) ...[
-            _buildDuplicateBanner(reqIdNum, _duplicates[reqIdNum]!),
-            const SizedBox(height: 16),
-          ],
-
           // Header Row
           Row(
             children: [
@@ -1223,7 +1462,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 child: Icon(_getEmergencyIcon(type), color: const Color(0xFFFF5C00), size: 24),
               ),
               const SizedBox(width: 12),
-              Column(
+              Expanded(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -1242,10 +1482,15 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       fontWeight: FontWeight.bold,
                       color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF616161),
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
-              const Spacer(),
+              ),
+              const SizedBox(width: 8),
+              _severityBadge(req, reqIdNum, ts),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -1284,13 +1529,28 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Detail Grid (2 Columns x 3 Rows)
+          const SizedBox(height: 16),
+          // Photo, voice, "not sure", links and details scroll together; the buttons stay put
           Expanded(
             child: SingleChildScrollView(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                    // Top Responder / Incident Photo Evidence Banner with Paged Gallery & Counter
+                    PagedImageGalleryBanner(
+                      rawImagePath: rawImagePath,
+                      height: 160,
+                      type: type,
+                      title: reqIdStr,
+                    ),
+                    const SizedBox(height: 16),
+                    NotSureIncidentCard(incident: req, onChosen: () => _fetchData(showLoading: false)),
+                    if ('${req['voice_path'] ?? ''}'.trim().isNotEmpty) ...[
+                      _buildVoiceMessage('${req['voice_path']}', ts),
+                      const SizedBox(height: 16),
+                    ],
+                    _buildLinkedReports(req, reqIdNum, ts),
+                    const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(child: _buildDetailBox('Barangay', location)),
@@ -1322,7 +1582,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Incident Description Box
+                  // Additional Notes Box
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -1335,7 +1595,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Incident Description',
+                          'Additional Notes',
                           style: TextStyle(
                             fontSize: 11,
                             color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF9E9E9E),
@@ -1414,27 +1674,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 42,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _handleActionTaken(reqIdNum),
-                    icon: const Icon(Icons.task_alt_rounded, size: 18),
-                    label: const Text(
-                      'Taken Action (Duplicate Report)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0284C7),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             )
           else if (isAccepted && reqIdNum != 0)
@@ -1511,6 +1750,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               ),
               const SizedBox(height: 10),
             ],
+            if (_unitsNearScene(req).isNotEmpty) ...[
+              _buildNearScenePrompt(reqIdNum, _unitsNearScene(req)),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 Expanded(
@@ -1527,7 +1770,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Unit Dispatched (En Route)',
+                            isArrived ? 'Unit On Scene (Arrived)' : 'Unit Dispatched (En Route)',
                             style: TextStyle(
                               color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60),
                               fontWeight: FontWeight.bold,
@@ -1541,6 +1784,23 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     ),
                   ),
                 ),
+                if (!isArrived) ...[
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: _isActionInProgress ? null : () => _handleArrived(int.parse(reqIdNum.toString())),
+                      icon: const Icon(Icons.place_rounded, size: 16),
+                      label: const Text('Mark Arrived', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B5CF6),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 12),
                 SizedBox(
                   height: 44,
@@ -1612,6 +1872,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             ),
         ],
       ),
+    ),
     );
   }
 
@@ -1854,52 +2115,25 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     );
   }
 
-  Widget _buildCustomDropdown() {
-    final ts = ThemeService.instance;
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFF6B00), width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
+  Widget _buildCustomDropdown() => SizedBox(
+        width: 150,
+        child: ResqSelect<String>(
           value: _selectedQueueFilter,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFFFF6B00),
-            size: 16,
-          ),
-          elevation: 3,
-          dropdownColor: ts.cardBackground,
-          borderRadius: BorderRadius.circular(10),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFFFF6B00),
-          ),
-          isDense: true,
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedQueueFilter = newValue;
-              });
-            }
+          height: 34,
+          compact: true,
+          onChanged: (v) {
+            if (v != null) setState(() => _selectedQueueFilter = v);
           },
-          items: const [
-            DropdownMenuItem(value: 'All', child: Text('All')),
-            DropdownMenuItem(value: 'Pending', child: Text('Pending')),
-            DropdownMenuItem(value: 'Accepted', child: Text('Accepted')),
-            DropdownMenuItem(value: 'Dispatched', child: Text('Dispatched')),
-            DropdownMenuItem(value: 'Completed', child: Text('Completed')),
-            DropdownMenuItem(value: 'Cancelled', child: Text('Cancelled')),
+          options: [
+        ResqOption('All', 'All', icon: Icons.all_inclusive_rounded, color: const Color(0xFFFF6B00)),
+        ResqOption('Pending', 'Pending', icon: Icons.schedule_rounded, color: const Color(0xFFF59E0B)),
+        ResqOption('Accepted', 'Accepted', icon: Icons.thumb_up_alt_rounded, color: const Color(0xFF0EA5E9)),
+        ResqOption('Dispatched', 'Dispatched', icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB)),
+        ResqOption('Completed', 'Completed', icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
+        ResqOption('Cancelled', 'Cancelled', icon: Icons.cancel_rounded, color: const Color(0xFFEF4444)),
           ],
         ),
-      ),
-    );
-  }
+      );
 
 
 }

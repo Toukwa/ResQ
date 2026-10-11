@@ -46,6 +46,7 @@ void main() {
     await db.run(() => IncidentData.createIncident(
         citizenId: '3', incidentType: 'Fire', description: 'Kitchen fire', latitude: 13.4215, longitude: 123.4842, images: []));
     await EmulatorFirebase.signInAs('bfp1');
+    await db.seed('incidents/1/severity', 'Urgent'); // dispatching needs a rated report
     await db.run(() => IncidentData.dispatchVehicle(reqId: 1, vehicleId: 4, adminId: 2, department: 'BFP'));
   }
 
@@ -63,7 +64,14 @@ void main() {
     expect(await fileReport({...good, 'latitude': 120}), isNot(200));
     expect(await fileReport({...good, 'description': 'x' * 2001}), isNot(200));
     expect(await db.read('incidents/99'), isNull);
-    expect(await fileReport(good), 200);
+    // A valid report alone is refused too: it must also mark the account as having an open report
+    expect(await fileReport(good), isNot(200));
+    Future<int> fileWithMark() async => (await db.call('PATCH', '', uid: 'cit1',
+        body: {'incidents/99': good, 'users/cit1/activeReq': '99'})).statusCode;
+    // ...and only one report may be open at a time (report #1 is still open)
+    expect(await fileWithMark(), isNot(200));
+    await db.seed('users/cit1/activeReq', null); // report #1 ended
+    expect(await fileWithMark(), 200);
   });
 
   test('Data Relationships', () async {

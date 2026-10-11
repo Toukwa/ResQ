@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../shared/resq_dropdown.dart';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
+import '../../shared/resq_toast.dart';
 
 class AdminManagementScreen extends StatefulWidget {
   final String searchFilter;
@@ -1014,6 +1016,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // ==========================================
   // CREATE / ASSIGN VEHICLE MODAL
   // ==========================================
+  /// Plate shown for a detected vehicle that has none yet.
+  String _unassignedPlate(Map uv) {
+    final rawPlate = uv['plate_no']?.toString() ?? '';
+    if (rawPlate.isNotEmpty && rawPlate != 'Unassigned' && rawPlate != '0') return rawPlate;
+    final now = DateTime.now();
+    return 'VHE-${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.year}';
+  }
+
   void _showAddVehicleModal({int? initialUnassignedId}) {
     final plateController = TextEditingController();
     final officerController = TextEditingController(text: 'Officer On Duty');
@@ -1080,40 +1090,20 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       // Unassigned Vehicles Dropdown
                       Text("Select Unassigned / Detected Vehicle", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
-                      DropdownButtonFormField<int?>(
-                        initialValue: selectedUnassignedVehicleId,
-                        isDense: true,
-                        isExpanded: true,
-                        dropdownColor: ts.cardBackground,
-                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: "Select unassigned vehicle or leave empty",
-                          hintStyle: TextStyle(fontSize: 12, color: ts.textSecondary),
-                          filled: true,
-                          fillColor: ts.inputBackground,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        items: [
-                          DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text("+ Register New Vehicle Record", overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary)),
-                          ),
-                          ..._unassignedVehicles.map((uv) {
-                            final id = uv['vehicle_ID'] ?? uv['id'];
-                            final rawPlate = uv['plate_no']?.toString() ?? '';
-                            final now = DateTime.now();
-                            final defaultCode = "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.year}";
-                            final plate = (rawPlate.isNotEmpty && rawPlate != 'Unassigned' && rawPlate != '0')
-                                ? rawPlate
-                                : 'VHE-$defaultCode';
-                            final idNum = plate.startsWith('VHE-') ? plate.replaceAll('VHE-', '') : id.toString();
-                            return DropdownMenuItem<int?>(
-                              value: id is int ? id : int.tryParse(id.toString()),
-                              child: Text("Unassigned $plate (ID: #$idNum)", overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary)),
-                            );
-                          }),
+                      ResqSelect<int?>(
+                        value: selectedUnassignedVehicleId,
+                        icon: Icons.sensors_rounded,
+                        allLabel: '+ Register New Vehicle Record',
+                        options: [
+                          for (final uv in _unassignedVehicles)
+                            ResqOption<int?>(
+                                    (uv['vehicle_ID'] ?? uv['id']) is int
+                                        ? (uv['vehicle_ID'] ?? uv['id']) as int
+                                        : int.tryParse('${uv['vehicle_ID'] ?? uv['id']}'),
+                                    'Unassigned ${_unassignedPlate(uv)} (ID: #${uv['vehicle_ID'] ?? uv['id']})',
+                                    icon: Icons.directions_car_rounded,
+                                    color: const Color(0xFF64748B),
+                                  ),
                         ],
                         onChanged: (val) {
                           setModalState(() {
@@ -1162,22 +1152,18 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       // Vehicle Type
                       Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedType,
-                        isDense: true,
-                        isExpanded: true,
-                        dropdownColor: ts.cardBackground,
-                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: ts.inputBackground,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        items: ['Fire Truck', 'Ambulance', 'Police Vehicle']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary))))
-                            .toList(),
+                      ResqSelect<String>(
+                        value: selectedType,
+                        hint: 'Select vehicle type',
+                        options: [
+                          for (final t in const ['Fire Truck', 'Ambulance', 'Police Vehicle'])
+                            ResqOption(t, t,
+                                icon: t == 'Fire Truck'
+                                  ? Icons.fire_truck_rounded
+                                  : t == 'Ambulance'
+                                      ? Icons.airport_shuttle_rounded
+                                      : Icons.local_police_rounded),
+                        ],
                         onChanged: (val) {
                           if (val != null) setModalState(() => selectedType = val);
                         },
@@ -1287,11 +1273,11 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                     if (success) {
                       _loadData(showLoading: false);
-                      messenger.showSnackBar(
+                      messenger.showResqSnackBar(
                         const SnackBar(content: Text("Vehicle assigned successfully")),
                       );
                     } else {
-                      messenger.showSnackBar(
+                      messenger.showResqSnackBar(
                         const SnackBar(content: Text("Failed to save vehicle")),
                       );
                     }
@@ -1369,22 +1355,18 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
 
                       Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedType,
-                        isDense: true,
-                        isExpanded: true,
-                        dropdownColor: ts.cardBackground,
-                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: ts.inputBackground,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        items: ['Fire Truck', 'Ambulance', 'Police Vehicle']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary))))
-                            .toList(),
+                      ResqSelect<String>(
+                        value: selectedType,
+                        hint: 'Select vehicle type',
+                        options: [
+                          for (final t in const ['Fire Truck', 'Ambulance', 'Police Vehicle'])
+                            ResqOption(t, t,
+                                icon: t == 'Fire Truck'
+                                  ? Icons.fire_truck_rounded
+                                  : t == 'Ambulance'
+                                      ? Icons.airport_shuttle_rounded
+                                      : Icons.local_police_rounded),
+                        ],
                         onChanged: (val) {
                           if (val != null) setModalState(() => selectedType = val);
                         },
@@ -1409,22 +1391,15 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
 
                       Text("Operational Status", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                       const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedStatus,
-                        isDense: true,
-                        isExpanded: true,
-                        dropdownColor: ts.cardBackground,
-                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: ts.inputBackground,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        items: ['Available', 'Dispatched', 'En Route', 'Offline']
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis, style: TextStyle(color: ts.textPrimary))))
-                            .toList(),
+                      ResqSelect<String>(
+                        value: selectedStatus,
+                        hint: 'Select status',
+                        options: const [
+                          ResqOption('Available', 'Available', color: Color(0xFF16A34A)),
+                          ResqOption('Dispatched', 'Dispatched', color: Color(0xFF2563EB)),
+                          ResqOption('En Route', 'En Route', color: Color(0xFF2563EB)),
+                          ResqOption('Offline', 'Offline', color: Color(0xFF94A3B8)),
+                        ],
                         onChanged: (val) {
                           if (val != null) setModalState(() => selectedStatus = val);
                         },
@@ -1463,11 +1438,11 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                     if (success) {
                       _loadData(showLoading: false);
-                      messenger.showSnackBar(
+                      messenger.showResqSnackBar(
                         const SnackBar(content: Text("Vehicle updated successfully")),
                       );
                     } else {
-                      messenger.showSnackBar(
+                      messenger.showResqSnackBar(
                         const SnackBar(content: Text("Failed to update vehicle")),
                       );
                     }
@@ -1526,11 +1501,11 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                     if (success) {
                       _loadData(showLoading: false);
-                      messenger.showSnackBar(
+                      messenger.showResqSnackBar(
                         const SnackBar(content: Text("Vehicle deleted successfully")),
                       );
                     } else {
-                      messenger.showSnackBar(
+                      messenger.showResqSnackBar(
                         const SnackBar(content: Text("Failed to delete vehicle")),
                       );
                     }

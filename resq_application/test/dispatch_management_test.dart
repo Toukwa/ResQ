@@ -23,7 +23,7 @@ void main() {
       ..write('departments/2', {'dept_ID': 2, 'deptName': 'BFP'})
       ..write('vehicles/4', {'vehicle_ID': 4, 'plate_no': 'ABC 123', 'vehicle_type': 'Fire Truck', 'dept_ID': 2, 'status': 'Available'})
       ..write('vehicles/5', {'vehicle_ID': 5, 'plate_no': 'XYZ 789', 'vehicle_type': 'Fire Truck', 'dept_ID': 2, 'status': 'En Route'})
-      ..write('incidents/11', {'Req_ID': 11, 'incType': 'Fire', 'citizenUid': 'u1', 'reqStatus': 'Pending', 'dept_status': {'BFP': 'Pending'}})
+      ..write('incidents/11', {'Req_ID': 11, 'incType': 'Fire', 'citizenUid': 'u1', 'reqStatus': 'Pending', 'severity': 'Urgent', 'dept_status': {'BFP': 'Pending'}})
       ..write('counters/dispatches', 0);
   });
 

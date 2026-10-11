@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'resq_date_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import '../services/incident_data.dart';
 import '../services/report_data.dart';
 import '../services/report_pdf.dart';
 import '../services/theme_service.dart';
+import 'resq_toast.dart';
 
 /// Analytics reports (emergency count, response times, vehicle usage,
 /// department performance) for a date range, with CSV export.
@@ -70,8 +72,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   /// Same calendar as the audit logs' Date Range: one picker per end.
   Future<void> _pickDate(bool isStart) async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await showResqDatePicker(
+      context,
       initialDate: isStart ? _range.start : _range.end,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
@@ -117,7 +119,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ? await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory()
           : await getApplicationDocumentsDirectory();
       final f = DateFormat('yyyy-MM-dd');
-      messenger.showSnackBar(const SnackBar(content: Text('Generating analytics package (PDF + data)...')));
+      messenger.showResqSnackBar(const SnackBar(content: Text('Generating analytics package (PDF + data)...')));
       final name = '${ReportPdf.baseName(report)}.zip';
       await File('${dir.path}${Platform.pathSeparator}$name').writeAsBytes(await ReportPdf.zip(report), flush: true);
       messenger.hideCurrentSnackBar();
@@ -126,12 +128,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         'from': f.format(_range.start),
         'to': f.format(_range.end),
       });
-      messenger.showSnackBar(SnackBar(
+      messenger.showResqSnackBar(SnackBar(
         content: Text('Saved $name to ${dir.path}'),
         backgroundColor: const Color(0xFF10B981),
       ));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.redAccent));
+      messenger.showResqSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.redAccent));
     }
   }
 

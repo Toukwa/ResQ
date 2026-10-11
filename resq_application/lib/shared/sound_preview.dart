@@ -4,7 +4,9 @@ import '../services/theme_service.dart';
 
 /// Lists each alert sound with a play button so staff can learn what each one means.
 class SoundPreviewPanel extends StatelessWidget {
-  const SoundPreviewPanel({super.key});
+  /// [forEoc]: leaves out the EOC alert, which only agency apps play.
+  final bool forEoc;
+  const SoundPreviewPanel({super.key, this.forEoc = false});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,7 @@ class SoundPreviewPanel extends StatelessWidget {
           Text('Alert sounds - tap to preview',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
           const SizedBox(height: 4),
-          for (final cue in SoundCue.values)
+          for (final cue in SoundCue.values.where((c) => !(forEoc && c == SoundCue.eocAlert)))
             Row(children: [
               IconButton(
                 tooltip: 'Play',

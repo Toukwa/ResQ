@@ -54,7 +54,6 @@ class AdminData {
     'mfa_enabled': 1,
     'session_timeout': '15 min',
     'auto_logout': 1,
-    'duplicate_detection': 1,
     'tab_activity_dots': 1,
   };
 

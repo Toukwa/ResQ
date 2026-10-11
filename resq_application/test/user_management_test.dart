@@ -52,7 +52,8 @@ void main() {
     late ({bool success, String? error}) result;
     final sent = await fakeFirebase(() async {
       result = await AuthService.registerCitizen(
-          fullName: 'Juan Dela Cruz', contactNo: '09171234567', email: 'Juan@Mail.com', password: 'secret123');
+          fullName: 'Juan Dela Cruz', contactNo: '09171234567', email: 'Juan@Mail.com', password: 'secret123',
+          birthdate: '2000-05-14', barangay: 'San Roque (Poblacion)');
     });
     expect(result.success, isTrue);
     final saved = sent.firstWhere((r) => r.url.path.endsWith('/users/u1.json') && r.method == 'PUT');
@@ -61,13 +62,16 @@ void main() {
     expect(user['fullName'], 'Juan Dela Cruz');
     expect(user['email'], 'juan@mail.com');
     expect(user['role'], 'Citizen');
+    expect(user['birthdate'], '2000-05-14');
+    expect(user['address'], 'San Roque (Poblacion), Iriga City, Camarines Sur');
   });
 
   test('User Registration – Duplicate Email', () async {
     late ({bool success, String? error}) result;
     final sent = await fakeFirebase(() async {
       result = await AuthService.registerCitizen(
-          fullName: 'Juan', contactNo: '0917', email: 'taken@mail.com', password: 'secret123');
+          fullName: 'Juan', contactNo: '0917', email: 'taken@mail.com', password: 'secret123',
+          birthdate: '2000-05-14', barangay: 'Santiago');
     }, authError: 'EMAIL_EXISTS');
     expect(result.success, isFalse);
     expect(result.error, contains('Email is already registered.'));

@@ -1,13 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:path/path.dart' as p;
+
+import '../shared/incident_catalog.dart';
 
 import '../config.dart';
 import 'firebase_rest.dart';
 import 'live_socket.dart';
+import 'media_upload.dart';
 import 'sound_service.dart';
 import 'vehicle_data.dart';
 
@@ -74,8 +74,19 @@ class IncidentData {
   // ─── departments ─────────────────────────────────────────────────────────
 
   /// Which departments must respond to an incident type (same rules as the old server).
+  /// A citizen not sure which agency to call: goes to the EOC (Super Admin) only,
+  /// who assigns it to agencies (see assignAgencies / chooseIncidents).
+  static const generalEmergency = 'General Emergency';
+
+  static bool isGeneral(String? incType) =>
+      (incType ?? '').toLowerCase().contains(generalEmergency.toLowerCase());
+
   static List<String> involvedDepartments(String? incType) {
     if (incType == null || incType.isEmpty) return ['BFP', 'PNP', 'CDRRMO'];
+    if (isGeneral(incType)) return const []; // Super Admin only
+    // Picked from the incident list ("BFP: Vehicular Fire"): the named agencies, exactly
+    final named = RegExp(r'\b(BFP|PNP|CDRRMO):').allMatches(incType).map((m) => m.group(1)!).toSet();
+    if (named.isNotEmpty) return named.toList();
     final t = incType.toLowerCase();
     final depts = <String>{};
     bool any(String s, List<String> words) => words.any(s.contains);
@@ -137,8 +148,126 @@ class IncidentData {
     if (values.every((s) => s == 'cancelled' || s == 'declined')) return 'Declined';
     final active = values.where((s) => s != 'cancelled' && s != 'declined').toList();
     if (active.every((s) => s == 'completed')) return 'Completed';
-    if (active.every((s) => ['en route', 'dispatched', 'en_route', 'completed'].contains(s))) return 'En Route';
+    if (active.every((s) => s == 'arrived' || s == 'completed')) return 'Arrived';
+    if (active.every((s) => ['en route', 'dispatched', 'en_route', 'arrived', 'completed'].contains(s))) return 'En Route';
     return 'Accepted';
+  }
+
+  /// [incident]'s status for one department; agencies on the same report move
+  /// on their own. 'ALL' (the Super Admin) sees the overall status.
+  static String statusFor(Map incident, String? dept, [String fallback = 'Pending']) {
+    final overall = '${incident['Status'] ?? incident['status'] ?? incident['reqStatus'] ?? fallback}';
+    final mine = normalizeDepartment(dept);
+    if (mine == 'ALL') return overall;
+    final own = (incident['dept_status'] as Map?)?[mine];
+    return own == null ? overall : '$own';
+  }
+
+  /// [reqId]'s dispatches sent by [department] (all of them for the Super Admin).
+  static Future<List<Map<String, dynamic>>> _departmentDispatches(int reqId, String? department) async {
+    final dispatches = rows(await Rtdb.get('dispatches', query: {'orderBy': '"Req_ID"', 'equalTo': '$reqId'}));
+    final acting = normalizeDepartment(department);
+    if (acting == 'ALL') return dispatches;
+    final deptNames = {
+      for (final dep in rows(await Rtdb.get('departments'))) _int(dep['dept_ID']): normalizeDepartment(dep['deptName']?.toString())
+    };
+    final out = <Map<String, dynamic>>[];
+    for (final d in dispatches) {
+      final v = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
+      if (deptNames[_int(v?['dept_ID'])] == acting) out.add(d);
+    }
+    return out;
+  }
+
+  /// The agencies handling [incident]: the ones on it (including any the EOC assigned
+  /// or asked for help), else the ones its type is sent to. Empty for an unassigned
+  /// General Emergency.
+  static List<String> agenciesOf(Map incident) {
+    final status = incident['dept_status'];
+    if (status is Map && status.isNotEmpty) return [for (final k in status.keys) '$k'];
+    return involvedDepartments(incident['incType']?.toString());
+  }
+
+  /// Who rates a report's severity: the EOC for a General Emergency (when assigning it),
+  /// the agency itself for a report sent straight to it, and only once. Nobody else, including an
+  /// agency the EOC only asked to help.
+  static bool canRateSeverity(Map user, Map incident) {
+    if (incident['severity'] != null) return false; // once rated, locked for everyone
+    final type = incident['incType']?.toString();
+    if (user['role'] == 'Superadmin') return isGeneral(type);
+    if (user['role'] != 'Admin' || isGeneral(type)) return false;
+    final mine = normalizeDepartment(user['department']?.toString());
+    return involvedDepartments(type).contains(mine);
+  }
+
+  /// Rates how serious a report is (see severityLevels). See [canRateSeverity].
+  static Future<void> setSeverity(int reqId, String severity) async {
+    final incident = await Rtdb.get('incidents/$reqId');
+    if (incident == null) throw const HttpException('Report not found.');
+    if (!canRateSeverity(await me(), incident)) {
+      throw const HttpException('You can only rate reports sent directly to your agency (the EOC rates General Emergencies).');
+    }
+    await Rtdb.update('incidents/$reqId', {'severity': severity});
+    await log('SEVERITY_SET', 'emergency_request', reqId, {'severity': severity});
+    LiveEvents.emit('refreshIncidentQueueEvent', {});
+  }
+
+  /// EOC (Super Admin): assigns a General Emergency to [agencies], or asks more agencies
+  /// to help on any report. New agencies start at Pending; the ones already on the
+  /// report keep their status. Each new agency is notified.
+  /// For a General Emergency the [severity] is saved in the same step (required the
+  /// first time); other reports keep the rating their agency gave.
+  static Future<List<String>> assignAgencies(int reqId, Iterable<String> agencies, {String? severity}) async {
+    // Only the EOC hands reports out; an agency admin can't pull others in
+    if ((await me())['role'] != 'Superadmin') throw const HttpException('Only the EOC can assign agencies.');
+    final incident = await Rtdb.get('incidents/$reqId');
+    if (incident == null) throw const HttpException('Report not found.');
+    // The EOC rates a General Emergency as it hands it out, so agencies know how serious it is
+    final general = isGeneral(incident['incType']?.toString());
+    if (general && severity == null && incident['severity'] == null) {
+      throw const HttpException('Set the severity first.');
+    }
+    final statuses = <String, String>{
+      for (final d in agenciesOf(incident)) d: 'Pending',
+      ...Map<String, String>.from((incident['dept_status'] as Map?) ?? {}),
+    };
+    final added = [for (final a in agencies.map(normalizeDepartment)) if (!statuses.containsKey(a)) a];
+    if (added.isEmpty) return added;
+    for (final a in added) {
+      statuses[a] = 'Pending';
+    }
+    final wasAssigned = agenciesOf(incident).isNotEmpty;
+    await Rtdb.update('incidents/$reqId', {
+      'dept_status': statuses,
+      'reqStatus': overallStatus(statuses.values),
+      if (general && severity != null && incident['severity'] == null) 'severity': severity,
+    });
+
+    await log('AGENCY_ASSIGNED', 'emergency_request', reqId, {'agencies': added, 'help': wasAssigned});
+    for (final a in added) {
+      await addNotification(
+        title: wasAssigned ? 'Help requested by EOC' : 'Assigned by EOC',
+        message: wasAssigned
+            ? 'The EOC asked $a to help with report #$reqId (${incident['incType']}).'
+            : 'Report #$reqId (${incident['incType']}) was assigned to $a by the EOC.',
+        type: 'ASSIGNMENT',
+        reqId: reqId,
+      );
+    }
+    LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.newReport.id});
+    return added;
+  }
+
+  /// Lets the citizen file again: removes their "has an open report" mark if it points at [reqId].
+  static Future<void> clearActiveReport(dynamic citizenUid, int reqId) async {
+    if (citizenUid == null) return;
+    try {
+      if ('${await Rtdb.get('users/$citizenUid/activeReq')}' == '$reqId') {
+        await Rtdb.remove('users/$citizenUid/activeReq');
+      }
+    } catch (e) {
+      log('ACTIVE_REPORT_CLEAR_FAILED', 'emergency_request', reqId, {'error': '$e'});
+    }
   }
 
   /// Sets [actingDept]'s status on the incident, then recomputes the overall
@@ -146,7 +275,17 @@ class IncidentData {
   static Future<void> _syncDepartmentStatus(int reqId, String? actingDept, String newStatus) async {
     final incident = await Rtdb.get('incidents/$reqId');
     if (incident == null) return;
-    final involved = involvedDepartments(incident['incType']);
+    final involved = agenciesOf(incident);
+    if (involved.isEmpty) {
+      // General Emergency: no agencies yet, so the Super Admin sets the status directly
+      final ended = newStatus == 'Completed' || newStatus == 'Declined';
+      await Rtdb.update('incidents/$reqId', {
+        'reqStatus': newStatus,
+        if (newStatus == 'Completed' && incident['completedAt'] == null) 'completedAt': _nowIso(),
+      });
+      if (ended) await clearActiveReport(incident['citizenUid'], reqId);
+      return;
+    }
     final statuses = <String, String>{
       for (final d in involved) d: 'Pending',
       ...Map<String, String>.from((incident['dept_status'] as Map?) ?? {}),
@@ -167,31 +306,25 @@ class IncidentData {
 
     final overall = overallStatus(statuses.values);
 
+    final ended = overall == 'Completed' || overall == 'Declined';
+    // One entry per agency, so the database rules can check each agency changes only its own
+    final existing = Map<String, dynamic>.from((incident['dept_status'] as Map?) ?? {});
     await Rtdb.update('incidents/$reqId', {
-      'dept_status': statuses,
+      for (final e in statuses.entries)
+        if (e.key == target || !existing.containsKey(e.key)) 'dept_status/${e.key}': e.value,
       'reqStatus': overall,
       // Used by the response-time and performance reports
       if (overall == 'Completed' && incident['completedAt'] == null) 'completedAt': _nowIso(),
     });
+    if (ended) await clearActiveReport(incident['citizenUid'], reqId);
   }
 
   // ─── photos (Cloudinary) ─────────────────────────────────────────────────
 
   /// Uploads an evidence photo to Cloudinary and returns its https URL.
   /// (Firebase Storage uploads need the paid Blaze plan.)
-  static Future<String> _uploadPhoto(File file) async {
-    final req = http.MultipartRequest(
-      'POST',
-      Uri.parse('https://api.cloudinary.com/v1_1/${AppConfig.cloudinaryCloudName}/image/upload'),
-    )
-      ..fields['upload_preset'] = AppConfig.cloudinaryUploadPreset
-      ..fields['public_id'] = '${FirebaseAuthRest.uid}_${DateTime.now().millisecondsSinceEpoch}'
-      ..files.add(await http.MultipartFile.fromPath('file', file.path, filename: p.basename(file.path)));
-
-    final res = await http.Response.fromStream(await req.send().timeout(const Duration(minutes: 2)));
-    if (res.statusCode != 200) throw HttpException('Photo upload failed (${res.statusCode}): ${res.body}');
-    return jsonDecode(res.body)['secure_url'] as String;
-  }
+  static bool isVideoFile(String path) => MediaUpload.isVideo(path);
+  static bool isAudioFile(String path) => MediaUpload.isAudio(path);
 
   /// Full URL for a stored image path (new photos are already full URLs).
   static String imageUrl(String path) {
@@ -209,14 +342,21 @@ class IncidentData {
     required double latitude,
     required double longitude,
     required List<File> images,
+    File? voiceNote,
     DateTime? reportedAt, // when the emergency was reported, if earlier than now (offline phone calls)
     String? source,
   }) async {
     final user = await me();
-    final urls = <String>[for (final img in images) await _uploadPhoto(img)];
+    // All evidence uploads at the same time instead of one after another
+    final uploads = await Future.wait([
+      for (final f in images) MediaUpload.upload(f),
+      if (voiceNote != null) MediaUpload.upload(voiceNote),
+    ]);
+    final urls = uploads.take(images.length).toList();
+    final voiceUrl = voiceNote == null ? null : uploads.last;
     final id = await Rtdb.nextId('counters/incidents');
 
-    await Rtdb.set('incidents/$id', {
+    final incident = {
       'Req_ID': id,
       'Citizen_ID': _int(citizenId) ?? user['id'],
       'citizenUid': FirebaseAuthRest.uid,
@@ -228,11 +368,30 @@ class IncidentData {
       'longitude': longitude,
       'reqStatus': 'Pending',
       'image_path': urls.isEmpty ? null : urls.join(','),
+      'voice_path': ?voiceUrl,
       'SOS_timeStamp': sosTimestamp(reportedAt),
       'createdAt': {'.sv': 'timestamp'},
       'source': ?source,
-      'dept_status': {for (final d in involvedDepartments(incidentType)) d: 'Pending'},
-    });
+      if (involvedDepartments(incidentType).isNotEmpty)
+        'dept_status': {for (final d in involvedDepartments(incidentType)) d: 'Pending'},
+    };
+    if (user['role'] == 'Citizen') {
+      // A mark left behind by a report that has already ended (staff couldn't clear it) is cleared here
+      final open = await Rtdb.get('users/${FirebaseAuthRest.uid}/activeReq');
+      if (open != null) {
+        final status = '${await Rtdb.get('incidents/$open/reqStatus')}'.toLowerCase();
+        if (const ['completed', 'declined', 'cancelled', 'null'].contains(status)) {
+          await Rtdb.remove('users/${FirebaseAuthRest.uid}/activeReq');
+        }
+      }
+      // One write for both, so the rules can refuse a second report while one is open
+      await Rtdb.update('', {
+        'incidents/$id': incident,
+        'users/${FirebaseAuthRest.uid}/activeReq': '$id',
+      });
+    } else {
+      await Rtdb.set('incidents/$id', incident);
+    }
 
     await log('EMERGENCY_REQUEST_CREATED', 'emergency_request', id,
         {'type': incidentType, 'location': {'latitude': latitude, 'longitude': longitude}});
@@ -241,9 +400,12 @@ class IncidentData {
       message: 'A new $incidentType emergency request (#$id) has been reported.',
       type: 'EMERGENCY',
       reqId: id,
+      agency: isGeneral(incidentType) ? 'EOC' : null, // waiting for the EOC: agencies aren't told yet
     );
-    LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.newReport.id});
-    LiveEvents.emit('refreshMediaGalleryEvent');
+    LiveEvents.emit('refreshIncidentQueueEvent', {
+      'cue': SoundCue.newReport.id,
+      if (isGeneral(incidentType)) 'eocOnly': true,
+    });
     return id.toString();
   }
 
@@ -277,9 +439,12 @@ class IncidentData {
     final vehicles = {for (final v in rows(results[2])) _int(v['vehicle_ID']): v};
     final depts = {for (final d in rows(results[3])) _int(d['dept_ID']): d};
     final latestDispatch = <int, Map<String, dynamic>>{};
+    final onTheWay = <int, List<int>>{}; // vehicles still assigned (not completed or recalled)
     for (final d in rows(results[1])) {
       final req = _int(d['Req_ID'])!;
       if ((_int(d['Disp_ID']) ?? 0) > (_int(latestDispatch[req]?['Disp_ID']) ?? -1)) latestDispatch[req] = d;
+      final s = '${d['status']}'.toLowerCase();
+      if (s != 'completed' && s != 'cancelled') (onTheWay[req] ??= []).add(_int(d['Vehicle_ID'])!);
     }
 
     final list = rows(results[0]).map((e) {
@@ -298,6 +463,7 @@ class IncidentData {
         'dispatchId': d?['Disp_ID'],
         'dispatchTimestamp': d?['Dispatch_timeStamp'],
         'dispatchStatus': d?['status'],
+        'dispatchedVehicleIds': onTheWay[id] ?? const <int>[],
         'plate_no': v?['plate_no'],
         'vehicle_type': v?['vehicle_type'],
         'vehicleStatus': v?['status'],
@@ -306,8 +472,15 @@ class IncidentData {
       });
     }).toList()
       ..sort((a, b) => (b['SOS_timeStamp'] ?? '').toString().compareTo((a['SOS_timeStamp'] ?? '').toString()));
+    // A report waiting for the EOC (a General Emergency no agency is on yet) is the EOC's
+    // alone: agency admins don't see it anywhere until it is assigned.
+    if ((await me())['role'] == 'Admin') list.removeWhere(isAwaitingEoc);
     return list;
   }
+
+  /// A General Emergency the EOC hasn't assigned to any agency yet.
+  static bool isAwaitingEoc(Map incident) =>
+      isGeneral(incident['incType']?.toString()) && agenciesOf(incident).isEmpty;
 
   static Future<List<Map<String, dynamic>>> searchIncidents(String query) async {
     final q = query.toLowerCase();
@@ -328,9 +501,25 @@ class IncidentData {
     }
   }
 
+  /// Also applied to every report linked to [reqId] that this agency is on (see [linkIncidents]).
   static Future<void> updateIncidentStatus(int reqId, String status, String? department) async {
     await _ensureMyDepartment(await Rtdb.get('incidents/$reqId'));
+    await _applyStatus(reqId, status, department);
+    for (final other in await _linkedOpenForMe(reqId, department)) {
+      await _applyStatus(other, status, department);
+    }
+  }
+
+  static Future<void> _applyStatus(int reqId, String status, String? department) async {
     await _syncDepartmentStatus(reqId, department ?? 'ALL', status);
+
+    if (status.toLowerCase() == 'arrived') {
+      for (final d in await _departmentDispatches(reqId, department)) {
+        final s = '${d['status']}'.toLowerCase();
+        if (s == 'completed' || s == 'cancelled' || s == 'arrived') continue;
+        await Rtdb.update('dispatches/${d['Disp_ID']}', {'status': 'Arrived', 'Arrived_timeStamp': _nowIso()});
+      }
+    }
 
     if (status.toLowerCase() == 'completed') {
       final dispatches = rows(await Rtdb.get('dispatches', query: {'orderBy': '"Req_ID"', 'equalTo': '$reqId'}));
@@ -361,29 +550,168 @@ class IncidentData {
     LiveEvents.emit('refreshManagementData');
   }
 
+  // ─── "not sure" reports ──────────────────────────────────────────────────
+
+  /// The undecided cards on [incident] that [user] may choose incidents for: an
+  /// agency its own "Not sure" part; the EOC any of them, including General Emergency.
+  static List<String> choosableCards(Map user, Map incident) {
+    if (_closed(incident)) return const [];
+    final cards = IncidentCatalog.undecided('${incident['incType'] ?? ''}');
+    if (user['role'] == 'Superadmin') return cards;
+    if (user['role'] != 'Admin') return const [];
+    final mine = normalizeDepartment(user['department']?.toString());
+    return [for (final c in cards) if (c == mine) c];
+  }
+
+  /// Staff choose what a "Not sure" report is about (after hearing its voice message).
+  /// For a General Emergency the EOC's choice is also who gets it: the report is sent
+  /// to the agencies of the chosen incidents. Returns the agencies it was sent to.
+  static Future<List<String>> chooseIncidents(int reqId, String card, Set<String> picks) async {
+    final chosen = picks.where((p) => p != IncidentCatalog.notSure).toSet();
+    if (chosen.isEmpty) throw const HttpException('Pick at least one incident.');
+    final incident = await Rtdb.get('incidents/$reqId');
+    if (incident == null) throw const HttpException('Report not found.');
+    if (!choosableCards(await me(), incident).contains(card)) {
+      throw const HttpException('You can only choose the incident for your own agency\'s "Not sure" report.');
+    }
+    final type = IncidentCatalog.decide('${incident['incType']}', card, chosen);
+    await Rtdb.update('incidents/$reqId', {'incType': type});
+    await log('INCIDENT_TYPE_CHOSEN', 'emergency_request', reqId, {'card': card, 'type': type});
+    if (card == generalEmergency) {
+      final agencies = {
+        for (final p in chosen)
+          if (RegExp(r'^(BFP|PNP|CDRRMO):').firstMatch(p) case final m?) m.group(1)!,
+      };
+      final sent = await assignAgencies(reqId, agencies);
+      return sent;
+    }
+    LiveEvents.emit('refreshIncidentQueueEvent', {});
+    return const [];
+  }
+
+  // ─── linked reports ──────────────────────────────────────────────────────
+
+  /// Links [a] and [b] as the same emergency (e.g. two people reporting one fire).
+  /// Both stay open; from then on an agency's actions and dispatches on one are
+  /// applied to the others it is on. Groups merge when either is already linked.
+  static Future<void> linkIncidents(int a, int b) async {
+    if (a == b) throw const HttpException('Pick a different report.');
+    final ia = await Rtdb.get('incidents/$a'), ib = await Rtdb.get('incidents/$b');
+    if (ia == null || ib == null) throw const HttpException('Report not found.');
+    await _ensureMyDepartment(ia);
+    await _ensureMyDepartment(ib);
+    for (final i in [ia, ib]) {
+      if (_closed(i)) throw const HttpException('Closed reports can\'t be linked.');
+    }
+    final group = _int(ia['linkGroup']) ?? _int(ib['linkGroup']) ?? (a < b ? a : b);
+    final members = {a, b, ...await _groupMembers(_int(ia['linkGroup'])), ...await _groupMembers(_int(ib['linkGroup']))};
+    await Rtdb.update('', {for (final m in members) 'incidents/$m/linkGroup': group});
+    await log('INCIDENTS_LINKED', 'emergency_request', a, {'linked_to': b, 'group': group});
+    LiveEvents.emit('refreshIncidentQueueEvent', {});
+  }
+
+  /// Takes [reqId] out of its link group (a group of one is dissolved).
+  static Future<void> unlinkIncident(int reqId) async {
+    final inc = await Rtdb.get('incidents/$reqId');
+    if (inc == null) throw const HttpException('Report not found.');
+    await _ensureMyDepartment(inc);
+    final rest = (await _groupMembers(_int(inc['linkGroup'])))..remove(reqId);
+    await Rtdb.update('', {
+      'incidents/$reqId/linkGroup': null,
+      if (rest.length == 1) 'incidents/${rest.first}/linkGroup': null,
+    });
+    await log('INCIDENT_UNLINKED', 'emergency_request', reqId, {'group': inc['linkGroup']});
+    LiveEvents.emit('refreshIncidentQueueEvent', {});
+  }
+
+  /// The other reports linked to [reqId].
+  static Future<List<int>> linkedIds(int reqId) async {
+    final group = _int(await Rtdb.get('incidents/$reqId/linkGroup'));
+    return [...(await _groupMembers(group))..remove(reqId)]..sort();
+  }
+
+  static Future<Set<int>> _groupMembers(int? group) async {
+    if (group == null) return {};
+    final found = await Rtdb.get('incidents', query: {'orderBy': '"linkGroup"', 'equalTo': '$group'});
+    return {for (final r in rows(found)) ?_int(r['Req_ID'])};
+  }
+
+  static bool _closed(Map incident) =>
+      const ['completed', 'declined', 'cancelled'].contains('${incident['reqStatus']}'.toLowerCase());
+
+  /// Linked reports this agency is on and hasn't finished, to apply an action to.
+  static Future<List<int>> _linkedOpenForMe(int reqId, String? department) async {
+    final mine = normalizeDepartment(department);
+    final out = <int>[];
+    for (final id in await linkedIds(reqId)) {
+      final inc = await Rtdb.get('incidents/$id');
+      if (inc == null || _closed(inc)) continue;
+      if (mine != 'ALL') {
+        if (!isForDepartment(inc, mine)) continue;
+        final own = '${(inc['dept_status'] as Map?)?[mine] ?? ''}'.toLowerCase();
+        if (const ['completed', 'declined', 'cancelled'].contains(own)) continue;
+      }
+      out.add(id);
+    }
+    return out;
+  }
+
   // ─── dispatch ────────────────────────────────────────────────────────────
 
-  /// Lets a citizen read the vehicle (and its GPS tracker) sent to their incident,
-  /// and nothing else. Granted on dispatch, removed when the incident is completed.
+  /// Lets a citizen read the name and plate of the vehicle sent to their incident.
+  /// Never its GPS tracker: a responder's live position stays with staff.
+  /// Granted on dispatch, removed when the incident is completed.
   static Future<void> _setCitizenAccess(dynamic citizenUid, dynamic vehicle, dynamic vehicleId, bool allow) async {
     if (citizenUid == null) return;
     final trackerUid = vehicle is Map ? vehicle['trackerUid'] : null;
     await Rtdb.update('citizen_access/$citizenUid', {
       'vehicles/$vehicleId': allow ? true : null,
-      if (trackerUid != null) 'trackers/$trackerUid': allow ? true : null,
+      // Clears tracker access granted by older versions
+      if (trackerUid != null) 'trackers/$trackerUid': null,
     });
   }
 
-  static Future<int> dispatchVehicle({required int reqId, required int vehicleId, required int adminId, String? department}) async {
+  /// [help]: an agency sends units to a report that isn't theirs. Its agency joins
+  /// the report (own status track, marked as helping) with this first dispatch.
+  static Future<int> dispatchVehicle({
+    required int reqId,
+    required int vehicleId,
+    required int adminId,
+    String? department,
+    bool help = false,
+  }) async {
     final incident = await Rtdb.get('incidents/$reqId');
     if (incident == null) throw const HttpException('Incident not found.');
-    await _ensureMyDepartment(incident);
+    String? joining; // the agency joining to help, if any
+    final user = await me();
+    if (user['role'] == 'Admin' && !isForDepartment(incident, user['department']?.toString())) {
+      if (!help) throw const HttpException('This request is not assigned to your department.');
+      if (agenciesOf(incident).isEmpty) throw const HttpException('Waiting for the EOC to assign this report.');
+      if (const ['completed', 'declined', 'cancelled'].contains('${incident['reqStatus']}'.toLowerCase())) {
+        throw const HttpException('This report is already closed.');
+      }
+      joining = normalizeDepartment(user['department']?.toString());
+    }
+    if (incident['severity'] == null) throw const HttpException('Rate the severity before dispatching.');
     final vehicle = await Rtdb.get('vehicles/$vehicleId');
     // Writing status to a missing id would create a ghost "Unit #null" vehicle
     if (vehicle == null || vehicle['vehicle_ID'] == null) throw const HttpException('Vehicle not found.');
     // The list only offers available vehicles, but another admin may have just sent this one
     if ('${vehicle['status'] ?? 'Available'}'.toLowerCase() != 'available') {
       throw const HttpException('Vehicle is not available.');
+    }
+    if (joining != null) {
+      await Rtdb.update('incidents/$reqId', {
+        'dept_status/$joining': 'En Route',
+        'helpers/$joining': _nowIso(),
+      });
+      await log('AGENCY_JOINED', 'emergency_request', reqId, {'agency': joining});
+      await addNotification(
+        title: '$joining is helping',
+        message: '$joining sent units to help with report #$reqId (${incident['incType']}).',
+        type: 'ASSIGNMENT',
+        reqId: reqId,
+      );
     }
     final id = await Rtdb.nextId('counters/dispatches');
 
@@ -407,6 +735,24 @@ class IncidentData {
     await _syncDepartmentStatus(reqId, actingDept ?? 'ALL', 'En Route');
 
     await log('UNIT_DISPATCHED', 'dispatch_event', id, {'emergency_id': reqId, 'vehicle_id': vehicleId});
+    // Linked reports are the same emergency: the unit is on its way to them too
+    for (final other in await _linkedOpenForMe(reqId, actingDept)) {
+      final o = await Rtdb.get('incidents/$other');
+      final oid = await Rtdb.nextId('counters/dispatches');
+      await Rtdb.set('dispatches/$oid', {
+        'Disp_ID': oid,
+        'Req_ID': other,
+        'Vehicle_ID': vehicleId,
+        'Admin_ID': adminId,
+        'citizenUid': o?['citizenUid'],
+        'status': 'En Route',
+        'Dispatch_timeStamp': _nowIso(),
+        'linkedFrom': reqId,
+      });
+      await _setCitizenAccess(o?['citizenUid'], vehicle, vehicleId, true);
+      await _syncDepartmentStatus(other, actingDept ?? 'ALL', 'En Route');
+      await log('UNIT_DISPATCHED', 'dispatch_event', oid, {'emergency_id': other, 'vehicle_id': vehicleId, 'linked_from': reqId});
+    }
     final vInfo = vehicle == null ? 'Vehicle #$vehicleId' : '${vehicle['vehicle_type']} (${vehicle['plate_no']})';
     await addNotification(
       title: 'Unit Dispatched',
@@ -445,12 +791,14 @@ class IncidentData {
   /// Vehicles sent to an incident with their live GPS position.
   static Future<List<Map<String, dynamic>>> getDispatchedVehicles(int reqId) async {
     final out = <Map<String, dynamic>>[];
+    final staff = await _isStaff();
     for (final d in (await _dispatchesFor(reqId)).where((d) => d['status'] != 'Cancelled')) {
       final vid = d['Vehicle_ID'];
       final v = await Rtdb.get('vehicles/$vid');
       if (v == null) continue;
       final dept = await Rtdb.get('departments/${v['dept_ID']}');
-      final loc = await VehicleData.locationOf(Map<String, dynamic>.from(v as Map));
+      // Staff only: citizens are never sent a responder's position
+      final loc = staff ? await VehicleData.locationOf(Map<String, dynamic>.from(v as Map)) : null;
       out.add({
         'dispatchId': d['Disp_ID'],
         'reqId': d['Req_ID'],
@@ -483,44 +831,6 @@ class IncidentData {
     return (color: '#64748B', bg: '#F1F5F9');
   }
 
-  static Future<List<Map<String, dynamic>>> getMediaGallery() async {
-    final withPhotos = rows(await Rtdb.get('incidents'))
-        .where((e) => (e['image_path'] ?? '').toString().isNotEmpty)
-        .toList()
-      ..sort((a, b) => (b['SOS_timeStamp'] ?? '').toString().compareTo((a['SOS_timeStamp'] ?? '').toString()));
-
-    return withPhotos.map((e) {
-      final id = e['Req_ID'];
-      final category = (e['incType'] ?? 'General').toString();
-      final firstPath = e['image_path'].toString().split(',').first;
-      final filename = Uri.decodeComponent(firstPath.split('?').first.split('/').last).split('/').last;
-      final ts = DateTime.tryParse(e['SOS_timeStamp']?.toString() ?? '')?.toLocal();
-      final colors = _categoryColors(category);
-      final lat = (e['latitude'] as num?)?.toDouble();
-      final lng = (e['longitude'] as num?)?.toDouble();
-      return {
-        ...e,
-        'incidentId': 'INC-$id',
-        'category': category,
-        'reporterName': e['residentName'] ?? 'Citizen Reporter',
-        'file_path': e['image_path'],
-        'imagePath': e['image_path'],
-        'filename': filename,
-        'ext': filename.contains('.') ? filename.split('.').last.toUpperCase() : 'JPG',
-        'size': '1.2 MB',
-        'uploadedAt': e['SOS_timeStamp'],
-        'uploaded_at': e['SOS_timeStamp'],
-        'time': ts == null ? '--:--' : DateFormat('hh:mm a').format(ts),
-        'categoryColor': colors.color,
-        'bgColor': colors.bg,
-        'location': lat != null && lng != null
-            ? 'Iriga City (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})'
-            : 'Iriga City',
-        'tags': [category, 'INC-$id'],
-      };
-    }).toList();
-  }
-
   static Future<List<Map<String, dynamic>>> getMediaFilters() async {
     final withPhotos = rows(await Rtdb.get('incidents')).where((e) => (e['image_path'] ?? '').toString().isNotEmpty);
     final counts = <String, int>{};
@@ -544,6 +854,7 @@ class IncidentData {
     int? recipientId,
     int? reqId,
     int? dispId,
+    String? agency,
   }) async {
     try {
       final id = await Rtdb.nextId('counters/notifications');
@@ -555,17 +866,37 @@ class IncidentData {
         'notification_type': type,
         'req_ID': reqId,
         'disp_ID': dispId,
+        'agency': agency,
         'timestamp': _nowIso(),
         'createdBy': FirebaseAuthRest.uid,
       });
-      LiveEvents.emit('newNotification', {'notificationId': id, 'type': type, 'emergencyId': reqId});
+      LiveEvents.emit('newNotification', {'notificationId': id, 'type': type, 'emergencyId': reqId, 'agency': agency});
     } catch (_) {}
   }
 
+  /// The EOC calls an agency's attention to a report: a notification for that agency's
+  /// staff, whose app also sounds the alarm.
+  static Future<void> notifyAgency(int reqId, String agency, {String? note}) => addNotification(
+        title: 'EOC alert: Incident #$reqId',
+        message: (note ?? '').trim().isNotEmpty
+            ? note!.trim()
+            : 'The EOC is asking ${normalizeDepartment(agency)} to check incident #$reqId now.',
+        type: 'EOC_ALERT',
+        reqId: reqId,
+        agency: normalizeDepartment(agency),
+      );
+
   static Future<List<Map<String, dynamic>>> getNotifications(int userId) async {
     final uid = FirebaseAuthRest.uid;
+    // An alert for one agency (e.g. the EOC's "Notify") is shown only to that agency and the EOC
+    final me = Map<String, dynamic>.from((await Rtdb.get('users/$uid')) as Map? ?? {});
+    String? myAgency;
+    if (me['role'] != 'Superadmin' && me['deptID'] != null) {
+      myAgency = normalizeDepartment('${await Rtdb.get('departments/${me['deptID']}/deptName') ?? ''}');
+    }
     final list = rows(await Rtdb.get('staff_notifications'))
         .where((n) => n['recipient_ID'] == null || _int(n['recipient_ID']) == userId)
+        .where((n) => n['agency'] == null || me['role'] == 'Superadmin' || n['agency'] == myAgency)
         .toList()
       ..sort((a, b) => (b['timestamp'] ?? '').toString().compareTo((a['timestamp'] ?? '').toString()));
     return list.take(50).map((n) {

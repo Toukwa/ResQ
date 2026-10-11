@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:resq_application/services/duplicate_detection.dart';
 import 'package:resq_application/services/firebase_rest.dart';
 import 'package:resq_application/services/incident_data.dart';
 import 'package:resq_application/shared/report_form.dart';
@@ -85,16 +84,4 @@ void main() {
     expect(logs, contains('STATUS_CHANGE'));
   });
 
-  test('Duplicate Request Detection', () async {
-    final first = await report('Fire');
-    final second = await report('Fire', lat: 13.4220, lng: 123.4845); // ~65 m away, moments later
-    final far = await report('Fire', lat: 13.4400, lng: 123.4842); // ~2 km away
-    await signInAs('bfp1');
-    final matches = DuplicateDetection.find(await fb.run(IncidentData.getAllIncidents));
-    expect(matches.keys, [second]);
-    expect(matches[second]!.originalId, first);
-    expect(matches.containsKey(far), isFalse);
-    await fb.run(() => DuplicateDetection.confirm(second, first));
-    expect((fb.read('incidents/$second') as Map)['duplicateOf'], first);
-  });
 }

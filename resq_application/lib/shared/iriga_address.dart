@@ -1,0 +1,43 @@
+/// Address choices for sign-up. ResQ serves Iriga City, so only its barangays are listed.
+class IrigaAddress {
+  static const city = 'Iriga City, Camarines Sur';
+
+  static const barangays = [
+    'Antipolo',
+    'Cristo Rey',
+    'Del Rosario (Banao)',
+    'Francia',
+    'La Anunciacion',
+    'La Medalla',
+    'La Purisima',
+    'La Trinidad',
+    'Niño Jesus',
+    'Perpetual Help',
+    'Sagrada',
+    'Salvacion',
+    'San Agustin',
+    'San Andres',
+    'San Antonio',
+    'San Francisco (Poblacion)',
+    'San Isidro',
+    'San Jose',
+    'San Juan',
+    'San Miguel',
+    'San Nicolas',
+    'San Pedro',
+    'San Rafael',
+    'San Ramon',
+    'San Roque (Poblacion)',
+    'San Vicente Norte',
+    'San Vicente Sur',
+    'Santa Cruz Norte',
+    'Santa Cruz Sur',
+    'Santa Elena',
+    'Santa Isabel',
+    'Santa Maria',
+    'Santa Teresita',
+    'Santiago',
+    'Santo Domingo',
+    'Santo Niño',
+  ];
+}

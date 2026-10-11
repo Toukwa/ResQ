@@ -1,5 +1,63 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
+import 'evidence_video_player.dart';
+
+// ---------------------------------------------------------------------------
+// Evidence can be a photo or a video. Both are stored as Cloudinary links in
+// image_path; a video shows its first frame with a play button, and tapping it
+// plays the video in the phone's or computer's own player.
+// ---------------------------------------------------------------------------
+
+bool isVideoUrl(String url) => url.contains('/video/upload/');
+
+String _withExtension(String url, String ext) => url.replaceFirst(RegExp(r'\.[A-Za-z0-9]+$'), '.$ext');
+
+/// A still picture for any evidence link (a video's first frame).
+String evidenceThumbUrl(String url) => isVideoUrl(url) ? _withExtension(url, 'jpg') : url;
+
+/// Plays the video inside the app. MP4 plays on Android and Windows, whatever the phone recorded.
+Future<void> playEvidenceVideo(BuildContext context, String url) =>
+    showEvidenceVideo(context, _withExtension(url, 'mp4'));
+
+/// Use instead of Image.network for evidence: photos show as before; videos
+/// show their first frame with a play button and open the video when tapped.
+Widget evidenceImage(
+  String url, {
+  BoxFit? fit,
+  double? width,
+  double? height,
+  ImageLoadingBuilder? loadingBuilder,
+  ImageErrorWidgetBuilder? errorBuilder,
+}) {
+  final image = Image.network(
+    evidenceThumbUrl(url),
+    fit: fit,
+    width: width,
+    height: height,
+    loadingBuilder: loadingBuilder,
+    errorBuilder: errorBuilder,
+  );
+  if (!isVideoUrl(url)) return image;
+  return Builder(
+    builder: (context) => GestureDetector(
+    onTap: () => playEvidenceVideo(context, url),
+    child: Stack(
+      fit: StackFit.passthrough,
+      alignment: Alignment.center,
+      children: [
+        image,
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+          ),
+        ),
+      ],
+    ),
+  ),
+  );
+}
 
 /// Parses a comma-separated image path string into a list of fully-resolved URLs.
 List<String> parseImageUrls(String? rawPath) {
@@ -167,7 +225,7 @@ class _PagedImageGalleryBannerState extends State<PagedImageGalleryBanner> {
                     images: _urls,
                     initialIndex: index,
                   ),
-                  child: Image.network(
+                  child: evidenceImage(
                     _urls[index],
                     fit: BoxFit.cover,
                     loadingBuilder: (_, child, progress) {
@@ -412,7 +470,7 @@ class _IncidentImageGalleryState extends State<IncidentImageGallery> {
             fit: StackFit.expand,
             children: [
               // Image
-              Image.network(
+              evidenceImage(
                 url,
                 fit: BoxFit.cover,
                 loadingBuilder: (_, child, prog) {
@@ -611,7 +669,7 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
             onPageChanged: (i) => setState(() => _currentIndex = i),
             itemBuilder: (_, i) => InteractiveViewer(
               child: Center(
-                child: Image.network(
+                child: evidenceImage(
                   widget.urls[i],
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => const Column(

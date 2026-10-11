@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:resq_application/services/incident_data.dart';
+import 'package:resq_application/shared/incident_catalog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/emulator_firebase.dart';
@@ -71,6 +72,7 @@ void main() {
 
   test('Prevent Duplicate Handling', () async {
     await EmulatorFirebase.signInAs('bfp1');
+    await db.seed('incidents/1/severity', 'Urgent'); // dispatching needs a rated report
     await db.run(() => IncidentData.dispatchVehicle(reqId: 1, vehicleId: 4, adminId: 2, department: 'BFP'));
     // Assigning the same truck again is refused
     await expectLater(db.run(() => IncidentData.dispatchVehicle(reqId: 1, vehicleId: 4, adminId: 2, department: 'BFP')),
@@ -83,6 +85,7 @@ void main() {
 
   test('Cross-Agency Updates', () async {
     await EmulatorFirebase.signInAs('bfp1');
+    await db.seed('incidents/1/severity', 'Urgent'); // dispatching needs a rated report
     await db.run(() => IncidentData.dispatchVehicle(reqId: 1, vehicleId: 4, adminId: 2, department: 'BFP'));
     // CDRRMO sees BFP's progress; the request waits for CDRRMO too
     await EmulatorFirebase.signInAs('cdr1');
@@ -108,5 +111,64 @@ void main() {
     expect(await db.read('dispatches'), isNull);
     // Citizens can't read other people's requests at all
     expect((await db.call('GET', 'incidents/1', uid: 'cit2')).statusCode, isNot(200));
+  });
+
+  test('New report types go to the right agency; General Emergency only to the Super Admin', () {
+    expect(IncidentData.involvedDepartments('BFP'), ['BFP']);
+    expect(IncidentData.involvedDepartments('PNP'), ['PNP']);
+    expect(IncidentData.involvedDepartments('CDRRMO'), ['CDRRMO']);
+    expect(IncidentData.involvedDepartments('BFP, CDRRMO'), unorderedEquals(['BFP', 'CDRRMO']));
+    expect(IncidentData.involvedDepartments('General Emergency'), isEmpty);
+    expect(IncidentData.isForDepartment({'incType': 'General Emergency'}, 'BFP'), isFalse);
+    expect(IncidentData.isForDepartment({'incType': 'General Emergency'}, 'ALL'), isTrue);
+  });
+
+  test('A picked incident goes only to the agency it was picked under', () {
+    // "Fire" in a CDRRMO incident must not pull in BFP
+    expect(IncidentData.involvedDepartments('CDRRMO: Structural Fire Assist'), ['CDRRMO']);
+    expect(IncidentData.involvedDepartments('PNP: Fire Incident (Police Report)'), ['PNP']);
+    expect(IncidentData.involvedDepartments('BFP: Vehicular Fire · CDRRMO: Road Crash (First Aid and Transport)'),
+        unorderedEquals(['BFP', 'CDRRMO']));
+  });
+
+  test('Every incident in the list fits the database limit and routes back to its agency', () {
+    IncidentCatalog.byAgency.forEach((agency, categories) {
+      for (final c in categories) {
+        for (final incident in c.incidents) {
+          final label = IncidentCatalog.label(agency, incident);
+          expect(IncidentData.involvedDepartments(label), [agency], reason: label);
+          expect(label.length, lessThanOrEqualTo(100), reason: label);
+        }
+      }
+    });
+  });
+
+  test('Several incidents and "Not sure" on an agency card go to that agency', () {
+    final many = IncidentCatalog.format('BFP', {'Vehicular Fire', 'LPG Leak or Fire'}, general: false);
+    expect(many, 'BFP: Vehicular Fire; LPG Leak or Fire');
+    expect(IncidentData.involvedDepartments(many), ['BFP']);
+    expect(IncidentData.involvedDepartments(IncidentCatalog.format('PNP', {'Not sure'}, general: false)), ['PNP']);
+  });
+
+  test('General Emergency keeps the agency details but goes to the EOC only', () {
+    final general = IncidentCatalog.format(
+        'General Emergency', {'BFP: Vehicular Fire', 'CDRRMO: Flash Flood or Urban Flooding'}, general: true);
+    expect(general, 'General Emergency (BFP: Vehicular Fire; CDRRMO: Flash Flood or Urban Flooding)');
+    expect(IncidentData.involvedDepartments(general), isEmpty);
+    expect(IncidentCatalog.format('General Emergency', {'Not sure'}, general: true), 'General Emergency');
+  });
+
+  test('The longest possible report type still fits the database limit', () {
+    final longest = [
+      for (final agency in IncidentCatalog.byAgency.keys)
+        IncidentCatalog.format(
+            agency,
+            (IncidentCatalog.byAgency[agency]!.expand((c) => c.incidents).toList()
+                  ..sort((a, b) => b.length.compareTo(a.length)))
+                .take(IncidentCatalog.maxPicks)
+                .toSet(),
+            general: false),
+    ].join(' · ');
+    expect(longest.length, lessThanOrEqualTo(1500));
   });
 }

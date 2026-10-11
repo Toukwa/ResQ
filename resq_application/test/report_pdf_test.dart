@@ -61,4 +61,28 @@ void main() {
     final report = ReportData.fromData([{}, {}, vehicles, departments], from, to);
     expect((await ReportPdf.build(report)).length, greaterThan(1000));
   });
+
+  test('a one-day period with reports but no units sent still produces a PDF', () async {
+    // The case that failed: Date Range 10/11 to 10/11, eight reports, nothing dispatched
+    final day = DateTime(2026, 10, 11), end = DateTime(2026, 10, 11, 23, 59);
+    final reports = {
+      for (var i = 1; i <= 8; i++)
+        '$i': {
+          'Req_ID': i,
+          'incType': i.isEven ? 'BFP: Vehicular Fire · CDRRMO: Flash Flood' : 'General Emergency',
+          'reqStatus': 'Pending',
+          'SOS_timeStamp': DateTime(2026, 10, 11, 8, i).toUtc().toIso8601String(),
+        },
+    };
+    final report = ReportData.fromData([reports, {}, vehicles, departments], day, end);
+    expect((await ReportPdf.build(report)).length, greaterThan(1000));
+    // Just one report, one unit: every chart has a single bar
+    final one = ReportData.fromData([
+      {'1': {...reports['1']!, 'incType': 'PNP: Theft', 'dept_status': {'PNP': 'En Route'}}},
+      {'1': {'Disp_ID': 1, 'Req_ID': 1, 'Vehicle_ID': 1, 'Dispatch_timeStamp': DateTime(2026, 10, 11, 8, 9).toUtc().toIso8601String()}},
+      vehicles,
+      departments,
+    ], day, end);
+    expect((await ReportPdf.build(one)).length, greaterThan(1000));
+  });
 }

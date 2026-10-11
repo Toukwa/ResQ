@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../services/incident_data.dart';
+import '../../shared/incident_format.dart';
+import '../../shared/resq_dropdown.dart';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
@@ -6,6 +9,7 @@ import '../../config.dart';
 import '../../services/firebase_services.dart';
 import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
+import '../../shared/resq_toast.dart';
 
 class ManagementScreen extends StatefulWidget {
   final String searchFilter;
@@ -15,6 +19,9 @@ class ManagementScreen extends StatefulWidget {
   @override
   State<ManagementScreen> createState() => _ManagementScreenState();
 }
+
+/// 'Bureau of Fire Protection' / 'BFP' -> 'BFP' (for the agency symbol).
+String normalizeAgency(dynamic name) => IncidentData.normalizeDepartment('${name ?? ''}');
 
 class _ManagementScreenState extends State<ManagementScreen> {
   String _selectedAgency = 'All';
@@ -573,7 +580,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // ==========================================
   Widget _buildFilterByRoleCard() {
     final ts = ThemeService.instance;
-    final roles = ['All Roles', 'Admin', 'Responder'];
+    final roles = ['All Roles', 'Admin', 'Citizen'];
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -866,7 +873,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   void _showEditAgencyModal() {
     final ts = ThemeService.instance;
     if (_departments.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showResqSnackBar(
         const SnackBar(content: Text('No departments available to edit.')),
       );
       return;
@@ -962,18 +969,15 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     // --- SELECT DEPARTMENT DROPDOWN ---
                     _buildInputLabel("Select Department"),
                     const SizedBox(height: 6),
-                    DropdownButtonFormField<Map<String, dynamic>>(
-                      dropdownColor: ts.cardBackground,
-                      initialValue: selectedDept,
-                      icon: Icon(Icons.keyboard_arrow_down, size: 18, color: ts.textPrimary),
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textPrimary),
-                      decoration: _buildInputDecoration("Select department"),
-                      items: _departments.map((dept) {
-                        return DropdownMenuItem<Map<String, dynamic>>(
-                          value: dept,
-                          child: Text(dept['deptName'] ?? 'Unknown Agency'),
-                        );
-                      }).toList(),
+                    ResqSelect<Map<String, dynamic>>(
+                      value: selectedDept,
+                      hint: 'Select department',
+                      icon: Icons.apartment_rounded,
+                      options: [
+                        for (final dept in _departments)
+                          ResqOption(dept, '${dept['deptName'] ?? 'Unknown Agency'}',
+                              icon: agencySymbol(normalizeAgency(dept['deptName'])).icon, color: agencySymbol(normalizeAgency(dept['deptName'])).color),
+                      ],
                       onChanged: (val) {
                         if (val != null) {
                           setModalState(() {
@@ -1006,7 +1010,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     const SizedBox(height: 16),
 
                     // --- CONTACT NUMBER ---
-                    _buildInputLabel("Contact Number"),
+                    _buildInputLabel("Hotline Number (dialled by the phone app's Call Agencies)"),
                     const SizedBox(height: 6),
                     TextField(
                       controller: contactNoController,
@@ -1054,7 +1058,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                   'deptName': selectedDept['deptName'],
                                   'agencyType': agencyTypeController.text,
                                   'contactPerson': contactPersonController.text,
-                                  'contactNo': int.tryParse(contactNoController.text) ?? contactNoController.text,
+                                  'contactNo': contactNoController.text.trim(),
                                 };
 
                                 final success = await AdminService.updateDepartment(updatedData);
@@ -1062,11 +1066,11 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 if (success) {
                                   Navigator.pop(context);
                                   _loadDepartments();
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context).showResqSnackBar(
                                     const SnackBar(content: Text('Agency details updated successfully')),
                                   );
                                 } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context).showResqSnackBar(
                                     const SnackBar(content: Text('Failed to update agency details')),
                                   );
                                 }
@@ -1173,7 +1177,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              "Responder authority required",
+                              "Admin authority required",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: ts.textMuted,
@@ -1235,23 +1239,18 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           children: [
                             _buildInputLabel("Agency"),
                             const SizedBox(height: 6),
-                            DropdownButtonFormField<String>(
-                              dropdownColor: ts.cardBackground,
-                              initialValue: selectedAgency,
-                              icon: Icon(Icons.keyboard_arrow_down, size: 18, color: ts.textPrimary),
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textPrimary),
-                              decoration: _buildInputDecoration(""),
-                              items: _departments.isEmpty
-                                  ? ['PNP', 'BFP', 'CDRRMO'].map((agency) {
-                                      return DropdownMenuItem(value: agency, child: Text(agency));
-                                    }).toList()
-                                  : _departments.map((dept) {
-                                      return DropdownMenuItem(
-                                        value: dept['deptName'] as String?,
-                                        child: Text(dept['deptName'] as String? ?? 'Unknown'),
-                                      );
-                                    }).toList(),
-                              onChanged: (val) => setModalState(() => selectedAgency = val!),
+                            ResqSelect<String>(
+                              value: selectedAgency,
+                              hint: 'Agency',
+                              options: [
+                                for (final a in _departments.isEmpty
+                                    ? const ['PNP', 'BFP', 'CDRRMO']
+                                    : [for (final d in _departments) '${d['deptName'] ?? 'Unknown'}'])
+                                  ResqOption(a, a, icon: agencySymbol(normalizeAgency(a)).icon, color: agencySymbol(normalizeAgency(a)).color),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setModalState(() => selectedAgency = val);
+                              },
                             ),
                           ],
                         ),
@@ -1264,16 +1263,20 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           children: [
                             _buildInputLabel("Role"),
                             const SizedBox(height: 6),
-                            DropdownButtonFormField<String>(
-                              dropdownColor: ts.cardBackground,
-                              initialValue: selectedRole,
-                              icon: Icon(Icons.keyboard_arrow_down, size: 18, color: ts.textPrimary),
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textPrimary),
-                              decoration: _buildInputDecoration(""),
-                              items: ['Admin', 'Responder', 'Superadmin'].map((role) {
-                                return DropdownMenuItem(value: role, child: Text(role));
-                              }).toList(),
-                              onChanged: (val) => setModalState(() => selectedRole = val!),
+                            ResqSelect<String>(
+                              value: selectedRole,
+                              hint: 'Role',
+                              options: [
+                                for (final r in const ['Admin', 'Superadmin'])
+                                  ResqOption(r, r, icon: switch (r) {
+                                    'Superadmin' => Icons.shield_rounded,
+                                    'Admin' => Icons.admin_panel_settings_rounded,
+                                    _ => Icons.badge_rounded,
+                                  }),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setModalState(() => selectedRole = val);
+                              },
                             ),
                           ],
                         ),
@@ -1320,15 +1323,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // --- FCM TOKEN (Optional) ---
-                  _buildInputLabel("FCM Token (Optional)"),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: TextEditingController(), // Optional field, no persistent controller
-                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                    decoration: _buildInputDecoration("Firebase Cloud Messaging token for push notifications"),
-                  ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 12),
 
                   // --- ACTIONS ---
                   Row(
@@ -1367,14 +1362,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                   emailController.text.isEmpty ||
                                   contactNoController.text.isEmpty ||
                                   passwordController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(context).showResqSnackBar(
                                   const SnackBar(content: Text('Please fill all required fields')),
                                 );
                                 return;
                               }
 
                               if (passwordController.text != confirmPasswordController.text) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(context).showResqSnackBar(
                                   const SnackBar(content: Text('Passwords do not match')),
                                 );
                                 return;
@@ -1396,7 +1391,6 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 'password': passwordController.text,
                                 'role': selectedRole,
                                 'deptID': deptID,
-                                'fcmToken': null, // FCM token is optional for admin-created accounts
                               };
 
                               final success = await AdminService.createAccount(accountData);
@@ -1404,14 +1398,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               if (success) {
                                 Navigator.pop(context);
                                 _loadAccounts();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(context).showResqSnackBar(
                                   SnackBar(
                                     content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
                                     duration: const Duration(seconds: 6),
                                   ),
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(context).showResqSnackBar(
                                   SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
                                 );
                               }
@@ -1575,7 +1569,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final emailController = TextEditingController(text: account['email']);
     final phoneController = TextEditingController(text: account['phone']);
     
-    const roles = ['Citizen', 'Responder', 'Admin', 'Superadmin'];
+    // Responder is no longer offered; an old Responder account still shows its role so saving doesn't change it
+    final roles = ['Citizen', if (account['role'] == 'Responder' || account['role'] == 'Dispatcher') 'Responder', 'Admin', 'Superadmin'];
     String selectedRole = account['role'] == 'Dispatcher' ? 'Responder' : (account['role'] ?? 'Citizen');
     if (!roles.contains(selectedRole)) selectedRole = 'Citizen';
     int? selectedDeptId = account['deptID'];
@@ -1631,31 +1626,46 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       decoration: _themedField("Phone Number"),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      dropdownColor: ts.cardBackground,
-                      initialValue: selectedRole,
-                      decoration: _themedField("Role"),
-                      items: roles.map((role) {
-                        return DropdownMenuItem(value: role, child: Text(role, style: TextStyle(color: ts.textPrimary)));
-                      }).toList(),
-                      onChanged: (value) {
-                        setModalState(() => selectedRole = value!);
-                      },
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInputLabel("Role"),
+                        const SizedBox(height: 6),
+                        ResqSelect<String>(
+                          value: selectedRole,
+                          hint: 'Role',
+                          options: [
+                            for (final r in roles)
+                              ResqOption(r, r, icon: switch (r) {
+                                    'Superadmin' => Icons.shield_rounded,
+                                    'Admin' => Icons.admin_panel_settings_rounded,
+                                    _ => Icons.badge_rounded,
+                                  }),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) setModalState(() => selectedRole = value);
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      dropdownColor: ts.cardBackground,
-                      initialValue: selectedDeptId,
-                      decoration: _themedField("Department"),
-                      items: _departments.map((dept) {
-                        return DropdownMenuItem(
-                          value: dept['dept_ID'] as int?,
-                          child: Text(dept['deptName'] ?? 'Unknown'),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setModalState(() => selectedDeptId = value);
-                      },
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInputLabel("Department"),
+                        const SizedBox(height: 6),
+                        ResqSelect<int>(
+                          value: selectedDeptId,
+                          hint: 'Department',
+                          options: [
+                            for (final dept in _departments)
+                              if (dept['dept_ID'] is int)
+                                ResqOption(dept['dept_ID'] as int, '${dept['deptName'] ?? 'Unknown'}',
+                                    icon: agencySymbol(normalizeAgency(dept['deptName'])).icon, color: agencySymbol(normalizeAgency(dept['deptName'])).color),
+                          ],
+                          onChanged: (value) => setModalState(() => selectedDeptId = value),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -1670,7 +1680,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           onPressed: () async {
                             if (nameController.text.isEmpty ||
                                 emailController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(context).showResqSnackBar(
                                 const SnackBar(content: Text('Please fill all required fields')),
                               );
                               return;
@@ -1692,11 +1702,11 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             if (success) {
                               Navigator.pop(context);
                               _loadAccounts();
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(context).showResqSnackBar(
                                 const SnackBar(content: Text('Account updated successfully')),
                               );
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(context).showResqSnackBar(
                                 const SnackBar(content: Text('Failed to update account')),
                               );
                             }
@@ -1738,11 +1748,11 @@ class _ManagementScreenState extends State<ManagementScreen> {
               final success = await AdminService.deleteAccount(account['id'] as int);
               if (success) {
                 _loadAccounts();
-                messenger.showSnackBar(
+                messenger.showResqSnackBar(
                   const SnackBar(content: Text('Account deleted successfully')),
                 );
               } else {
-                messenger.showSnackBar(
+                messenger.showResqSnackBar(
                   const SnackBar(content: Text('Failed to delete account')),
                 );
               }

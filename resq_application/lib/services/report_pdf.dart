@@ -90,7 +90,8 @@ class ReportPdf {
         ]),
 
         // ── 1. Emergency count ──
-        _section('1. Emergency Count', 'How many emergencies were reported, by day, type and outcome.',
+        _section('1. Emergency Count',
+            'How many emergencies were reported, by day, type and outcome. A report with several emergency types counts under each.',
             _chartBox('Incidents per Day', _dailyChart(r.dailyCounts))),
         pw.SizedBox(height: 10),
         pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
@@ -108,14 +109,22 @@ class ReportPdf {
         pw.SizedBox(height: 10),
         _table(r.responseTimes),
 
-        // ── 3. Vehicle usage ──
-        _section('3. Vehicle Usage', 'How often and how long each vehicle was deployed.',
+        // ── 3. Response metrics by emergency type ──
+        _section('3. Response Metrics by Emergency Type',
+            'Each distinct emergency type on its own: how often it was reported, how fast units were sent, and how many were completed.',
+            _chartBox('Average Response Time by Emergency Type (minutes)',
+                _barChart(r.averageResponseMinutesByType, maxBars: 10, decimals: 1))),
+        pw.SizedBox(height: 10),
+        _table(r.responseByType),
+
+        // ── 4. Vehicle usage ──
+        _section('4. Vehicle Usage', 'How often and how long each vehicle was deployed.',
             _chartBox('Dispatches per Vehicle', _barChart(r.dispatchesByVehicle, maxBars: 10))),
         pw.SizedBox(height: 10),
         _table(r.vehicleUsage),
 
-        // ── 4. Department performance ──
-        _section('4. Department Performance', 'Incidents handled, completion rate and response time per department.'),
+        // ── 5. Department performance ──
+        _section('5. Department Performance', 'Incidents handled, completion rate and response time per department.'),
         _table(r.departmentPerformance),
       ],
     ));
@@ -197,7 +206,13 @@ class ReportPdf {
   static pw.Widget _barChart(Map<String, num> data, {int maxBars = 12, int decimals = 0, double width = 490}) {
     final entries = data.entries.where((e) => e.value > 0).take(maxBars).toList();
     if (entries.isEmpty) return _noData();
-    final labels = [for (final e in entries) _short(e.key, entries.length > 5 ? 10 : 16)];
+    // One bar alone would give a zero-wide axis (NaN in the PDF): empty slots either side keep it centred
+    final single = entries.length == 1;
+    final labels = [
+      if (single) '',
+      for (final e in entries) _short(e.key, entries.length > 5 ? 10 : 16),
+      if (single) '',
+    ];
     // Give each bar an equal slot so one or two bars sit centred, not at the edges
     final margin = (width / (entries.length * 2)).clamp(20.0, width / 3);
     return pw.Chart(
@@ -212,7 +227,10 @@ class ReportPdf {
         pw.BarDataSet(
           color: _palette.first,
           width: math.min(24, 260 / entries.length),
-          data: [for (var i = 0; i < entries.length; i++) pw.PointChartValue(i.toDouble(), entries[i].value.toDouble())],
+          data: [
+            for (var i = 0; i < entries.length; i++)
+              pw.PointChartValue((single ? i + 1 : i).toDouble(), entries[i].value.toDouble()),
+          ],
         ),
       ],
     );
@@ -221,6 +239,8 @@ class ReportPdf {
   static pw.Widget _dailyChart(Map<DateTime, int> days) {
     if (days.values.every((v) => v == 0)) return _noData();
     final keys = days.keys.toList();
+    // A one-day period has no line to draw (its axis would be zero wide): one bar instead
+    if (keys.length == 1) return _barChart({DateFormat('MMM d').format(keys.first): days[keys.first]!});
     // Label about 8 days so the axis stays readable over long periods
     final every = math.max(1, (keys.length / 8).ceil());
     final labels = [

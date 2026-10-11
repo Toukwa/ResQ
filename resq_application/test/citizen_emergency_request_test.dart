@@ -76,4 +76,16 @@ void main() {
     expect(mine.map((r) => r['Req_ID']), [13, 12, 11]);
     expect(mine.every((r) => r['reqStatus'] == 'Pending'), isTrue);
   });
+
+  test('Picking "Not sure" makes the voice message required', () {
+    bool canSend({required bool voiceRequired, required bool hasVoice}) => canSubmitReport(
+        hasActiveIncident: false,
+        emergencyTypes: ['BFP'],
+        photoCount: 1,
+        voiceRequired: voiceRequired,
+        hasVoice: hasVoice);
+    expect(canSend(voiceRequired: false, hasVoice: false), isTrue); // optional normally
+    expect(canSend(voiceRequired: true, hasVoice: false), isFalse); // "Not sure" without a recording
+    expect(canSend(voiceRequired: true, hasVoice: true), isTrue);
+  });
 }

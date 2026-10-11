@@ -69,6 +69,12 @@ class _Incident {
   _Incident(this.data, this.reported, this.departments);
 
   String get type => data['incType']?.toString() ?? 'Unknown';
+
+  /// The distinct emergency types on this report, one per incident picked:
+  /// "BFP: Vehicular Fire; LPG Leak · CDRRMO: Flash Flood" ->
+  /// [BFP: Vehicular Fire, BFP: LPG Leak, CDRRMO: Flash Flood]. A General Emergency
+  /// gives the incidents inside its brackets, or "General Emergency" if none were picked.
+  List<String> get types => emergencyTypesOf(type);
   String get status => data['reqStatus']?.toString() ?? 'Pending';
   DateTime? get completed => DateTime.tryParse(data['completedAt']?.toString() ?? '')?.toLocal();
 
@@ -87,6 +93,33 @@ class _Incident {
     final sent = dispatches.where((d) => dept == null || d.dept == dept).map((d) => d.sent).toList()..sort();
     return sent.isEmpty ? null : sent.first.difference(reported);
   }
+}
+
+/// See [_Incident.types].
+List<String> emergencyTypesOf(String incType) {
+  final out = <String>{};
+  for (var part in incType.split(' · ')) {
+    part = part.trim();
+    if (part.isEmpty) continue;
+    final general = RegExp(r'^General Emergency \((.*)\)$').firstMatch(part);
+    if (general != null) part = general.group(1)!;
+    if (part.startsWith('General Emergency')) {
+      out.add('General Emergency');
+      continue;
+    }
+    String? agency;
+    for (final item in part.split(';')) {
+      var t = item.trim();
+      if (t.isEmpty) continue;
+      final m = RegExp(r'^(BFP|PNP|CDRRMO):\s*(.*)$').firstMatch(t);
+      if (m != null) {
+        agency = m.group(1);
+        t = m.group(2)!.trim();
+      }
+      out.add(agency == null ? t : '$agency: $t');
+    }
+  }
+  return out.isEmpty ? const ['Unknown'] : out.toList();
 }
 
 class _Dispatch {
@@ -143,12 +176,21 @@ class Report {
       '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')} '
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  /// FT-AR-02: emergencies by type and by status.
-  ReportTable get emergencyCount {
-    final byType = <String, List<_Incident>>{};
+  /// Reports per distinct emergency type (a report with several types is under each).
+  Map<String, List<_Incident>> get _byType {
+    final m = <String, List<_Incident>>{};
     for (final i in _incidents) {
-      byType.putIfAbsent(i.type, () => []).add(i);
+      for (final t in i.types) {
+        m.putIfAbsent(t, () => []).add(i);
+      }
     }
+    return m;
+  }
+
+  /// FT-AR-02: emergencies by type and by status. A report with several emergency
+  /// types counts under each; the TOTAL row counts every report once.
+  ReportTable get emergencyCount {
+    final byType = _byType;
     int count(List<_Incident> l, String s) => l.where((i) => i.status.toLowerCase() == s).length;
     final rows = (byType.entries.toList()..sort((a, b) => b.value.length.compareTo(a.value.length)))
         .map((e) => [
@@ -159,7 +201,14 @@ class Report {
               '${count(e.value, 'declined') + count(e.value, 'cancelled')}',
             ])
         .toList();
-    rows.add(['TOTAL', '$totalIncidents', ...List.generate(3, (c) => '${rows.fold<int>(0, (s, r) => s + int.parse(r[c + 2]))}')]);
+    final all = _incidents.toList();
+    rows.add([
+      'TOTAL',
+      '$totalIncidents',
+      '${count(all, 'completed')}',
+      '${totalIncidents - count(all, 'completed') - count(all, 'declined') - count(all, 'cancelled')}',
+      '${count(all, 'declined') + count(all, 'cancelled')}',
+    ]);
     return ReportTable('Emergency Count', ['Incident Type', 'Total', 'Completed', 'Open', 'Declined / Cancelled'], rows);
   }
 
@@ -180,6 +229,43 @@ class Report {
     }).toList();
     return ReportTable('Response Times',
         ['Incident', 'Type', 'Reported', 'First Unit Sent', 'Response Time', 'Time to Complete', 'Status'], rows);
+  }
+
+  /// Response metrics per distinct emergency type: how many reports, how many got a
+  /// unit, how fast (average, fastest, slowest), how long to complete, and how many
+  /// were completed. Most reported first.
+  ReportTable get responseByType {
+    final rows = (_byType.entries.toList()..sort((a, b) => b.value.length.compareTo(a.value.length))).map((e) {
+      final list = e.value;
+      final response = list.map((i) => i.responseTime()).whereType<Duration>().toList()..sort();
+      final complete = <Duration>[
+        for (final i in list)
+          if (i.completed != null && i.dispatches.isNotEmpty)
+            i.completed!.difference((i.dispatches.map((d) => d.sent).toList()..sort()).first),
+      ];
+      final closed = list.where((i) => const ['declined', 'cancelled'].contains(i.status.toLowerCase())).length;
+      final done = list.where((i) => i.status.toLowerCase() == 'completed').length;
+      return [
+        e.key,
+        '${list.length}',
+        '${response.length} (${_pct(response.length, list.length)})',
+        duration(Report._average(response)),
+        response.isEmpty ? '-' : duration(response.first),
+        response.isEmpty ? '-' : duration(response.last),
+        duration(Report._average(complete)),
+        _pct(done, list.length - closed),
+      ];
+    }).toList();
+    return ReportTable('Response Metrics by Emergency Type', [
+      'Emergency Type',
+      'Reports',
+      'Units Sent',
+      'Avg Response',
+      'Fastest',
+      'Slowest',
+      'Avg Time to Complete',
+      'Completion Rate',
+    ], rows);
   }
 
   /// FT-AR-04: how often and how long each vehicle was used.
@@ -236,15 +322,20 @@ class Report {
         rows);
   }
 
-  List<ReportTable> get all => [emergencyCount, responseTimes, vehicleUsage, departmentPerformance];
+  List<ReportTable> get all => [emergencyCount, responseTimes, responseByType, vehicleUsage, departmentPerformance];
 
   // ── Chart data (PDF export) ─────────────────────────────────────────────
 
-  /// Incidents per type, most common first.
-  Map<String, int> get countsByType {
-    final m = <String, int>{};
-    for (final i in _incidents) {
-      m[i.type] = (m[i.type] ?? 0) + 1;
+  /// Reports per distinct emergency type, most common first.
+  Map<String, int> get countsByType => Map.fromEntries(
+      [for (final e in _byType.entries) MapEntry(e.key, e.value.length)]..sort((a, b) => b.value.compareTo(a.value)));
+
+  /// Average report-to-first-unit time in minutes per emergency type (types with a unit sent).
+  Map<String, double> get averageResponseMinutesByType {
+    final m = <String, double>{};
+    for (final e in _byType.entries) {
+      final avg = _average(e.value.map((i) => i.responseTime()).whereType<Duration>());
+      if (avg != null) m[e.key] = avg.inSeconds / 60;
     }
     return Map.fromEntries(m.entries.toList()..sort((a, b) => b.value.compareTo(a.value)));
   }

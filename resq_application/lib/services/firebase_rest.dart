@@ -51,6 +51,7 @@ class FirebaseAuthRest {
     if (code.startsWith('INVALID_EMAIL')) return 'Please enter a valid email address.';
     if (code.startsWith('USER_DISABLED')) return 'This account has been disabled.';
     if (code.startsWith('TOO_MANY_ATTEMPTS')) return 'Too many attempts. Try again later.';
+    if (code.startsWith('CREDENTIAL_TOO_OLD_LOGIN_AGAIN')) return 'Please log in again and retry.';
     return 'Authentication failed ($code).';
   }
 
@@ -80,6 +81,80 @@ class FirebaseAuthRest {
         {'email': email.trim(), 'password': password, 'returnSecureToken': true});
     await _store(r);
     return uid!;
+  }
+
+  /// Sign-in methods on this account, e.g. ['google.com', 'password'].
+  static Future<List<String>> providers() async {
+    final r = await _post(_identity('lookup'), {'idToken': await getIdToken()});
+    final users = (r['users'] as List?) ?? const [];
+    if (users.isEmpty) return const [];
+    return [
+      for (final p in (users.first['providerUserInfo'] as List?) ?? const []) '${p['providerId']}',
+    ];
+  }
+
+  /// Adds a password to the signed-in account (e.g. one made with Google), so the
+  /// same email also works on the email + password login.
+  static Future<void> setPassword(String password) async {
+    final r = await _post(_identity('update'),
+        {'idToken': await getIdToken(), 'password': password, 'returnSecureToken': true});
+    await _store(r);
+  }
+
+  /// Guest account with no email or password (Report Now on the login screen).
+  /// Its login is also kept aside, so this phone always comes back to the same
+  /// guest account (and its one-open-report limit) instead of making new ones.
+  static Future<String> signInAnonymously() async {
+    final r = await _post(_identity('signUp'), {'returnSecureToken': true});
+    await _store(r);
+    await _secure.write(key: _guestRefreshToken, value: _refreshToken);
+    return uid!;
+  }
+
+  static const _guestRefreshToken = 'guest_refresh_token';
+
+  /// Signs back in to this phone's guest account. Returns its uid, or null if there is none.
+  static Future<String?> resumeGuest() async {
+    final token = await _secure.read(key: _guestRefreshToken);
+    if (token == null) return null;
+    _refreshToken = token;
+    try {
+      await getIdToken(forceRefresh: true);
+      return uid;
+    } catch (_) {
+      await forgetGuest();
+      await signOut();
+      return null;
+    }
+  }
+
+  /// The guest account became a full account (or no longer exists).
+  static Future<void> forgetGuest() => _secure.delete(key: _guestRefreshToken);
+
+  /// Adds an email and password to the signed-in guest account. The uid stays the
+  /// same, so the guest keeps their reports. Linking goes through signUp with the
+  /// guest's token (as Firebase's own SDKs do); 'update' would be refused while email
+  /// enumeration protection is on, since that treats it as changing an email.
+  static Future<void> linkEmailPassword(String email, String password) async {
+    final r = await _post(_identity('signUp'), {
+      'idToken': await getIdToken(),
+      'email': email.trim(),
+      'password': password,
+      'returnSecureToken': true,
+    });
+    await _store(r);
+  }
+
+  /// Signs in with a Google ID token. Creates the Auth account on first use.
+  static Future<({String uid, String email, String? name})> signInWithGoogle(String googleIdToken) async {
+    final r = await _post(_identity('signInWithIdp'), {
+      'postBody': 'id_token=${Uri.encodeQueryComponent(googleIdToken)}&providerId=google.com',
+      'requestUri': 'http://localhost',
+      'returnSecureToken': true,
+      'returnIdpCredential': true,
+    });
+    await _store(r);
+    return (uid: uid!, email: (r['email'] ?? '').toString(), name: r['displayName']?.toString());
   }
 
   static Future<void> sendPasswordReset(String email) async {

@@ -18,4 +18,18 @@ void main() {
     expect(IncidentData.overallStatus(['Completed', 'Declined']), 'Completed');
     expect(IncidentData.overallStatus(['Declined', 'Cancelled']), 'Declined');
   });
+
+  test('Arrived sits between En Route and Completed', () {
+    expect(IncidentData.overallStatus(['Arrived']), 'Arrived');
+    expect(IncidentData.overallStatus(['Arrived', 'En Route']), 'En Route'); // one agency still on the way
+    expect(IncidentData.overallStatus(['Arrived', 'Completed']), 'Arrived');
+    expect(IncidentData.overallStatus(['Completed', 'Completed']), 'Completed');
+  });
+
+  test('Each agency sees its own status, the Super Admin the overall one', () {
+    final incident = {'reqStatus': 'Pending', 'dept_status': {'BFP': 'Arrived', 'CDRRMO': 'Pending'}};
+    expect(IncidentData.statusFor(incident, 'BFP'), 'Arrived');
+    expect(IncidentData.statusFor(incident, 'CDRRMO'), 'Pending');
+    expect(IncidentData.statusFor(incident, 'ALL'), 'Pending');
+  });
 }

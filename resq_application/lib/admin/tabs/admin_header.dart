@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/staff_notifications_panel.dart';
 
 class AdminHeader extends StatefulWidget {
   final String title;
@@ -193,7 +194,13 @@ class _AdminHeaderState extends State<AdminHeader> {
 
           // Notification Bell Popup
           PopupMenuButton<String>(
-            offset: const Offset(0, 40),
+            offset: const Offset(0, 44),
+            tooltip: 'Notifications',
+            color: ThemeService.instance.cardBackground,
+            surfaceTintColor: Colors.transparent,
+            elevation: 8,
+            menuPadding: EdgeInsets.zero,
+            shape: staffMenuShape(),
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -231,152 +238,22 @@ class _AdminHeaderState extends State<AdminHeader> {
                   ),
               ],
             ),
-            itemBuilder: (context) {
-              // Read ThemeService colors inside the builder so they're not const
-              final tsDyn = ThemeService.instance;
-              final Color popupText = tsDyn.textPrimary;
-              final Color popupSubText = tsDyn.textSecondary;
-              final Color popupBorder = tsDyn.borderColor;
-
-              return [
-                PopupMenuItem<String>(
-                  enabled: false,
-                  child: SizedBox(
-                    width: 320,
-                    height: 280,
-                    child: Column(
-                      children: [
-                        // Header
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: popupBorder, width: 1)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Notifications",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: popupText,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "${notifications.length} total",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: popupSubText,
-                                    ),
-                                  ),
-                                  if (widget.unreadNotificationCount > 0) ...[
-                                    const SizedBox(width: 8),
-                                    InkWell(
-                                      onTap: widget.onMarkAllNotificationsRead ?? widget.onClearUnread ?? widget.onNotificationPressed,
-                                      child: const Text(
-                                        "Mark all read",
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: brandOrange,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Scrollable content
-                        Expanded(
-                          child: notifications.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    "No notifications",
-                                    style: TextStyle(color: popupSubText, fontSize: 12),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  itemCount: notifications.length,
-                                  separatorBuilder: (context, index) => Divider(
-                                    height: 1,
-                                    indent: 16,
-                                    endIndent: 16,
-                                    color: popupBorder,
-                                  ),
-                                  itemBuilder: (context, index) {
-                                    final notification = notifications[index];
-                                    final isUnread = notification['isRead'] == false || notification['unread'] == true;
-                                    final timestamp = notification['timestamp'] is DateTime
-                                        ? notification['timestamp'] as DateTime
-                                        : DateTime.now();
-                                    final notificationId = notification['id'] ?? notification['Notification_ID'];
-
-                                    return InkWell(
-                                      onTap: () {
-                                        if (notificationId != null) {
-                                          final id = int.tryParse(notificationId.toString());
-                                          if (id != null) {
-                                            (widget.onMarkNotificationRead ?? widget.onMarkAsRead)?.call(id);
-                                          }
-                                        }
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            if (isUnread)
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                margin: const EdgeInsets.only(top: 6, right: 8),
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFFFF5200),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    notification['message']?.toString() ?? 'No message',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: isUnread ? popupText : popupSubText,
-                                                      fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    formatTimeAgo(timestamp),
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      color: popupSubText,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                enabled: false,
+                padding: EdgeInsets.zero,
+                child: StaffNotificationsPanel(
+                  notifications: [for (final n in notifications) Map<String, dynamic>.from(n as Map)],
+                  unreadCount: widget.unreadNotificationCount,
+                  onMarkAllRead: widget.onMarkAllNotificationsRead ?? widget.onClearUnread ?? widget.onNotificationPressed,
+                  onTap: (n) {
+                    final id = int.tryParse('${n['id'] ?? n['Notification_ID'] ?? ''}');
+                    if (id != null) (widget.onMarkNotificationRead ?? widget.onMarkAsRead)?.call(id);
+                  },
+                  timeAgo: formatTimeAgo,
                 ),
-              ];
-            },
+              ),
+            ],
           ),
           const SizedBox(width: 8),
 

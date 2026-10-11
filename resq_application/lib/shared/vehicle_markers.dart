@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
+import 'map_pin.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'display_settings.dart';
+import 'incident_format.dart';
 
 /// Live fleet pins shared by the admin and super admin dashboard maps.
 /// Every admin sees every vehicle; controlling a vehicle stays department-scoped elsewhere.
 
 /// Icon and colour for a vehicle's department.
 ({IconData icon, Color color}) vehicleMarkerStyle(Map vehicle) {
-  final dept = (vehicle['deptName'] ?? vehicle['Department_Name'] ?? '').toString().toUpperCase();
-  final id = vehicle['dept_ID']?.toString();
-  if (dept.contains('BFP') || id == '2') return (icon: Icons.fire_truck, color: const Color(0xFFFF6B00));
-  if (dept.contains('PNP') || id == '1') return (icon: Icons.local_police, color: const Color(0xFF2563EB));
-  if (dept.contains('CDRRMO') || id == '3') return (icon: Icons.medical_services_rounded, color: const Color(0xFF10B981));
-  return (icon: Icons.directions_car_rounded, color: const Color(0xFF64748B));
+  final c = vehicleMarkerConfig(vehicle);
+  return (icon: c['icon'] as IconData, color: c['color'] as Color);
 }
 
 /// The status to show for a vehicle: 'Offline' when its tracker has gone quiet, else its stored status.
@@ -48,24 +46,17 @@ Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
     if (lat == null || lng == null) continue;
     final style = vehicleMarkerStyle(v);
     final offline = v['computed_status'] == 'Offline';
-    final size = DisplaySettings.labeledSize(36, 36);
+    final size = DisplaySettings.labeledSize(kPinWidth, kPinHeight);
     markers['${v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['plate_no']}'] = Marker(
       point: LatLng(lat, lng),
       width: size.width,
       height: size.height,
+      alignment: kPinAlignment, // the tip marks the spot
       child: DisplaySettings.labeledPin(Tooltip(
         message: '${v['plate_no'] ?? 'Vehicle'} · ${v['deptName'] ?? ''}${offline ? ' (offline)' : ''}',
         child: Opacity(
           opacity: offline ? 0.45 : 1,
-          child: Container(
-            decoration: BoxDecoration(
-              color: style.color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 4, offset: const Offset(0, 2))],
-            ),
-            child: Center(child: Icon(style.icon, size: 16, color: Colors.white)),
-          ),
+          child: MapPin(icon: style.icon, color: style.color, filled: true),
         ),
       ), v['plate_no']),
     );

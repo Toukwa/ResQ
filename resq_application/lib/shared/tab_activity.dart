@@ -5,12 +5,10 @@ import '../services/sound_service.dart';
 /// tab where it happened. Returns null for events no tab cares about.
 enum TabActivity {
   incidents,
-  media,
   management;
 
   static TabActivity? of(String event, dynamic data) => switch (event) {
         'refreshIncidentQueueEvent' || 'newNotification' => _incidentCategory(event, data)?.enabled == false ? null : incidents,
-        'refreshMediaGalleryEvent' => media,
         // Untyped refreshes are side effects of dispatches; only real fleet/account changes count
         'refreshManagementData' when data is Map && data['type'] != null => management,
         _ => null,
@@ -32,7 +30,7 @@ enum TabActivity {
   /// The "Tab Activity Dots" setting; shells rebuild when it changes.
   static final enabled = ValueNotifier<bool>(true);
 
-  static const events = ['refreshIncidentQueueEvent', 'newNotification', 'refreshMediaGalleryEvent', 'refreshManagementData'];
+  static const events = ['refreshIncidentQueueEvent', 'newNotification', 'refreshManagementData'];
 }
 
 /// A sidebar icon with a small red dot on its upper right when [show] is true.

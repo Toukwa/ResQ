@@ -27,6 +27,7 @@ enum AlertCategory {
 
 /// The distinct sounds staff hear when something happens to an incident.
 enum SoundCue {
+  eocAlert('eoc_alert', 'EOC alert', 'Siren sweep, played when the EOC notifies your agency', AlertCategory.critical),
   newReport('new_report', 'New report', 'Urgent hi-lo alarm, three times', AlertCategory.critical),
   dispatch('dispatch', 'Unit dispatched', 'Quick rising notes', AlertCategory.unitStatus),
   statusUpdate('status_update', 'Status updated', 'Soft two-note chime', AlertCategory.incident),
@@ -55,6 +56,8 @@ class SoundService {
   static bool enabled = true;
   static final _player = AudioPlayer();
   static io.Socket? _socket;
+  /// This app's agency (PNP/BFP/CDRRMO); EOC alerts for it sound the alarm. Null for the EOC.
+  static String? agency;
   static DateTime _lastPlayed = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Starts listening for incident events (call once the staff shell opens).
@@ -63,9 +66,15 @@ class SoundService {
     if (_socket != null) return;
     _socket = io.io('')
       ..on('refreshIncidentQueueEvent', (data) {
-        if (data is Map) {
+        // A report waiting for the EOC: only the EOC's app (no agency) sounds
+        if (data is Map && !(data['eocOnly'] == true && agency != null)) {
           final cue = SoundCue.byId(data['cue']);
           if (cue != null) play(cue);
+        }
+      })
+      ..on('newNotification', (data) {
+        if (data is Map && data['type'] == 'EOC_ALERT' && agency != null && data['agency'] == agency) {
+          play(SoundCue.eocAlert, urgent: true);
         }
       })
       ..connect();
@@ -78,10 +87,11 @@ class SoundService {
 
   /// Plays [cue] if sounds are on. Rapid repeats (e.g. several units sent at
   /// once) play only once.
-  static Future<void> play(SoundCue cue, {bool preview = false}) async {
+  /// [urgent] (an EOC alert) plays even right after another sound.
+  static Future<void> play(SoundCue cue, {bool preview = false, bool urgent = false}) async {
     if (!preview && (!enabled || !cue.category.enabled)) return;
     final now = DateTime.now();
-    if (!preview && now.difference(_lastPlayed) < const Duration(milliseconds: 1500)) return;
+    if (!preview && !urgent && now.difference(_lastPlayed) < const Duration(milliseconds: 1500)) return;
     _lastPlayed = now;
     try {
       await _player.stop();

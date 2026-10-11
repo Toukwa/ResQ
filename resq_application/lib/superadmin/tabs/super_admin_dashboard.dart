@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../shared/resq_dropdown.dart';
+import '../../shared/incident_details_dialog.dart';
+import '../../shared/map_pin.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
@@ -16,6 +19,8 @@ import '../../shared/vehicle_markers.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/resq_toast.dart';
+import '../../shared/map_format.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -23,15 +28,10 @@ class OverviewDashboardScreen extends StatefulWidget {
   final String searchFilter;
   final VoidCallback? onOpenFullMap;
 
-  const OverviewDashboardScreen({
-    super.key,
-    required this.searchFilter,
-    this.onOpenFullMap,
-  });
+  const OverviewDashboardScreen({super.key, required this.searchFilter, this.onOpenFullMap});
 
   @override
-  State<OverviewDashboardScreen> createState() =>
-      _OverviewDashboardScreenState();
+  State<OverviewDashboardScreen> createState() => _OverviewDashboardScreenState();
 }
 
 class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
@@ -64,8 +64,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   double _mapZoom = 15.0;
 
   // RxDart Stream for real-time buffering and constant activity tab updates
-  final PublishSubject<Map<String, dynamic>> _activityLogStreamController =
-      PublishSubject<Map<String, dynamic>>();
+  final PublishSubject<Map<String, dynamic>> _activityLogStreamController = PublishSubject<Map<String, dynamic>>();
   StreamSubscription? _activityLogSubscription;
   StreamSubscription? _activityPollingSubscription;
 
@@ -76,10 +75,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     _setupBufferedLogStream();
     _fetchDatabaseData(showLoading: true);
     _initWebSocket();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => _fetchDatabaseData(showLoading: false),
-    );
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchDatabaseData(showLoading: false));
   }
 
   void _setupBufferedLogStream() {
@@ -88,48 +84,47 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         .bufferTime(const Duration(milliseconds: 500))
         .where((batch) => batch.isNotEmpty)
         .listen((batchEvents) {
-      if (!mounted) return;
+          if (!mounted) return;
 
-      final List<Map<String, dynamic>> parsedBatch = [];
-      for (var raw in batchEvents) {
-        if (raw.containsKey('refresh_signal')) {
-          _fetchActivityLogsOnly();
-          return;
-        }
-        final event = _parseSingleLog(raw);
-        if (event != null) {
-          parsedBatch.add(event);
-        }
-      }
+          final List<Map<String, dynamic>> parsedBatch = [];
+          for (var raw in batchEvents) {
+            if (raw.containsKey('refresh_signal')) {
+              _fetchActivityLogsOnly();
+              return;
+            }
+            final event = _parseSingleLog(raw);
+            if (event != null) {
+              parsedBatch.add(event);
+            }
+          }
 
-      if (parsedBatch.isNotEmpty && mounted) {
-        setState(() {
-          final newIds = parsedBatch.map((e) => e['id']).toSet();
-          _activityLogs.removeWhere((e) => newIds.contains(e['id']));
-          _activityLogs.insertAll(0, parsedBatch);
+          if (parsedBatch.isNotEmpty && mounted) {
+            setState(() {
+              final newIds = parsedBatch.map((e) => e['id']).toSet();
+              _activityLogs.removeWhere((e) => newIds.contains(e['id']));
+              _activityLogs.insertAll(0, parsedBatch);
 
-          _activityLogs.sort((a, b) {
-            final aTime = DateTime.tryParse(a['timestamp'] as String? ?? '') ??
-                DateTime.fromMillisecondsSinceEpoch(0);
-            final bTime = DateTime.tryParse(b['timestamp'] as String? ?? '') ??
-                DateTime.fromMillisecondsSinceEpoch(0);
-            final timeCmp = bTime.compareTo(aTime);
-            if (timeCmp != 0) return timeCmp;
-            final aId = int.tryParse(a['id']?.toString() ?? '0') ?? 0;
-            final bId = int.tryParse(b['id']?.toString() ?? '0') ?? 0;
-            return bId.compareTo(aId);
-          });
+              _activityLogs.sort((a, b) {
+                final aTime =
+                    DateTime.tryParse(a['timestamp'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final bTime =
+                    DateTime.tryParse(b['timestamp'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final timeCmp = bTime.compareTo(aTime);
+                if (timeCmp != 0) return timeCmp;
+                final aId = int.tryParse(a['id']?.toString() ?? '0') ?? 0;
+                final bId = int.tryParse(b['id']?.toString() ?? '0') ?? 0;
+                return bId.compareTo(aId);
+              });
 
-          if (_activityLogs.length > 50) {
-            _activityLogs = _activityLogs.sublist(0, 50);
+              if (_activityLogs.length > 50) {
+                _activityLogs = _activityLogs.sublist(0, 50);
+              }
+            });
           }
         });
-      }
-    });
 
     // Constant background updates: poll every 3 seconds via RxDart Stream so activity feed constantly updates
-    _activityPollingSubscription = Stream.periodic(const Duration(seconds: 3))
-        .listen((_) => _fetchActivityLogsOnly());
+    _activityPollingSubscription = Stream.periodic(const Duration(seconds: 3)).listen((_) => _fetchActivityLogsOnly());
   }
 
   Future<void> _fetchActivityLogsOnly() async {
@@ -148,19 +143,14 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(
-        AppConfig.apiBaseUrl.replaceAll('/api', ''),
-        <String, dynamic>{
-          'transports': ['websocket'],
-          'autoConnect': true,
-        },
-      );
+      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
+        'transports': ['websocket'],
+        'autoConnect': true,
+      });
 
       _socket!.on('refreshActivityLogsEvent', (data) {
         if (!mounted || data == null) return;
-        final raw = data is Map<String, dynamic>
-            ? data
-            : (data is Map ? Map<String, dynamic>.from(data) : null);
+        final raw = data is Map<String, dynamic> ? data : (data is Map ? Map<String, dynamic>.from(data) : null);
         if (raw == null) return;
 
         // Skip internal GET API calls to keep timeline clean
@@ -256,9 +246,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
       final String action = log['action']?.toString() ?? 'SYSTEM_EVENT';
       final String entityType = log['entity_type']?.toString() ?? 'system';
       final String status = log['status']?.toString() ?? 'SUCCESS';
-      final String actorDisplay = log['actor_display']?.toString() ??
-          log['user_role']?.toString() ??
-          log['userName']?.toString() ?? 'System';
+      final String actorDisplay =
+          log['actor_display']?.toString() ?? log['user_role']?.toString() ?? log['userName']?.toString() ?? 'System';
 
       String iconName = 'notifications_none';
       String iconBg = '#F1F5F9';
@@ -300,12 +289,9 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
       DateTime parsedTime;
       try {
-        final timestampStr = log['timestamp']?.toString() ??
-            log['created_at']?.toString() ??
-            log['createdAt']?.toString() ?? '';
-        parsedTime = timestampStr.isNotEmpty
-            ? DateTime.parse(timestampStr).toLocal()
-            : DateTime.now();
+        final timestampStr =
+            log['timestamp']?.toString() ?? log['created_at']?.toString() ?? log['createdAt']?.toString() ?? '';
+        parsedTime = timestampStr.isNotEmpty ? DateTime.parse(timestampStr).toLocal() : DateTime.now();
       } catch (_) {
         parsedTime = DateTime.now();
       }
@@ -334,7 +320,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             'text': status,
             'bg': status == 'SUCCESS' ? '#DCFCE7' : '#FEE2E2',
             'color': status == 'SUCCESS' ? '#15803D' : '#991B1B',
-          }
+          },
         ],
       };
     } catch (_) {
@@ -365,10 +351,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
     // Strict newest-first sort: timestamp DESC, then log_id DESC as tie-breaker
     parsedEvents.sort((a, b) {
-      final aTime = DateTime.tryParse(a['timestamp'] as String? ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      final bTime = DateTime.tryParse(b['timestamp'] as String? ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0);
+      final aTime = DateTime.tryParse(a['timestamp'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = DateTime.tryParse(b['timestamp'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
       final timeCmp = bTime.compareTo(aTime);
       if (timeCmp != 0) return timeCmp;
       final aId = int.tryParse(a['id']?.toString() ?? '0') ?? 0;
@@ -386,36 +370,22 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     if (_selectedQueueFilter == IncidentQueueFilter.pending) {
       sortedList = sortedList
           .where(
-            (incident) =>
-                (incident['status'] ?? incident['reqStatus'] ?? '')
-                    .toString()
-                    .toLowerCase() ==
-                'pending',
+            (incident) => (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase() == 'pending',
           )
           .toList();
     } else if (_selectedQueueFilter == IncidentQueueFilter.enRoute) {
       sortedList = sortedList.where((incident) {
-        final s = (incident['status'] ?? incident['reqStatus'] ?? '')
-            .toString()
-            .toLowerCase();
+        final s = (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase();
         return s == 'en route' || s == 'en_route';
       }).toList();
     } else if (_selectedQueueFilter == IncidentQueueFilter.declined) {
       sortedList = sortedList.where((incident) {
-        final s = (incident['status'] ?? incident['reqStatus'] ?? '')
-            .toString()
-            .toLowerCase();
+        final s = (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase();
         return s == 'declined' || s == 'denied';
       }).toList();
     } else if (_selectedQueueFilter == IncidentQueueFilter.active) {
       sortedList = sortedList
-          .where(
-            (incident) =>
-                (incident['status'] ?? incident['reqStatus'] ?? '')
-                    .toString()
-                    .toLowerCase() ==
-                'active',
-          )
+          .where((incident) => (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase() == 'active')
           .toList();
     }
 
@@ -425,16 +395,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
       _displayedIncidentQueueList = query.isEmpty
           ? sortedList
           : sortedList.where((i) {
-              final type = (i['type'] ?? i['incType'] ?? '')
-                  .toString()
-                  .toLowerCase();
+              final type = (i['type'] ?? i['incType'] ?? '').toString().toLowerCase();
               final desc = (i['description'] ?? '').toString().toLowerCase();
-              final name =
-                  (i['residentName'] ?? i['userName'] ?? i['citizenName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-              final loc = _getLocationLabel(i).toLowerCase();
-              final reqId = _formatRequestId(i).toLowerCase();
+              final name = (i['residentName'] ?? i['userName'] ?? i['citizenName'] ?? '').toString().toLowerCase();
+              final loc = locationLabel(i).toLowerCase();
+              final reqId = formatRequestId(i).toLowerCase();
               return type.contains(query) ||
                   desc.contains(query) ||
                   name.contains(query) ||
@@ -443,146 +408,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             }).toList();
     });
   }
-
-  String _formatRequestId(Map<String, dynamic> item) {
-    if (item['formattedReqId'] != null &&
-        item['formattedReqId'].toString().startsWith('REQ-')) {
-      return item['formattedReqId'].toString();
-    }
-    DateTime date = DateTime.now();
-    if (item['rawTimestamp'] != null) {
-      date = DateTime.tryParse(item['rawTimestamp'].toString()) ?? date;
-    } else if (item['SOS_timeStamp'] != null) {
-      date = DateTime.tryParse(item['SOS_timeStamp'].toString()) ?? date;
-    }
-    final dateCode = DateFormat('yyMMdd').format(date);
-    final dailySeq = item['dailySeq'] ?? item['id'] ?? 1;
-    return 'REQ-$dateCode-${dailySeq.toString().padLeft(3, '0')}';
-  }
-
-  String _formatEmergencyType(dynamic rawTypeInput, {dynamic incident}) {
-    final rawType = (rawTypeInput ?? '').toString().trim();
-    final List<String> types = [];
-    final Set<String> addedKeys = {};
-
-    void addType(String label, String key) {
-      if (!addedKeys.contains(key)) {
-        addedKeys.add(key);
-        types.add(label);
-      }
-    }
-
-    final lower = rawType.toLowerCase();
-
-    if (lower.contains('fire') || lower.contains('arson') || lower.contains('explosion') || lower.contains('burn')) {
-      addType('Fire Emergency', 'fire');
-    }
-    if (lower.contains('police') || lower.contains('crime') || lower.contains('accident') || lower.contains('shooting') || lower.contains('robbery') || lower.contains('traffic')) {
-      addType('Police Emergency', 'police');
-    }
-    if (lower.contains('rescue') || lower.contains('disaster') || lower.contains('flood') || lower.contains('earthquake') || lower.contains('landslide')) {
-      addType('Rescue Emergency', 'rescue');
-    }
-    if (lower.contains('medical') || lower.contains('health') || lower.contains('injury') || lower.contains('ambulance')) {
-      addType('Medical Emergency', 'medical');
-    }
-
-    if (incident != null) {
-      List<String> depts = [];
-      if (incident is Map) {
-        final rawStatuses = incident['department_statuses'];
-        if (rawStatuses is List) {
-          for (var s in rawStatuses) {
-            final name = (s['dept_name'] ?? s['dept'] ?? s['deptName'] ?? '').toString().toUpperCase();
-            if (name.isNotEmpty) depts.add(name);
-          }
-        }
-      }
-
-      for (var d in depts) {
-        if (d.contains('BFP') || d.contains('FIRE')) {
-          addType('Fire Emergency', 'fire');
-        } else if (d.contains('PNP') || d.contains('POLICE')) {
-          addType('Police Emergency', 'police');
-        } else if (d.contains('CDRRMO') || d.contains('RESCUE') || d.contains('MEDICAL')) {
-          addType('Medical Emergency', 'medical');
-        }
-      }
-    }
-
-    if (types.isNotEmpty) {
-      return types.join(', ');
-    }
-
-    return rawType.isEmpty ? 'General Emergency' : rawType;
-  }
-
-
-  List<String> _getInvolvedDepartments(dynamic incident) {
-    if (incident == null) return ['CDRRMO'];
-    final Set<String> depts = {};
-
-    final rawStatuses = incident is Map ? incident['department_statuses'] : null;
-    if (rawStatuses is List && rawStatuses.isNotEmpty) {
-      for (var item in rawStatuses) {
-        if (item is Map) {
-          final dName = (item['dept_name'] ?? item['deptName'] ?? '').toString().trim().toUpperCase();
-          if (dName.isNotEmpty) {
-            if (dName.contains('BFP') || dName.contains('FIRE')) {
-              depts.add('BFP');
-            } else if (dName.contains('PNP') || dName.contains('POLICE')) {
-              depts.add('PNP');
-            } else if (dName.contains('CDRRMO') || dName.contains('RESCUE') || dName.contains('DISASTER')) {
-              depts.add('CDRRMO');
-            } else {
-              depts.add(dName);
-            }
-          }
-        }
-      }
-    }
-
-    String rawType = '';
-    if (incident is Map) {
-      rawType = (incident['Incident_Type'] ?? incident['incType'] ?? incident['type'] ?? '').toString().toLowerCase();
-    } else if (incident != null) {
-      try {
-        rawType = (incident as dynamic).incType.toString().toLowerCase();
-      } catch (_) {}
-    }
-
-    if (rawType.isNotEmpty) {
-      if (rawType.contains('fire') || rawType.contains('arson') || rawType.contains('explosion') || rawType.contains('bfp')) {
-        depts.add('BFP');
-      }
-      if (rawType.contains('crime') || rawType.contains('police') || rawType.contains('shooting') || rawType.contains('robbery') || rawType.contains('accident') || rawType.contains('traffic') || rawType.contains('pnp')) {
-        depts.add('PNP');
-      }
-      if (rawType.contains('medical') || rawType.contains('rescue') || rawType.contains('disaster') || rawType.contains('flood') || rawType.contains('earthquake') || rawType.contains('landslide') || rawType.contains('health') || rawType.contains('injury') || rawType.contains('storm') || rawType.contains('typhoon') || rawType.contains('cdrrmo')) {
-        depts.add('CDRRMO');
-      }
-    }
-
-    if (depts.isEmpty && incident is Map) {
-      final agency = (incident['Department_Name'] ?? incident['agency'] ?? incident['agencyType'] ?? incident['deptName'] ?? incident['dept'] ?? '').toString().trim().toUpperCase();
-      if (agency.isNotEmpty) {
-        if (agency.contains('BFP')) {
-          depts.add('BFP');
-        } else if (agency.contains('PNP')) {
-          depts.add('PNP');
-        } else if (agency.contains('CDRRMO')) {
-          depts.add('CDRRMO');
-        } else {
-          depts.add(agency);
-        }
-      }
-    }
-
-    if (depts.isEmpty) depts.add('CDRRMO');
-    return depts.toList();
-  }
-
-
 
   Map<String, dynamic> _getStatusConfig(String? rawStatus) {
     final ts = ThemeService.instance;
@@ -641,43 +466,13 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     }
   }
 
-  String _getLocationLabel(Map<String, dynamic> item) {
-    if (item['addressLabel'] != null &&
-        item['addressLabel'].toString().isNotEmpty) {
-      return item['addressLabel'].toString();
-    }
-    if (item['location'] != null && item['location'].toString().isNotEmpty) {
-      return item['location'].toString();
-    }
-    final lat = double.tryParse('${item['latitude']}');
-    final lng = double.tryParse('${item['longitude']}');
-    if (lat != null && lng != null) {
-      return 'Iriga City (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
-    }
-    return 'Iriga City Area';
-  }
-
-  String _formatTimeString(dynamic timestamp) {
-    if (timestamp == null) return DateFormat('HH:mm').format(DateTime.now());
-    final dt = DateTime.tryParse(timestamp.toString());
-    if (dt != null) return DateFormat('HH:mm').format(dt);
-    return DateFormat('HH:mm').format(DateTime.now());
-  }
-
   Widget _buildSmallBadge(String text, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
       ),
     );
   }
@@ -690,52 +485,37 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     }
   }
 
-  Map<String, dynamic> _getIncidentTypeConfig(String rawType) {
-    final type = rawType.trim().toLowerCase();
-
-    if (type.contains('fire')) {
-      return {
-        'icon': Icons.local_fire_department_outlined,
-        'color': const Color(0xFFEF4444),
-      };
-    } else if (type.contains('medical')) {
-      return {
-        'icon': Icons.favorite_border,
-        'color': const Color(0xFF10B981),
-      };
-    } else {
-      return {
-        'icon': Icons.warning_amber_rounded,
-        'color': const Color(0xFFF97316),
-      };
-    }
-  }
+  Map<String, dynamic> _getIncidentTypeConfig(dynamic incident) => emergencyTypeStyle(incident);
 
   List<LatLng> get _reportedIncidentPoints => _unfilteredIncidentQueueList
       .map((incident) {
         final latitude = double.tryParse('${incident['latitude']}');
         final longitude = double.tryParse('${incident['longitude']}');
-        return latitude == null || longitude == null
-            ? null
-            : LatLng(latitude, longitude);
+        return latitude == null || longitude == null ? null : LatLng(latitude, longitude);
       })
       .whereType<LatLng>()
       .toList();
 
+  /// Each press moves the map to the next reported incident, then back to the first.
+  int _reportedIncidentCursor = -1;
   void _showReportedIncidents() {
     final points = _reportedIncidentPoints;
     if (points.isEmpty) {
       _mapController.move(const LatLng(13.4215, 123.4842), 15.0);
       return;
     }
-
-    _mapController.fitCamera(
-      CameraFit.coordinates(
-        coordinates: points,
-        padding: const EdgeInsets.all(48),
-        maxZoom: 15,
-      ),
-    );
+    _reportedIncidentCursor = (_reportedIncidentCursor + 1) % points.length;
+    _mapController.move(points[_reportedIncidentCursor], 16.5);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showResqSnackBar(SnackBar(
+        duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+        width: 260,
+        backgroundColor: const Color(0xFF1E293B),
+        content: Text('Incident ${_reportedIncidentCursor + 1} of ${points.length}',
+            textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ));
   }
 
   void _onDisplaySettings() {
@@ -773,444 +553,410 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     // LEFT COLUMN
                     Expanded(
                       flex: 7,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: ts.cardBackground,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: borderGrey),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            children: [
-                              FlutterMap(
-                                mapController: _mapController,
-                                options: MapOptions(
-                                  initialCenter: const LatLng(13.4215, 123.4842),
-                                  initialZoom: 15.0,
-                                  onPositionChanged: (camera, _) {
-                                    if (mounted &&
-                                        (_mapZoom - camera.zoom).abs() > 0.01) {
-                                      setState(() => _mapZoom = camera.zoom);
-                                    }
-                                  },
-                                ),
-                                children: [
-                                  TileLayer(
-                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName: 'com.resq.admin.dashboard',
-                                    tileProvider: CancellableNetworkTileProvider(),
-                                    tileBuilder: ts.isDark
-                                        ? (context, tileWidget, tile) => ColorFiltered(
-                                            colorFilter: const ColorFilter.matrix(<double>[
-                                              -0.2126, -0.7152, -0.0722, 0, 255,
-                                              -0.2126, -0.7152, -0.0722, 0, 255,
-                                              -0.2126, -0.7152, -0.0722, 0, 255,
-                                              0,       0,       0,       1, 0,
-                                            ]),
-                                            child: tileWidget,
-                                          )
-                                        : null,
-                                  ),
-                                  MarkerLayer(
-                                    markers: _displayedIncidentQueueList.where(IncidentData.showOnMap).map((
-                                      incident,
-                                    ) {
-                                      final typeConfig = _getIncidentTypeConfig(
-                                        incident['type']?.toString() ?? '',
-                                      );
-
-                                      return Marker(
-                                        width: 40,
-                                        height: 48,
-                                        point: LatLng(
-                                          double.tryParse(
-                                                incident['latitude']
-                                                        ?.toString() ??
-                                                    '',
-                                              ) ??
-                                              13.4215,
-                                          double.tryParse(
-                                                incident['longitude']
-                                                        ?.toString() ??
-                                                    '',
-                                              ) ??
-                                              123.4842,
-                                        ),
-                                        child: CustomPinMarker(
-                                          icon: typeConfig['icon'] as IconData,
-                                          color: typeConfig['color'] as Color,
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                  AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
-                                ],
+                      child: Column(
+                        children: [
+                          Expanded(
+                            flex: 6,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: ts.cardBackground,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: borderGrey),
                               ),
-                              Positioned(
-                                top: 16,
-                                left: 16,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ts.cardBackground.withValues(alpha: 0.92),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: borderGrey,
+                              clipBehavior: Clip.antiAlias,
+                              child: Stack(
+                                children: [
+                                  FlutterMap(
+                                    mapController: _mapController,
+                                    options: MapOptions(
+                                      initialCenter: const LatLng(13.4215, 123.4842),
+                                      initialZoom: 15.0,
+                                      onPositionChanged: (camera, _) {
+                                        if (mounted && (_mapZoom - camera.zoom).abs() > 0.01) {
+                                          setState(() => _mapZoom = camera.zoom);
+                                        }
+                                      },
                                     ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.warning_amber_rounded,
-                                        color: brandOrange,
-                                        size: 16,
+                                      TileLayer(
+                                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                        userAgentPackageName: 'com.resq.admin.dashboard',
+                                        tileProvider: CancellableNetworkTileProvider(),
+                                        tileBuilder: ts.isDark
+                                            ? (context, tileWidget, tile) => ColorFiltered(
+                                                colorFilter: const ColorFilter.matrix(<double>[
+                                                  -0.2126,
+                                                  -0.7152,
+                                                  -0.0722,
+                                                  0,
+                                                  255,
+                                                  -0.2126,
+                                                  -0.7152,
+                                                  -0.0722,
+                                                  0,
+                                                  255,
+                                                  -0.2126,
+                                                  -0.7152,
+                                                  -0.0722,
+                                                  0,
+                                                  255,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  1,
+                                                  0,
+                                                ]),
+                                                child: tileWidget,
+                                              )
+                                            : null,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Iriga City Operations Map',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: ts.textPrimary,
-                                        ),
+                                      MarkerLayer(
+                                        markers: _displayedIncidentQueueList.where(IncidentData.showOnMap).map((
+                                          incident,
+                                        ) {
+                                          final typeConfig = _getIncidentTypeConfig(incident);
+
+                                          return Marker(
+                                            width: kIncidentMarkerSize,
+                                            height: kIncidentMarkerSize, // centred on the location, room for the pulse
+                                            point: LatLng(
+                                              double.tryParse(incident['latitude']?.toString() ?? '') ?? 13.4215,
+                                              double.tryParse(incident['longitude']?.toString() ?? '') ?? 123.4842,
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () =>
+                                                  showIncidentDetails(context, incident['Req_ID'] ?? incident['id'], eoc: true),
+                                              child: CustomPinMarker(
+                                                icon: typeConfig['icon'] as IconData,
+                                                color: typeConfig['color'] as Color,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '· Live',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: ts.textSecondary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.green,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
+                                      AnimatedMarkerLayer(markers: buildVehicleMarkers(_vehiclesList)),
                                     ],
                                   ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 16,
-                                right: 16,
-                                child: _buildMapHeaderBadge(
-                                  '$_activeIncidentsCount Active',
-                                  ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
-                                  brandOrange,
-                                  Icons.warning_amber_rounded,
-                                ),
-                              ),
-                              Positioned(
-                                right: 16,
-                                bottom: 16,
-                                child: Column(
-                                  children: [
-                                    _buildMapControlBtn(
-                                      Icons.warning_amber_rounded,
-                                      _showReportedIncidents,
-                                      'Show reported incidents',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildMapControlBtn(
-                                      Icons.zoom_in,
-                                      () => _mapController.move(
-                                        _mapController.camera.center,
-                                        _mapController.camera.zoom + 1,
+                                  Positioned(
+                                    top: 16,
+                                    left: 16,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: ts.cardBackground.withValues(alpha: 0.92),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: borderGrey),
                                       ),
-                                      'Zoom in',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildMapControlBtn(
-                                      Icons.zoom_out,
-                                      () => _mapController.move(
-                                        _mapController.camera.center,
-                                        _mapController.camera.zoom - 1,
-                                      ),
-                                      'Zoom out',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildMapControlBtn(
-                                      Icons.fullscreen,
-                                      widget.onOpenFullMap ?? () {},
-                                      'Open full map',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Positioned(
-                                left: 16,
-                                bottom: 16,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ts.cardBackground.withValues(alpha: 0.92),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: borderGrey),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.near_me_outlined,
-                                          size: 14,
-                                          color: ts.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '${((_mapZoom / 15.0) * 100).round()}%',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: ts.textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 72,
-                        child: Row(
-                          children: [
-                            _buildMetricCard(
-                              _availableUnits.toString(),
-                              'Available',
-                              'Units',
-                              Icons.check_circle_outline_rounded,
-                              const Color(0xFF10B981),
-                              const Color(0xFFECFDF5),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildMetricCard(
-                              _enRouteUnits.toString(),
-                              'En Route',
-                              '',
-                              Icons.navigation_outlined,
-                              const Color(0xFFF59E0B),
-                              const Color(0xFFFFFBEB),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildMetricCard(
-                              _busyUnits.toString(),
-                              'Busy / On',
-                              'Scene',
-                              Icons.wifi_tethering_rounded,
-                              const Color(0xFFEF4444),
-                              const Color(0xFFFEF2F2),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildMetricCard(
-                              _activeIncidentsCount.toString(),
-                              'Active',
-                              'Incidents',
-                              Icons.warning_amber_rounded,
-                              brandOrange,
-                              const Color(0xFFFFEDD5),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 60,
-                        child: Row(
-                          children: [
-                            _buildAgencyCard(
-                              'PNP',
-                              'Philippine National\nPolice',
-                              _pnpCount.toString(),
-                              'Active Units',
-                              const Color(0xFF0284C7),
-                              const Color(0xFFE0F2FE),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildAgencyCard(
-                              'BFP',
-                              'Bureau of Fire',
-                              _bfpCount.toString(),
-                              'Active Units',
-                              const Color(0xFFFF6B00),
-                              const Color(0xFFFFEDD5),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildAgencyCard(
-                              'CDRRMO',
-                              'Disaster Risk',
-                              _cdrrmoCount.toString(),
-                              'Active Units',
-                              const Color(0xFF10B981),
-                              const Color(0xFFECFDF5),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 24),
-                // RIGHT COLUMN: PIXEL-PERFECT PANEL & TABS
-                Expanded(
-                  flex: 4,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    decoration: BoxDecoration(
-                      color: ts.cardBackground,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderGrey),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Exact Top 5 Tabs Component Bar from Admin
-                        Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            height: 64,
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: ts.subtleBackground,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                _buildTopTabItem(
-                                  index: 0,
-                                  label: "Incidents",
-                                  icon: Icons.warning_amber_rounded,
-                                ),
-                                _buildTopTabItem(
-                                  index: 1,
-                                  label: "Units",
-                                  icon: Icons.local_shipping_outlined,
-                                ),
-                                _buildTopTabItem(
-                                  index: 2,
-                                  label: "Activity",
-                                  icon: Icons.show_chart_rounded,
-                                ),
-                                _buildTopTabItem(
-                                  index: 3,
-                                  label: "Requests",
-                                  icon: Icons.mail_outline_rounded,
-                                  badgeCount: _pendingCount,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        Divider(height: 1, color: borderGrey),
-
-                        // Tab Dynamic Content Stack
-                        Expanded(
-                          child: IndexedStack(
-                            index: _selectedTabIndex,
-                            children: [
-                              // ------------------ TAB 0: INCIDENTS ------------------
-                              Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          "Active Incidents",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            color: ts.textPrimary,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        _buildCustomDropdown(),
-                                        const SizedBox(width: 8),
-                                        InkWell(
-                                          onTap: _fetchDatabaseData,
-                                          borderRadius: BorderRadius.circular(6),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(6),
-                                            child: const Icon(
-                                              Icons.refresh_rounded,
-                                              size: 18,
-                                              color: Color(0xFFFF6B00),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.warning_amber_rounded, color: brandOrange, size: 16),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Iriga City Operations Map',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: ts.textPrimary,
                                             ),
                                           ),
+                                          const SizedBox(width: 8),
+                                          Text('· Live', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                                          const SizedBox(width: 4),
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.green,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 16,
+                                    right: 16,
+                                    child: _buildMapHeaderBadge(
+                                      '$_activeIncidentsCount Active',
+                                      ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
+                                      brandOrange,
+                                      Icons.warning_amber_rounded,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 16,
+                                    bottom: 16,
+                                    child: Column(
+                                      children: [
+                                        _buildMapControlBtn(
+                                          Icons.warning_amber_rounded,
+                                          _showReportedIncidents,
+                                          'Show reported incidents',
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _buildMapControlBtn(
+                                          Icons.zoom_in,
+                                          () => _mapController.move(
+                                            _mapController.camera.center,
+                                            _mapController.camera.zoom + 1,
+                                          ),
+                                          'Zoom in',
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _buildMapControlBtn(
+                                          Icons.zoom_out,
+                                          () => _mapController.move(
+                                            _mapController.camera.center,
+                                            _mapController.camera.zoom - 1,
+                                          ),
+                                          'Zoom out',
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _buildMapControlBtn(
+                                          Icons.fullscreen,
+                                          widget.onOpenFullMap ?? () {},
+                                          'Open full map',
                                         ),
                                       ],
                                     ),
                                   ),
-                                  Expanded(
-                                    child: ListView.separated(
-                                      padding: const EdgeInsets.all(16),
-                                      itemCount: _displayedIncidentQueueList.length,
-                                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                                      itemBuilder: (context, index) => _buildIncidentItemWidget(
-                                        _displayedIncidentQueueList[index],
-                                        brandOrange,
+                                  Positioned(
+                                    left: 16,
+                                    bottom: 16,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: ts.cardBackground.withValues(alpha: 0.92),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: borderGrey),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(Icons.near_me_outlined, size: 14, color: ts.textPrimary),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${((_mapZoom / 15.0) * 100).round()}%',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: ts.textPrimary,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-
-                              // ------------------ TAB 1: UNITS ------------------
-                              _buildUnitsTabView(),
-
-                              // ------------------ TAB 2: ACTIVITY ------------------
-                              _buildActivityTabView(),
-
-                              // ------------------ TAB 3: REQUESTS ------------------
-                              _buildRequestsTabView(),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            height: 72,
+                            child: Row(
+                              children: [
+                                _buildMetricCard(
+                                  _availableUnits.toString(),
+                                  'Available',
+                                  'Units',
+                                  Icons.check_circle_outline_rounded,
+                                  const Color(0xFF10B981),
+                                  const Color(0xFFECFDF5),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildMetricCard(
+                                  _enRouteUnits.toString(),
+                                  'En Route',
+                                  '',
+                                  Icons.navigation_outlined,
+                                  const Color(0xFFF59E0B),
+                                  const Color(0xFFFFFBEB),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildMetricCard(
+                                  _busyUnits.toString(),
+                                  'Busy / On',
+                                  'Scene',
+                                  Icons.wifi_tethering_rounded,
+                                  const Color(0xFFEF4444),
+                                  const Color(0xFFFEF2F2),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildMetricCard(
+                                  _activeIncidentsCount.toString(),
+                                  'Active',
+                                  'Incidents',
+                                  Icons.warning_amber_rounded,
+                                  brandOrange,
+                                  const Color(0xFFFFEDD5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 60,
+                            child: Row(
+                              children: [
+                                _buildAgencyCard(
+                                  'PNP',
+                                  'Philippine National\nPolice',
+                                  _pnpCount.toString(),
+                                  'Active Units',
+                                  const Color(0xFF0284C7),
+                                  const Color(0xFFE0F2FE),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildAgencyCard(
+                                  'BFP',
+                                  'Bureau of Fire',
+                                  _bfpCount.toString(),
+                                  'Active Units',
+                                  const Color(0xFFFF6B00),
+                                  const Color(0xFFFFEDD5),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildAgencyCard(
+                                  'CDRRMO',
+                                  'Disaster Risk',
+                                  _cdrrmoCount.toString(),
+                                  'Active Units',
+                                  const Color(0xFF10B981),
+                                  const Color(0xFFECFDF5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 24),
+                    // RIGHT COLUMN: PIXEL-PERFECT PANEL & TABS
+                    Expanded(
+                      flex: 4,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        decoration: BoxDecoration(
+                          color: ts.cardBackground,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: borderGrey),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Exact Top 5 Tabs Component Bar from Admin
+                            Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                height: 64,
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: ts.subtleBackground,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    _buildTopTabItem(index: 0, label: "Incidents", icon: Icons.warning_amber_rounded),
+                                    _buildTopTabItem(index: 1, label: "Units", icon: Icons.local_shipping_outlined),
+                                    _buildTopTabItem(index: 2, label: "Activity", icon: Icons.show_chart_rounded),
+                                    _buildTopTabItem(
+                                      index: 3,
+                                      label: "Requests",
+                                      icon: Icons.mail_outline_rounded,
+                                      badgeCount: _pendingCount,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            Divider(height: 1, color: borderGrey),
+
+                            // Tab Dynamic Content Stack
+                            Expanded(
+                              child: IndexedStack(
+                                index: _selectedTabIndex,
+                                children: [
+                                  // ------------------ TAB 0: INCIDENTS ------------------
+                                  Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              "Active Incidents",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: ts.textPrimary,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            _buildCustomDropdown(),
+                                            const SizedBox(width: 8),
+                                            InkWell(
+                                              onTap: _fetchDatabaseData,
+                                              borderRadius: BorderRadius.circular(6),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(6),
+                                                child: const Icon(
+                                                  Icons.refresh_rounded,
+                                                  size: 18,
+                                                  color: Color(0xFFFF6B00),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: ListView.separated(
+                                          padding: const EdgeInsets.all(16),
+                                          itemCount: _displayedIncidentQueueList.length,
+                                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                                          itemBuilder: (context, index) =>
+                                              _buildIncidentItemWidget(_displayedIncidentQueueList[index], brandOrange),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  // ------------------ TAB 1: UNITS ------------------
+                                  _buildUnitsTabView(),
+
+                                  // ------------------ TAB 2: ACTIVITY ------------------
+                                  _buildActivityTabView(),
+
+                                  // ------------------ TAB 3: REQUESTS ------------------
+                                  _buildRequestsTabView(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
+              );
       },
     );
   }
 
   // Exact Pixel Top Tab Navigation Item Builder
-  Widget _buildTopTabItem({
-    required int index,
-    required String label,
-    required IconData icon,
-    int badgeCount = 0,
-  }) {
+  Widget _buildTopTabItem({required int index, required String label, required IconData icon, int badgeCount = 0}) {
     final isSelected = _selectedTabIndex == index;
     final ts = ThemeService.instance;
     const activeColor = Color(0xFFEA580C);
@@ -1238,11 +984,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(
-                    icon,
-                    size: 18,
-                    color: isSelected ? activeColor : inactiveColor,
-                  ),
+                  Icon(icon, size: 18, color: isSelected ? activeColor : inactiveColor),
                   if (badgeCount > 0)
                     Positioned(
                       top: -6,
@@ -1253,17 +995,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                           color: const Color(0xFFDC2626),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        constraints: const BoxConstraints(
-                          minWidth: 15,
-                          minHeight: 15,
-                        ),
+                        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
                         child: Text(
                           '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1294,15 +1029,12 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   List<dynamic> get _filteredVehicles {
     if (_selectedUnitFilter == 'all') return _vehiclesList;
     final key = _selectedUnitFilter.toUpperCase();
-    return _vehiclesList
-        .where((v) => (v['deptName']?.toString() ?? '').toUpperCase().contains(key))
-        .toList();
+    return _vehiclesList.where((v) => (v['deptName']?.toString() ?? '').toUpperCase().contains(key)).toList();
   }
 
   /// Returns only pending incidents for the Requests tab.
   List<dynamic> get _pendingIncidents => _unfilteredIncidentQueueList
-      .where((i) => ['pending', 'in_progress']
-          .contains((i['reqStatus'] ?? i['status'] ?? '').toString().toLowerCase()))
+      .where((i) => ['pending', 'in_progress'].contains((i['reqStatus'] ?? i['status'] ?? '').toString().toLowerCase()))
       .toList();
 
   int get _pendingCount => _pendingIncidents.length;
@@ -1335,7 +1067,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         ),
         Expanded(
           child: filtered.isEmpty
-              ? _buildEmptyState(Icons.directions_car_outlined, 'No units found', 'No vehicles match the selected filter')
+              ? _buildEmptyState(
+                  Icons.directions_car_outlined,
+                  'No units found',
+                  'No vehicles match the selected filter',
+                )
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   itemCount: filtered.length,
@@ -1350,28 +1086,24 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   Widget _buildUnitFilterChip(String key, String label) {
     final ts = ThemeService.instance;
     final isSelected = _selectedUnitFilter == key;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedUnitFilter = key),
-      child: Container(
-        margin: const EdgeInsets.only(left: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5))
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          border: isSelected && ts.isDark
-              ? Border.all(color: const Color(0xFF9A3412), width: 1)
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected
-                ? const Color(0xFFEA580C)
-                : (ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+    final color = key == 'all' ? const Color(0xFFFF6B00) : agencySymbol(label).color;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Material(
+        color: isSelected ? color.withValues(alpha: 0.14) : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: () => setState(() => _selectedUnitFilter = key),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isSelected ? color : ts.borderColor),
+            ),
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 10.5, fontWeight: FontWeight.w800, color: isSelected ? color : ts.textSecondary)),
           ),
         ),
       ),
@@ -1379,94 +1111,66 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   }
 
   /// Dynamic unit card driven by live `response_vehicle` + `department` data.
+  /// One unit: its vehicle symbol in the agency colour, plate, type and agency, and status.
   Widget _buildDynamicUnitCard(dynamic vehicle) {
     final ts = ThemeService.instance;
-    final isDark = ts.isDark;
     final dept = vehicle['deptName']?.toString() ?? '';
-    final plateNo = vehicle['plate_no']?.toString() ?? 'Unknown';
-    final vehicleType = vehicle['vehicle_type']?.toString() ?? 'Vehicle';
+    final look = vehicleMarkerConfig(vehicle);
+    final color = look['color'] as Color;
     final status = vehicleStatus(vehicle);
-    final isAvailable = status.toLowerCase() == 'available';
-    final isEnRoute = status.toLowerCase().contains('route') ||
-        status.toLowerCase().contains('dispatch');
-
-    // Dept-driven styling
-    final Color iconBg;
-    final Color iconColor;
-    final IconData deptIcon;
-    if (dept.toUpperCase().contains('BFP')) {
-      iconBg = isDark ? const Color(0xFF451212) : const Color(0xFFFEF2F2);
-      iconColor = isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626);
-      deptIcon = Icons.local_fire_department_outlined;
-    } else if (dept.toUpperCase().contains('PNP')) {
-      iconBg = isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF);
-      iconColor = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
-      deptIcon = Icons.local_police_outlined;
-    } else {
-      iconBg = isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
-      iconColor = isDark ? const Color(0xFF34D399) : const Color(0xFF059669);
-      deptIcon = Icons.health_and_safety_outlined;
-    }
-
-    final Color statusColor = isAvailable
-        ? (isDark ? const Color(0xFF34D399) : const Color(0xFF10B981))
-        : isEnRoute
-            ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
-            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
-    final Color statusBg = isAvailable
-        ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5))
-        : isEnRoute
-            ? (isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF))
-            : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9));
-
+    final s = status.toLowerCase();
+    final statusColor = s == 'available'
+        ? const Color(0xFF16A34A)
+        : s == 'offline'
+            ? const Color(0xFF94A3B8)
+            : s.contains('arriv')
+                ? const Color(0xFF8B5CF6)
+                : (s.contains('route') || s.contains('dispatch'))
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFFF59E0B);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: ts.cardBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ts.borderColor),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)),
-            child: Icon(deptIcon, color: iconColor, size: 18),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(look['icon'] as IconData, color: color, size: 21),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      plateNo,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        color: iconColor,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        vehicleType,
-                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                Text(vehicle['plate_no']?.toString() ?? 'Unknown',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ts.textPrimary)),
                 const SizedBox(height: 2),
                 Text(
-                  dept.isNotEmpty ? dept : 'Unassigned',
-                  style: TextStyle(fontSize: 11, color: ts.textPrimary),
+                  '${vehicle['vehicle_type'] ?? 'Vehicle'}  ·  ${dept.isNotEmpty ? dept : 'Unassigned'}',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: ts.textSecondary),
                 ),
               ],
             ),
           ),
-          _buildSmallBadge(status, statusColor, statusBg),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.circle, size: 7, color: statusColor),
+              const SizedBox(width: 5),
+              Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor)),
+            ]),
+          ),
         ],
       ),
     );
@@ -1509,10 +1213,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: _activityLogs.length,
-                  itemBuilder: (_, i) => _buildLogTile(
-                    _activityLogs[i],
-                    isLast: i == _activityLogs.length - 1,
-                  ),
+                  itemBuilder: (_, i) => _buildLogTile(_activityLogs[i], isLast: i == _activityLogs.length - 1),
                 ),
         ),
       ],
@@ -1536,15 +1237,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   color: _parseLogColor(event['iconBg'] as String? ?? '#F1F5F9', isBg: true),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: _parseLogColor(event['iconColor'] as String? ?? '#64748B')
-                        .withValues(alpha: 0.2),
+                    color: _parseLogColor(event['iconColor'] as String? ?? '#64748B').withValues(alpha: 0.2),
                   ),
                 ),
-                child: Icon(
-                  iconData,
-                  size: 14,
-                  color: _parseLogColor(event['iconColor'] as String? ?? '#64748B'),
-                ),
+                child: Icon(iconData, size: 14, color: _parseLogColor(event['iconColor'] as String? ?? '#64748B')),
               ),
               if (!isLast)
                 Expanded(
@@ -1568,11 +1264,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                       Flexible(
                         child: Text(
                           event['title'] as String? ?? '',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: ts.textPrimary,
-                          ),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1595,13 +1287,9 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                       const Spacer(),
                       Row(
                         children: [
-                          Icon(Icons.access_time_rounded,
-                              size: 10, color: ts.textSecondary),
+                          Icon(Icons.access_time_rounded, size: 10, color: ts.textSecondary),
                           const SizedBox(width: 2),
-                          Text(
-                            event['time'] as String? ?? '',
-                            style: TextStyle(fontSize: 10, color: ts.textSecondary),
-                          ),
+                          Text(event['time'] as String? ?? '', style: TextStyle(fontSize: 10, color: ts.textSecondary)),
                         ],
                       ),
                     ],
@@ -1609,48 +1297,40 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   const SizedBox(height: 3),
                   Text(
                     event['description'] as String? ?? '',
-                    style: TextStyle(
-                        fontSize: 11, color: ts.textSecondary, height: 1.2),
+                    style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.2),
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Icon(Icons.rss_feed_rounded,
-                          size: 8, color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1)),
-                      const SizedBox(width: 2),
-                      Text(
-                        event['source'] as String? ?? '',
-                        style: TextStyle(fontSize: 10, color: ts.textSecondary),
+                      Icon(
+                        Icons.rss_feed_rounded,
+                        size: 8,
+                        color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
                       ),
+                      const SizedBox(width: 2),
+                      Text(event['source'] as String? ?? '', style: TextStyle(fontSize: 10, color: ts.textSecondary)),
                       const SizedBox(width: 6),
-                      ...List.generate(
-                        (event['tags'] as List? ?? []).length,
-                        (ti) {
-                          final tag = (event['tags'] as List)[ti]
-                              as Map<String, dynamic>;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 4.0),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: _parseLogColor(
-                                    tag['bg'] as String? ?? '#E2E8F0', isBg: true),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                              child: Text(
-                                tag['text'] as String? ?? '',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: _parseLogColor(
-                                      tag['color'] as String? ?? '#475569'),
-                                ),
+                      ...List.generate((event['tags'] as List? ?? []).length, (ti) {
+                        final tag = (event['tags'] as List)[ti] as Map<String, dynamic>;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 4.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: _parseLogColor(tag['bg'] as String? ?? '#E2E8F0', isBg: true),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              tag['text'] as String? ?? '',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: _parseLogColor(tag['color'] as String? ?? '#475569'),
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ],
@@ -1751,7 +1431,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             border: ts.isDark ? Border.all(color: const Color(0xFF6B21A8)) : null,
           ),
           child: Text(
-            '• Monitoring only — use Incidents screen for dispatcher actions',
+            'Tap a request to see its details, rate it and assign it to an agency.',
             style: TextStyle(
               fontSize: 11,
               color: ts.isDark ? const Color(0xFFC084FC) : const Color(0xFF9333EA),
@@ -1761,11 +1441,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         ),
         Expanded(
           child: pending.isEmpty
-              ? _buildEmptyState(
-                  Icons.inbox_outlined,
-                  'No pending requests',
-                  'All incidents have been addressed',
-                )
+              ? _buildEmptyState(Icons.inbox_outlined, 'No pending requests', 'All incidents have been addressed')
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: pending.length,
@@ -1777,114 +1453,166 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     );
   }
 
-  Widget _buildDynamicRequestCard(dynamic incident) {
-    final ts = ThemeService.instance;
-    final reqId = _formatRequestId(incident as Map<String, dynamic>);
-    final rawType = (incident['incType'] ?? incident['type'] ?? 'General').toString();
-    final desc = (incident['description'] ?? '').toString();
-    final descSnippet = desc.length > 80 ? '${desc.substring(0, 80)}...' : desc;
-    final residentName = (incident['residentName'] ?? incident['userName'] ?? 'Unknown').toString();
-    final location = _getLocationLabel(incident);
-    final timeLabel = _formatTimeString(incident['SOS_timeStamp'] ?? incident['rawTimestamp']);
-    final rawStatus = (incident['reqStatus'] ?? incident['status'] ?? 'pending').toString();
-    final statusConfig = _getStatusConfig(rawStatus);
-    final typeStyle = emergencyTypeStyle(rawType);
+  Widget _buildDynamicRequestCard(dynamic incident) =>
+      _incidentCard(Map<String, dynamic>.from(incident as Map), showNotes: true);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: statusConfig['cardBg'] as Color,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusConfig['cardBorder'] as Color),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: statusConfig['dotColor'] as Color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                reqId,
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A)),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: typeStyle['bgColor'] as Color,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Icon(typeStyle['icon'] as IconData,
-                    size: 12, color: typeStyle['color'] as Color),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: _getInvolvedDepartments(incident).map((dept) {
-                  final bColor = departmentBadgeColor(dept);
-                  return Container(
-                    margin: const EdgeInsets.only(left: 3),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: bColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: bColor.withValues(alpha: 0.3), width: 0.8),
+  /// One incident in the right-hand panel (Incidents and Requests tabs): same look as the
+  /// details popup. Tapping it opens the full details; the Map button shows it on the map.
+  Widget _incidentCard(Map<String, dynamic> item, {bool showNotes = false}) {
+    final ts = ThemeService.instance;
+    final style = emergencyTypeStyle(item);
+    final color = style['color'] as Color;
+    final rawStatus = (item['status'] ?? item['reqStatus'] ?? 'Pending').toString();
+    final statusConfig = _getStatusConfig(rawStatus);
+    final severity = severityStyle(item['severity']?.toString());
+    final resident = (item['residentName'] ?? item['userName'] ?? item['citizenName'] ?? '').toString();
+    final location = locationLabel(item);
+    final reported = DateTime.tryParse('${item['SOS_timeStamp'] ?? item['rawTimestamp'] ?? ''}')?.toLocal();
+    final agencies = IncidentData.agenciesOf(item);
+    final notes = (item['description'] ?? '').toString().trim();
+
+    Widget chip(String text, Color fg, {IconData? icon}) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: fg.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (icon != null) ...[Icon(icon, size: 11, color: fg), const SizedBox(width: 3)],
+            Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg)),
+          ]),
+        );
+
+    return Material(
+      color: ts.cardBackground,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => showIncidentDetails(context, item['Req_ID'] ?? item['id'], eoc: true),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ts.borderColor),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Agency colour strip
+                Container(width: 5, color: color),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(11),
+                                boxShadow: [
+                                  BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3)),
+                                ],
+                              ),
+                              child: Icon(style['icon'] as IconData, color: Colors.white, size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${item['incType'] ?? item['type'] ?? 'Emergency'}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, height: 1.25, color: ts.textPrimary),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${formatRequestId(item)}${reported != null ? '  ·  ${formatTimeAgo(reported)}' : ''}',
+                                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: ts.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 5,
+                          runSpacing: 5,
+                          children: [
+                            chip(severity.label, severity.color, icon: Icons.local_hospital_rounded),
+                            chip(statusConfig['label'] as String, statusConfig['textColor'] as Color),
+                            if (agencies.isEmpty)
+                              chip('EOC', agencySymbol('EOC').color, icon: agencySymbol('EOC').icon)
+                            else
+                              for (final a in agencies) chip(a, agencySymbol(a).color, icon: agencySymbol(a).icon),
+                          ],
+                        ),
+                        if (showNotes && notes.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            notes,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11, height: 1.35, color: ts.textSecondary),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(Icons.person_outline_rounded, size: 13, color: ts.textMuted),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                resident.isEmpty ? 'Unknown' : resident,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.location_on_outlined, size: 13, color: ts.textMuted),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, color: ts.textSecondary),
+                              ),
+                            ),
+                            // Shows this incident on the map (the rest of the card opens its details)
+                            Material(
+                              color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                onTap: () => _locateIncidentOnMap(item),
+                                borderRadius: BorderRadius.circular(8),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(Icons.near_me_rounded, size: 12, color: Color(0xFFFF6B00)),
+                                    SizedBox(width: 3),
+                                    Text('Map',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFFF6B00))),
+                                  ]),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      dept,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: bColor),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const Spacer(),
-              _buildSmallBadge(
-                statusConfig['label'] as String,
-                statusConfig['textColor'] as Color,
-                statusConfig['bgColor'] as Color,
-              ),
-            ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            rawType,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: typeStyle['color'] as Color),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '${residentName.isNotEmpty ? '$residentName · ' : ''}$location',
-            style: TextStyle(
-                fontSize: 11,
-                color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (descSnippet.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(descSnippet,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B))),
-          ],
-          const SizedBox(height: 8),
-          Text(timeLabel,
-              style: TextStyle(
-                  fontSize: 10,
-                  color: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
-        ],
+        ),
       ),
     );
   }
@@ -1896,28 +1624,17 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 36,
-            color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
-          ),
+          Icon(icon, size: 36, color: ts.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1)),
           const SizedBox(height: 12),
           Text(
             title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: ts.textSecondary,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: ts.textSecondary),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-            ),
+            style: TextStyle(fontSize: 11, color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
           ),
         ],
       ),
@@ -1955,68 +1672,40 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     }
   }
 
-  Widget _buildCustomDropdown() {
-    final ts = ThemeService.instance;
-    return Container(
-      height: 32,
-      width: 120,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFF6B00), width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<IncidentQueueFilter>(
+  Widget _buildCustomDropdown() => SizedBox(
+        width: 150,
+        child: ResqSelect<IncidentQueueFilter>(
           value: _selectedQueueFilter,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFFFF6B00),
-            size: 18,
-          ),
-          elevation: 3,
-          dropdownColor: ts.cardBackground,
-          borderRadius: BorderRadius.circular(10),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFFFF6B00),
-          ),
-          isDense: true,
-          menuMaxHeight: 200,
-          onChanged: (IncidentQueueFilter? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedQueueFilter = newValue;
-                _applySearchFilter();
-              });
-            }
+          height: 36,
+          compact: true,
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() {
+              _selectedQueueFilter = v;
+              _applySearchFilter();
+            });
           },
-          items: IncidentQueueFilter.values.map((IncidentQueueFilter value) {
-            final bool isSelected = value == _selectedQueueFilter;
-            return DropdownMenuItem<IncidentQueueFilter>(
-              value: value,
-              child: Text(
-                _getFilterLabel(value),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? const Color(0xFFFF6B00) : ts.textPrimary,
-                ),
-              ),
-            );
-          }).toList(),
+          options: [
+            for (final f in IncidentQueueFilter.values)
+              ResqOption(f, _getFilterLabel(f),
+                  icon: switch (f) {
+                    IncidentQueueFilter.all => Icons.all_inclusive_rounded,
+                    IncidentQueueFilter.pending => Icons.schedule_rounded,
+                    IncidentQueueFilter.enRoute => Icons.local_shipping_rounded,
+                    IncidentQueueFilter.declined => Icons.cancel_rounded,
+                    IncidentQueueFilter.active => Icons.bolt_rounded,
+                  },
+                  color: switch (f) {
+                    IncidentQueueFilter.pending => const Color(0xFFF59E0B),
+                    IncidentQueueFilter.enRoute => const Color(0xFF2563EB),
+                    IncidentQueueFilter.declined => const Color(0xFFEF4444),
+                    _ => const Color(0xFFFF6B00),
+                  }),
+          ],
         ),
-      ),
-    );
-  }
+      );
 
-  Widget _buildMapHeaderBadge(
-    String text,
-    Color bg,
-    Color color,
-    IconData icon,
-  ) {
+  Widget _buildMapHeaderBadge(String text, Color bg, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -2031,22 +1720,14 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMapControlBtn(
-    IconData icon,
-    VoidCallback onPressed,
-    String tooltip,
-  ) {
+  Widget _buildMapControlBtn(IconData icon, VoidCallback onPressed, String tooltip) {
     final ts = ThemeService.instance;
     return Material(
       color: ts.cardBackground,
@@ -2062,19 +1743,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     );
   }
 
-  Widget _buildMetricCard(
-    String value,
-    String line1,
-    String line2,
-    IconData icon,
-    Color accentColor,
-    Color bgColor,
-  ) {
+  Widget _buildMetricCard(String value, String line1, String line2, IconData icon, Color accentColor, Color bgColor) {
     final ts = ThemeService.instance;
     final cardBg = ts.isDark ? accentColor.withValues(alpha: 0.15) : bgColor;
-    final cardBorder = ts.isDark
-        ? accentColor.withValues(alpha: 0.35)
-        : accentColor.withValues(alpha: 0.2);
+    final cardBorder = ts.isDark ? accentColor.withValues(alpha: 0.35) : accentColor.withValues(alpha: 0.2);
 
     return Expanded(
       child: Container(
@@ -2094,12 +1766,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               children: [
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: accentColor,
-                    height: 1,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: accentColor, height: 1),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -2129,19 +1796,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     );
   }
 
-  Widget _buildAgencyCard(
-    String code,
-    String name,
-    String count,
-    String label,
-    Color accentColor,
-    Color bgColor,
-  ) {
+  Widget _buildAgencyCard(String code, String name, String count, String label, Color accentColor, Color bgColor) {
     final ts = ThemeService.instance;
     final cardBg = ts.isDark ? accentColor.withValues(alpha: 0.15) : bgColor;
-    final cardBorder = ts.isDark
-        ? accentColor.withValues(alpha: 0.35)
-        : accentColor.withValues(alpha: 0.2);
+    final cardBorder = ts.isDark ? accentColor.withValues(alpha: 0.35) : accentColor.withValues(alpha: 0.2);
 
     return Expanded(
       child: Container(
@@ -2161,11 +1819,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 children: [
                   Text(
                     code,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: accentColor,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentColor),
                   ),
                   Text(
                     name,
@@ -2184,11 +1838,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
               children: [
                 Text(
                   count,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: accentColor,
-                  ),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: accentColor),
                 ),
                 if (label.isNotEmpty)
                   Text(
@@ -2206,212 +1856,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     );
   }
 
-  Widget _buildIncidentItemWidget(
-    Map<String, dynamic> item,
-    Color brandOrange,
-  ) {
-    final ts = ThemeService.instance;
-    final statusConfig = _getStatusConfig(item['status'] ?? item['reqStatus']);
-    final typeStyle = emergencyTypeStyle(
-      item['type'] ?? item['incType'] ?? '',
-    );
-    final reqIdText = _formatRequestId(item);
-    final emergencyType = _formatEmergencyType(
-      item['type'] ?? item['incType'] ?? '',
-      incident: item,
-    );
-    final residentName =
-        item['residentName'] ??
-        item['userName'] ??
-        item['citizenName'] ??
-        item['senderName'] ??
-        'Citizen User';
-    final location = _getLocationLabel(item);
-    final phoneNumber =
-        item['phoneNumber'] ??
-        item['contactNo'] ??
-        item['phone'] ??
-        '0917-123-4567';
-    final timeReported =
-        item['timeString'] ??
-        _formatTimeString(item['rawTimestamp'] ?? item['SOS_timeStamp']);
-    final priority = item['priority'] ?? 'High';
-
-    return InkWell(
-      onTap: () => _locateIncidentOnMap(item),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: statusConfig['cardBg'] as Color,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: statusConfig['cardBorder'] as Color,
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: statusConfig['dotColor'] as Color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  reqIdText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: ts.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                _buildSmallBadge(
-                  priority,
-                  const Color(0xFFFF6B00),
-                  ts.isDark ? const Color(0xFF431407) : const Color(0xFFFFEDD5),
-                ),
-                const Spacer(),
-                _buildSmallBadge(
-                  statusConfig['label'] as String,
-                  statusConfig['textColor'] as Color,
-                  statusConfig['bgColor'] as Color,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: typeStyle['bgColor'] as Color,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(
-                    typeStyle['icon'] as IconData,
-                    size: 15,
-                    color: typeStyle['color'] as Color,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "$emergencyType — $residentName",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: ts.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 13,
-                  color: ts.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    location,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: ts.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  Icons.phone_outlined,
-                  size: 12,
-                  color: ts.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  phoneNumber,
-                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  "·",
-                  style: TextStyle(color: ts.textSecondary, fontSize: 10),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.access_time_rounded,
-                  size: 12,
-                  color: ts.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  timeReported,
-                  style: TextStyle(fontSize: 10, color: ts.textSecondary),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: ts.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.near_me_outlined,
-                        size: 11,
-                        color: ts.textPrimary,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        "Map",
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: ts.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildIncidentItemWidget(Map<String, dynamic> item, Color brandOrange) => _incidentCard(item);
 }
 
 class CustomPinMarker extends StatelessWidget {
@@ -2421,34 +1866,7 @@ class CustomPinMarker extends StatelessWidget {
   const CustomPinMarker({super.key, required this.icon, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Center(child: Icon(icon, size: 18, color: color)),
-        ),
-        ClipPath(
-          clipper: TriangleClipper(),
-          child: Container(width: 8, height: 5, color: color),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => IncidentRingMarker(icon: icon, color: color);
 }
 
 class TriangleClipper extends CustomClipper<ui.Path> {

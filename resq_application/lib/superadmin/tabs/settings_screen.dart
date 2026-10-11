@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/resq_dropdown.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../services/theme_service.dart';
@@ -9,6 +10,7 @@ import '../../shared/tab_activity.dart';
 import '../../shared/display_settings.dart';
 import '../../services/password_policy.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/resq_toast.dart';
 enum SettingsCategory {
   appearance,
   alerts,
@@ -786,7 +788,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
-    if (_soundAlerts && _matchesSearch('Alert sounds preview', 'sound')) list.add(const SoundPreviewPanel());
+    if (_soundAlerts && _matchesSearch('Alert sounds preview', 'sound')) list.add(const SoundPreviewPanel(forEoc: true));
     return list;
   }
   // --- MAP SETTINGS ---
@@ -863,29 +865,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _sessionTimeout,
-                    isDense: true,
-                    items: ['30 sec', '1 min', '5 min', '15 min', '30 min', '1 hour']
-                        .map((val) => DropdownMenuItem(
-                              value: val,
-                              child: Text(val, style: const TextStyle(fontSize: 12)),
-                            ))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _sessionTimeout = v);
-                        _saveSetting({'session_timeout': v});
-                      }
-                    },
-                  ),
+              SizedBox(
+                width: 130,
+                child: ResqSelect<String>(
+                  value: _sessionTimeout,
+                  icon: Icons.timer_outlined,
+                  height: 38,
+                  compact: true,
+                  options: [
+                    for (final t in const ['30 sec', '1 min', '5 min', '15 min', '30 min', '1 hour']) ResqOption(t, t),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _sessionTimeout = v);
+                      _saveSetting({'session_timeout': v});
+                    }
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -1150,7 +1145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                       if (res['success'] == true) {
                         navigator.pop();
-                        messenger.showSnackBar(
+                        messenger.showResqSnackBar(
                           const SnackBar(
                             content: Text('Password updated successfully!'),
                             backgroundColor: Color(0xFF0E9F6E),

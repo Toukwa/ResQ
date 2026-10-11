@@ -62,7 +62,7 @@ void main() {
       });
 
   test('Real-Time Tracking', () async {
-    fb.write('incidents/11', {'Req_ID': 11, 'incType': 'Fire', 'reqStatus': 'Pending', 'dept_status': {'BFP': 'Pending'}});
+    fb.write('incidents/11', {'Req_ID': 11, 'incType': 'Fire', 'reqStatus': 'Pending', 'severity': 'Urgent', 'dept_status': {'BFP': 'Pending'}});
     await fb.run(() => IncidentData.dispatchVehicle(reqId: 11, vehicleId: 1, adminId: 1));
     final route = [(13.4215, 123.4842), (13.4230, 123.4860), (13.4250, 123.4885)];
     final pins = await trackMap((snapshot) async {
@@ -75,7 +75,7 @@ void main() {
   });
 
   test('Status Display', () async {
-    fb.write('incidents/11', {'Req_ID': 11, 'incType': 'Fire', 'reqStatus': 'Pending', 'dept_status': {'BFP': 'Pending'}});
+    fb.write('incidents/11', {'Req_ID': 11, 'incType': 'Fire', 'reqStatus': 'Pending', 'severity': 'Urgent', 'dept_status': {'BFP': 'Pending'}});
     Future<String> statusOf1() async => vehicleStatus((await fb.run(VehicleData.getVehicles)).firstWhere((v) => v['vehicle_ID'] == 1));
     expect(await statusOf1(), 'Available');
     await fb.run(() => IncidentData.dispatchVehicle(reqId: 11, vehicleId: 1, adminId: 1));

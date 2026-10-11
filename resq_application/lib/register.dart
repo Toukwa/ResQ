@@ -1,9 +1,14 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'shared/resq_dropdown.dart';
 import 'auth_service.dart';
 import 'services/theme_service.dart';
+import 'shared/birthdate_picker.dart';
+import 'shared/google_logo.dart';
+import 'shared/iriga_address.dart';
 import 'shared/resq_logo.dart';
 import 'services/password_policy.dart';
+import 'shared/resq_toast.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,13 +21,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isNetworkLoading = false; // Prevents double-tapping while sending data
+  bool _googleBusy = false;
+  DateTime? _birthdate;
+  String? _barangay;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
@@ -45,6 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // 1. Validation Check: Ensure no empty fields are pushed to database columns
     if (fullName.isEmpty ||
         contactNo.isEmpty ||
+        _birthdate == null ||
+        _barangay == null ||
         email.isEmpty ||
         password.isEmpty) {
       _showFeedbackMessage('Please fill out all fields completely.');
@@ -72,6 +81,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       contactNo: contactNo,
       email: email,
       password: password,
+      birthdate: BirthdatePicker.format(_birthdate!),
+      barangay: _barangay!,
     );
 
     if (mounted) {
@@ -79,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (result.success) {
         // Pop up contextual notification success dialog box
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Account successfully created! You can now log in.'),
             backgroundColor: Colors.green,
@@ -88,17 +99,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Take them backward down the application tree layout stack straight to the login UI
         Navigator.pop(context);
       } else {
-        _showFeedbackMessage(
-          result.error ?? 'Registration rejected. Email might be taken or backend is down.',
-        );
+        _showFeedbackMessage(result.error ?? 'Registration rejected. Email might be taken or backend is down.');
       }
     }
   }
 
+  /// Same look as the text fields, for the birthdate and barangay pickers.
+  InputDecoration _selectDecor(String hint, IconData icon, Color grey, Color border, Color brand) => InputDecoration(
+    hintText: hint,
+    hintStyle: TextStyle(color: grey.withValues(alpha: 0.7)),
+    prefixIcon: Icon(icon, color: grey, size: 20),
+    filled: true,
+    fillColor: const Color(0xFFF8FAFC),
+    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: brand),
+    ),
+  );
+
   void _showFeedbackMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Google sign-up. The login screen finishes the sign-in (email code, home screen).
+  Future<void> _handleGoogleSignUp() async {
+    setState(() => _googleBusy = true);
+    final result = await AuthService.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _googleBusy = false);
+    // Both null: the user closed the Google window
+    if (result.data == null && result.error == null) return;
+    Navigator.pop(context, result);
   }
 
   @override
@@ -111,7 +147,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     bool isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
-    Widget formContent = Column(
+    // Stays on top while the fields below scroll
+    Widget header = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -129,23 +166,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Icon(Icons.arrow_back, size: 18, color: textDark),
               ),
             ),
+            // Title sits between the back button and the logo
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    'Create Account',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: textDark),
+                  ),
+                  const Text(
+                    'Register as a ResQ citizen',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: textGrey),
+                  ),
+                ],
+              ),
+            ),
             const ResqLogo(size: 32, radius: 10),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          'Create Account',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: textDark,
-          ),
-        ),
-        const Text(
-          'Register as a ResQ citizen',
-          style: TextStyle(fontSize: 12, color: textGrey),
-        ),
-        const SizedBox(height: 16),
+      ],
+    );
+
+    Widget formContent = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         _buildFieldLabel('Full Name', textDark),
         _buildTextField(
           _nameController,
@@ -168,6 +215,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
           textDark,
           keyboardType: TextInputType.phone,
         ),
+        const SizedBox(height: 10),
+        _buildFieldLabel('Birthdate', textDark),
+        BirthdatePicker(
+          enabled: !_isNetworkLoading,
+          onChanged: (d) => setState(() => _birthdate = d),
+          decoration: (hint) => _selectDecor(
+            hint,
+            Icons.cake_outlined,
+            textGrey,
+            borderGrey,
+            brandOrange,
+          ).copyWith(prefixIcon: null, contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12)),
+          textStyle: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
+          menuColor: Colors.white,
+        ),
+        const SizedBox(height: 10),
+        _buildFieldLabel('Barangay', textDark),
+        ResqSelect<String>(
+          value: _barangay,
+          hint: 'Select your barangay',
+          icon: Icons.home_outlined,
+          height: 48,
+          enabled: !_isNetworkLoading,
+          options: [for (final b in IrigaAddress.barangays) ResqOption(b, b, icon: Icons.location_on_outlined)],
+          onChanged: (v) => setState(() => _barangay = v),
+        ),
+        const SizedBox(height: 6),
+        const Text(IrigaAddress.city, style: TextStyle(fontSize: 12, color: textGrey)),
         const SizedBox(height: 10),
         _buildFieldLabel('Email Address', textDark),
         _buildTextField(
@@ -202,37 +277,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
           borderGrey,
           brandOrange,
           textDark,
-          () => setState(
-            () => _obscureConfirmPassword = !_obscureConfirmPassword,
-          ),
+          () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
         ),
         const SizedBox(height: 20),
         ElevatedButton(
-          onPressed: _isNetworkLoading
-              ? null
-              : _processAccountRegistration, // Disabled while transmitting
+          onPressed: _isNetworkLoading ? null : _processAccountRegistration, // Disabled while transmitting
           style: ElevatedButton.styleFrom(
             backgroundColor: brandOrange,
             minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: _isNetworkLoading
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                 )
               : const Text(
                   'Create Account',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(child: Divider(color: borderGrey)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text('or', style: TextStyle(color: textGrey, fontSize: 12)),
+            ),
+            Expanded(child: Divider(color: borderGrey)),
+          ],
+        ),
+        const SizedBox(height: 18),
+        OutlinedButton(
+          onPressed: (_googleBusy || _isNetworkLoading) ? null : _handleGoogleSignUp,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+            side: const BorderSide(color: brandOrange, width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          child: _googleBusy
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: brandOrange),
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GoogleLogo(size: 18),
+                    SizedBox(width: 10),
+                    Text(
+                      'Sign up with Google',
+                      style: TextStyle(color: brandOrange, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
         ),
       ],
@@ -243,6 +343,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return Scaffold(
       backgroundColor: isDesktop ? pageBg : cardContainerBg,
+      // Header stays on top; a shadow appears only once content scrolls under it
+      appBar: isDesktop
+          ? null
+          : AppBar(
+              automaticallyImplyLeading: false,
+              toolbarHeight: 72,
+              titleSpacing: 28,
+              backgroundColor: cardContainerBg,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 4,
+              shadowColor: Colors.black26,
+              title: header,
+            ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),
@@ -252,9 +366,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: BoxDecoration(
                     color: cardContainerBg,
                     borderRadius: BorderRadius.circular(32),
-                    border: Border.all(
-                      color: ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0),
-                    ),
+                    border: Border.all(color: ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
                         color: ts.isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05),
@@ -262,11 +374,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
-                  child: formContent,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      header,
+                      const SizedBox(height: 16),
+                      Flexible(child: SingleChildScrollView(child: formContent)),
+                    ],
+                  ),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(28),
-                  child: formContent,
+              : SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(28, 16, 28, 28), child: formContent),
                 ),
         ),
       ),
@@ -301,10 +421,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         prefixIcon: Icon(icon, color: grey, size: 20),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 12,
-          horizontal: 16,
-        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: border),
@@ -336,19 +453,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         hintStyle: TextStyle(color: grey.withValues(alpha: 0.7)),
         prefixIcon: Icon(Icons.lock_outline, color: grey, size: 20),
         suffixIcon: IconButton(
-          icon: Icon(
-            obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-            color: grey,
-            size: 18,
-          ),
+          icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: grey, size: 18),
           onPressed: onToggle,
         ),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 12,
-          horizontal: 16,
-        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: border),

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../shared/resq_dropdown.dart';
+import '../../shared/resq_date_picker.dart';
 import 'package:intl/intl.dart';
 import '../../services/live_socket.dart' as io;
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +12,8 @@ import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/resq_toast.dart';
+import '../../shared/log_format.dart';
 
 class LogsScreen extends StatefulWidget {
   final String searchFilter;
@@ -113,7 +117,7 @@ class _LogsScreenState extends State<LogsScreen> {
         }
         
         // Parse individual log event
-        final parsedEvent = _parseSingleLogEvent(eventData);
+        final parsedEvent = parseLogEvent(eventData);
         if (parsedEvent != null) {
           parsedBatch.add(parsedEvent);
         }
@@ -257,8 +261,8 @@ class _LogsScreenState extends State<LogsScreen> {
                   const SizedBox(height: 8),
                   InkWell(
                     onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
+                      final picked = await showResqDatePicker(
+                        context,
                         initialDate: selectedExportDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime.now(),
@@ -333,14 +337,14 @@ class _LogsScreenState extends State<LogsScreen> {
   Future<void> _downloadAuditLogPackageZip(String dateStr) async {
     try {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           SnackBar(
             content: Row(
               children: const [
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
                 ),
                 SizedBox(width: 16),
                 Text('Building full-day PDF audit log & evidence photos package...'),
@@ -355,7 +359,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (zipBytes == null || zipBytes.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showResqSnackBar(
             const SnackBar(
               content: Text('Failed to generate audit package on server.'),
               backgroundColor: Colors.redAccent,
@@ -379,7 +383,7 @@ class _LogsScreenState extends State<LogsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           SnackBar(
             content: Text('Downloaded $fileName to ${saveDir.path}'),
             backgroundColor: const Color(0xFF10B981),
@@ -391,101 +395,13 @@ class _LogsScreenState extends State<LogsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           SnackBar(
             content: Text('Export error: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
-    }
-  }
-
-  // ==========================================
-  // SINGLE EVENT PARSER (for WebSocket buffering)
-  // ==========================================
-  Map<String, dynamic>? _parseSingleLogEvent(Map<String, dynamic> log) {
-    try {
-      final String action = log['action']?.toString() ?? 'SYSTEM_EVENT';
-      final String entityType = log['entity_type']?.toString() ?? 'system';
-      final String status = log['status']?.toString() ?? 'SUCCESS';
-      final String actorDisplay = log['actor_display']?.toString() ?? 
-                                   log['user_role']?.toString() ?? 
-                                   log['userName']?.toString() ?? 'System';
-
-      String iconName = 'notifications_none';
-      String iconBg = '#F1F5F9';
-      String iconColor = '#64748B';
-      String typeBg = '#E2E8F0';
-      String typeColor = '#475569';
-
-      if (status == 'FAILED') {
-        iconName = 'warning_amber_rounded';
-        iconBg = '#FEF2F2';
-        iconColor = '#EF4444';
-        typeBg = '#FEE2E2';
-        typeColor = '#991B1B';
-      } else if (entityType == 'emergency_request') {
-        iconName = 'warning_amber_rounded';
-        iconBg = '#FFF7ED';
-        iconColor = '#EA580C';
-        typeBg = '#FFEDD5';
-        typeColor = '#C2410C';
-      } else if (entityType == 'dispatch_event') {
-        iconName = 'local_shipping_outlined';
-        iconBg = '#EFF6FF';
-        iconColor = '#2563EB';
-        typeBg = '#DBEAFE';
-        typeColor = '#1E40AF';
-      } else if (entityType == 'response_vehicle') {
-        iconName = 'sync_rounded';
-        iconBg = '#F0FDF4';
-        iconColor = '#16A34A';
-        typeBg = '#DCFCE7';
-        typeColor = '#15803D';
-      }
-
-      DateTime parsedTime;
-      try {
-        final timestampStr = log['timestamp']?.toString() ?? 
-                             log['created_at']?.toString() ?? 
-                             log['createdAt']?.toString() ?? '';
-
-        if (timestampStr.isNotEmpty) {
-          parsedTime = DateTime.parse(timestampStr).toLocal();
-        } else {
-          parsedTime = DateTime.now();
-        }
-      } catch (e) {
-        parsedTime = DateTime.now();
-      }
-
-      return {
-        'id': log['log_id'],
-        'title': actorDisplay,
-        'type': action,
-        'category': entityType,
-        'description': "Action '$action' recorded on entity [$entityType] #${log['entity_id'] ?? 'N/A'}",
-        'status': status,
-        'requestId': log['entity_id']?.toString() ?? 'N/A',
-        'time': DateFormat('hh:mm a').format(parsedTime),
-        'date': DateFormat('yyyy-MM-dd').format(parsedTime),
-        'timestamp': parsedTime.toIso8601String(),
-        'source': "Real-time Audit Stream",
-        'icon': iconName,
-        'iconBg': iconBg,
-        'iconColor': iconColor,
-        'typeBg': typeBg,
-        'typeColor': typeColor,
-        'details': log['details']?.toString() ?? '',
-        'tags': [
-          {'text': entityType, 'bg': typeBg, 'color': typeColor},
-          {'text': status, 'bg': status == 'SUCCESS' ? '#DCFCE7' : '#FEE2E2', 'color': status == 'SUCCESS' ? '#15803D' : '#991B1B'}
-        ]
-      };
-    } catch (e) {
-      debugPrint('Error parsing single log event: $e');
-      return null;
     }
   }
 
@@ -655,7 +571,7 @@ class _LogsScreenState extends State<LogsScreen> {
           _isLoading = false;
         });
         // Show user-friendly error message
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showResqSnackBar(
           SnackBar(
             content: Text('Failed to load activity logs: ${e.toString()}'),
             backgroundColor: const Color(0xFFEF4444),
@@ -1075,34 +991,17 @@ class _LogsScreenState extends State<LogsScreen> {
               children: [
                 Text("Action Type", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
                 const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: ts.inputBackground,
-                    border: Border.all(color: ts.borderColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedActionFilter != null && _availableActions.contains(_selectedActionFilter) 
-                          ? _selectedActionFilter 
-                          : null,
-                      hint: Text("All Actions", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
-                      isExpanded: true,
-                      dropdownColor: ts.cardBackground,
-                      style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                      items: [
-                        DropdownMenuItem(value: null, child: Text("All Actions", style: TextStyle(color: ts.textPrimary))),
-                        ..._availableActions.map((action) => DropdownMenuItem(value: action, child: Text(action, style: TextStyle(color: ts.textPrimary)))),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedActionFilter = value;
-                          _currentPage = 1;
-                        });
-                      },
-                    ),
-                  ),
+                ResqDropdown<String>(
+                  value: _selectedActionFilter != null && _availableActions.contains(_selectedActionFilter) ? _selectedActionFilter : null,
+                  options: _availableActions,
+                  allLabel: 'All Actions',
+                  icon: Icons.bolt_rounded,
+                  labelOf: (v) => v,
+                  iconOf: (_) => Icons.bolt_rounded,
+                  onChanged: (v) => setState(() {
+                    _selectedActionFilter = v;
+                    _currentPage = 1;
+                  }),
                 ),
               ],
             ),
@@ -1112,34 +1011,22 @@ class _LogsScreenState extends State<LogsScreen> {
               children: [
                 Text("Status", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary)),
                 const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: ts.inputBackground,
-                    border: Border.all(color: ts.borderColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedStatusFilter != null && _availableStatuses.contains(_selectedStatusFilter) 
-                          ? _selectedStatusFilter 
-                          : null,
-                      hint: Text("All Statuses", style: TextStyle(fontSize: 12, color: ts.textSecondary)),
-                      isExpanded: true,
-                      dropdownColor: ts.cardBackground,
-                      style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                      items: [
-                        DropdownMenuItem(value: null, child: Text("All Statuses", style: TextStyle(color: ts.textPrimary))),
-                        ..._availableStatuses.map((status) => DropdownMenuItem(value: status, child: Text(status, style: TextStyle(color: ts.textPrimary)))),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedStatusFilter = value;
-                          _currentPage = 1;
-                        });
-                      },
-                    ),
-                  ),
+                ResqDropdown<String>(
+                  value: _selectedStatusFilter != null && _availableStatuses.contains(_selectedStatusFilter) ? _selectedStatusFilter : null,
+                  options: _availableStatuses,
+                  allLabel: 'All Statuses',
+                  icon: Icons.verified_rounded,
+                  labelOf: (v) => v,
+                  colorOf: (s) => switch (s.toUpperCase()) {
+                    'SUCCESS' => const Color(0xFF16A34A),
+                    'FAILED' || 'FAILURE' || 'ERROR' => const Color(0xFFEF4444),
+                    'PENDING' => const Color(0xFFF59E0B),
+                    _ => const Color(0xFF64748B),
+                  },
+                  onChanged: (v) => setState(() {
+                    _selectedStatusFilter = v;
+                    _currentPage = 1;
+                  }),
                 ),
               ],
             ),
@@ -1226,8 +1113,8 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
+    final DateTime? picked = await showResqDatePicker(
+      context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
@@ -1356,11 +1243,11 @@ class _LogsScreenState extends State<LogsScreen> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: _parseColor(event['iconBg'] as String),
+                  color: parseLogColor(event['iconBg'] as String),
                   shape: BoxShape.circle,
-                  border: Border.all(color: _parseColor(event['iconColor'] as String).withValues(alpha: 0.2)),
+                  border: Border.all(color: parseLogColor(event['iconColor'] as String).withValues(alpha: 0.2)),
                 ),
-                child: Icon(iconData, size: 14, color: _parseColor(event['iconColor'] as String)),
+                child: Icon(iconData, size: 14, color: parseLogColor(event['iconColor'] as String)),
               ),
               if (!isLast)
                 Expanded(
@@ -1389,12 +1276,12 @@ class _LogsScreenState extends State<LogsScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _parseColor(event['typeBg'] as String),
+                          color: parseLogColor(event['typeBg'] as String),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           event['type'] as String,
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: _parseColor(event['typeColor'] as String)),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: parseLogColor(event['typeColor'] as String)),
                         ),
                       ),
                       const Spacer(),
@@ -1428,12 +1315,12 @@ class _LogsScreenState extends State<LogsScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
-                                color: _parseColor(tag['bg'] as String),
+                                color: parseLogColor(tag['bg'] as String),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                               child: Text(
                                 tag['text'] as String,
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: _parseColor(tag['color'] as String)),
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: parseLogColor(tag['color'] as String)),
                               ),
                             ),
                           );
@@ -1574,78 +1461,4 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
 
-  Color _parseColor(String colorString) {
-    try {
-      final ts = ThemeService.instance;
-      if (colorString.startsWith('#')) {
-        final upper = colorString.toUpperCase();
-        if (ts.isDark) {
-          if (upper == '#E2E8F0') {
-            return const Color(0xFF334155);
-          }
-          if (upper == '#475569') {
-            return const Color(0xFFE2E8F0);
-          }
-          if (upper == '#F1F5F9' || upper == '#F8FAFC' || upper == '#FAFAFA' || upper == '#FFFFFF') {
-            return const Color(0xFF1E293B);
-          }
-          if (upper == '#FEF2F2' || upper == '#FFF0F0' || upper == '#FFEAEA') {
-            return const Color(0xFF450A0A);
-          }
-          if (upper == '#FEE2E2') {
-            return const Color(0xFF5F1D24);
-          }
-          if (upper == '#991B1B') {
-            return const Color(0xFFFCA5A5);
-          }
-          if (upper == '#FFF7ED' || upper == '#FFF3CD' || upper == '#FFEDD5') {
-            return const Color(0xFF431407);
-          }
-          if (upper == '#C2410C') {
-            return const Color(0xFFFDBA74);
-          }
-          if (upper == '#EFF6FF' || upper == '#EBF5FF' || upper == '#E0F2FE' || upper == '#DBEAFE') {
-            return const Color(0xFF1E3A8A);
-          }
-          if (upper == '#1E40AF') {
-            return const Color(0xFF93C5FD);
-          }
-          if (upper == '#F0FDF4' || upper == '#ECFDF5' || upper == '#DCFCE7' || upper == '#D1FAE5') {
-            return const Color(0xFF064E3B);
-          }
-          if (upper == '#15803D') {
-            return const Color(0xFF86EFAC);
-          }
-          if (upper == '#F3E8FF' || upper == '#F5F3FF') {
-            return const Color(0xFF3B0764);
-          }
-          if (upper == '#0F172A' || upper == '#1E293B' || upper == '#000000') {
-            return const Color(0xFFF8FAFC);
-          }
-          if (upper == '#334155' || upper == '#64748B') {
-            return const Color(0xFFCBD5E1);
-          }
-          if (upper == '#16A34A' || upper == '#10B981') {
-            return const Color(0xFF6EE7B7);
-          }
-          if (upper == '#2563EB' || upper == '#3B82F6') {
-            return const Color(0xFF93C5FD);
-          }
-          if (upper == '#DC2626' || upper == '#EF4444') {
-            return const Color(0xFFFCA5A5);
-          }
-          if (upper == '#EA580C' || upper == '#D97706') {
-            return const Color(0xFFFDBA74);
-          }
-          if (upper == '#9333EA' || upper == '#8B5CF6') {
-            return const Color(0xFFC084FC);
-          }
-        }
-        return Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
-      }
-      return Colors.grey;
-    } catch (e) {
-      return Colors.grey;
-    }
-  }
 }
