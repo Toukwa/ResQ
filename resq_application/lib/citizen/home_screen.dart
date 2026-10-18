@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import '../shared/display_settings.dart';
+import '../shared/evidence_camera.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -23,6 +23,10 @@ import '../shared/report_form.dart';
 import '../shared/voice_note.dart';
 import 'citizen_header.dart';
 import 'guest_registration_screen.dart';
+import '../services/prank_warning.dart';
+import '../services/sound_service.dart';
+import '../shared/iriga_address.dart';
+import '../shared/resq_logo.dart';
 import 'incident_status_screen.dart';
 import '../shared/resq_toast.dart';
 
@@ -77,6 +81,11 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
                       letterSpacing: -0.2,
                     ),
                   ),
+                  SizedBox(height: 1),
+                  Text(
+                    'You can send a new report once this one is closed.',
+                    style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w400, height: 1.3),
+                  ),
                 ],
               ),
             ),
@@ -93,11 +102,7 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  ),
+                  const _BlinkingDot(color: Colors.white, size: 7),
                   const SizedBox(width: 6),
                   Text(
                     incidentStatus,
@@ -111,6 +116,41 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A small dot that fades in and out, for live statuses.
+class _BlinkingDot extends StatefulWidget {
+  final Color color;
+  final double size;
+  const _BlinkingDot({required this.color, this.size = 8});
+
+  @override
+  State<_BlinkingDot> createState() => _BlinkingDotState();
+}
+
+class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderStateMixin {
+  late final _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _blink.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: Tween(begin: 0.2, end: 1.0).animate(_blink),
+    child: Container(
+      width: widget.size,
+      height: widget.size,
+      decoration: BoxDecoration(
+        color: widget.color,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: widget.color.withValues(alpha: 0.7), blurRadius: 6)],
+      ),
+    ),
+  );
 }
 
 class HomeScreen extends StatefulWidget {
@@ -143,11 +183,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// True once the citizen places the pin themselves; GPS updates then leave it alone
   /// until they tap "my location" again.
   bool _pinSetManually = false;
-
-  /// The "Help is on the way" banner floats over the form: its height reserves room at
-  /// the top, and once content scrolls under it the banner turns slightly see-through.
-  double _bannerHeight = 72;
-  bool _contentUnderBanner = false;
 
   /// No usable GPS: permission denied, location turned off, or no fix yet after trying.
   bool _locationOff = false;
@@ -183,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// Report Now guest: asked to finish registering once their report has ended.
   bool _isGuest = false;
   bool _registrationOpen = false;
+  bool _voiceExpanded = false;
 
   /// Loads the current name, in case it changed since this phone last logged in.
   Future<void> _refreshUserName() async {
@@ -201,6 +237,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _refreshUserName();
+    ThemeService.instance.addListener(_onThemeChanged);
+    DisplaySettings.mapTheme.addListener(_onThemeChanged);
+    _loadTheme();
+    _showWelcomeOnce();
+    _checkPrankWarning();
+    _warningTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkPrankWarning());
     _descriptionController.addListener(() => setState(() {}));
 
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
@@ -236,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     final activeList = reqs.where((r) {
       final s = (r['reqStatus'] ?? '').toString().trim().toLowerCase();
-      return s != 'completed' && s != 'denied' && s != 'declined' && s != 'cancelled';
+      return s != 'completed' && s != 'denied' && s != 'declined' && s != 'cancelled' && s != 'invalid';
     }).toList();
 
     if (mounted) {
@@ -393,14 +435,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _showAddressFor(LatLng point) async {
     if (mounted) setState(() => _isLoadingLocation = true);
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(point.latitude, point.longitude);
-
-      String barangay = placemarks.isNotEmpty ? (placemarks[0].subLocality ?? placemarks[0].name ?? "") : "";
-      String city = placemarks.isNotEmpty ? (placemarks[0].locality ?? placemarks[0].subAdministrativeArea ?? "") : "";
-
-      String formattedAddress = (barangay.isNotEmpty && city.isNotEmpty)
-          ? "$barangay, $city"
-          : (barangay.isNotEmpty ? barangay : (city.isNotEmpty ? city : "Iriga City"));
+      String? barangay;
+      try {
+        barangay = await IrigaAddress.barangayAt(point.latitude, point.longitude);
+      } catch (_) {} // offline or busy: fall back to the phone's own lookup
+      String formattedAddress;
+      if (barangay != null) {
+        formattedAddress = 'Brgy. $barangay, Iriga City';
+      } else {
+        List<Placemark> placemarks = await placemarkFromCoordinates(point.latitude, point.longitude);
+        String area = placemarks.isNotEmpty ? (placemarks[0].subLocality ?? placemarks[0].name ?? "") : "";
+        String city = placemarks.isNotEmpty
+            ? (placemarks[0].locality ?? placemarks[0].subAdministrativeArea ?? "")
+            : "";
+        formattedAddress = (area.isNotEmpty && city.isNotEmpty)
+            ? "$area, $city"
+            : (area.isNotEmpty ? area : (city.isNotEmpty ? city : "Iriga City"));
+      }
 
       // Skip if the pin moved on while looking this one up (e.g. it was just locked elsewhere)
       if (mounted && _currentLocation == point) {
@@ -492,11 +543,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final MapController fullScreenMapController = MapController();
         return Dialog.fullscreen(
           child: Scaffold(
+            resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
             appBar: AppBar(
-              backgroundColor: Colors.white,
+              backgroundColor: ThemeService.instance.cardBackground,
               elevation: 1,
               leading: IconButton(
-                icon: const Icon(Icons.close_rounded, color: Color(0xFF0F172A)),
+                icon: Icon(Icons.close_rounded, color: ThemeService.instance.textPrimary),
                 onPressed: () => Navigator.of(dialogContext).pop(),
               ),
               title: Column(
@@ -504,13 +556,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   Text(
                     _hasActiveIncident ? "Active Incident Location" : "Location Selector Map",
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeService.instance.textPrimary,
+                    ),
                   ),
                   Text(
                     _hasActiveIncident
                         ? "Location locked for current emergency report"
                         : "Tap anywhere on map to set emergency pin",
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    style: TextStyle(fontSize: 11, color: ThemeService.instance.textSecondary),
                   ),
                 ],
               ),
@@ -552,33 +608,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.resq',
-                          tileBuilder: ThemeService.instance.isDark
-                              ? (context, tileWidget, tile) => ColorFiltered(
-                                  colorFilter: const ColorFilter.matrix(<double>[
-                                    -0.2126,
-                                    -0.7152,
-                                    -0.0722,
-                                    0,
-                                    255,
-                                    -0.2126,
-                                    -0.7152,
-                                    -0.0722,
-                                    0,
-                                    255,
-                                    -0.2126,
-                                    -0.7152,
-                                    -0.0722,
-                                    0,
-                                    255,
-                                    0,
-                                    0,
-                                    0,
-                                    1,
-                                    0,
-                                  ]),
-                                  child: tileWidget,
-                                )
-                              : null,
+                          tileBuilder: DisplaySettings.mapTileBuilder,
                         ),
                         // Same pin and position as the small map, redrawn whenever it moves
                         ValueListenableBuilder<int>(
@@ -594,8 +624,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         right: 16,
                         child: FloatingActionButton.extended(
                           heroTag: 'recenter_gps',
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF0F172A),
+                          backgroundColor: ThemeService.instance.cardBackground,
+                          foregroundColor: ThemeService.instance.textPrimary,
                           onPressed: () async {
                             await _useMyLocation();
                             if (_currentLocation.latitude.isFinite && _currentLocation.longitude.isFinite) {
@@ -805,16 +835,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _showPermissionDeniedSnackBar('Camera');
       return;
     }
-    final picker = ImagePicker();
-    // Photos are shrunk by the camera picker (1600 px, quality 70: a few hundred KB)
-    final XFile? file = video
-        ? await picker.pickVideo(
-            source: ImageSource.camera,
-            maxDuration: const Duration(seconds: _maxVideoSeconds),
-          )
-        : await picker.pickImage(source: ImageSource.camera, imageQuality: 70, maxWidth: 1600, maxHeight: 1600);
+    if (video) await Permission.microphone.request(); // sound for the video; it still records without
+    if (!mounted) return;
+    // ResQ's own camera: quicker shutter than the phone's camera app, and never leaves the app
+    final file = await openEvidenceCamera(context, video: video, maxVideoSeconds: _maxVideoSeconds);
     if (file == null || !mounted || _uploadedImages.length >= _maxEvidence) return;
-    var evidence = File(file.path);
+    var evidence = file;
     if (video) {
       // Videos are compressed now, while the citizen fills in the rest of the form
       setState(() => _compressingVideo = true);
@@ -1061,8 +1087,252 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return 'Complete the form to continue';
   }
 
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Timer? _warningTimer;
+  bool _warningOpen = false;
+
+  /// An admin flagged one of this citizen's reports as a prank: show the warning
+  /// (it can't be dismissed without acknowledging) and record this device's IP.
+  Future<void> _checkPrankWarning() async {
+    if (_warningOpen || !mounted) return;
+    Map<String, dynamic>? warning;
+    try {
+      warning = await PrankWarning.pending();
+    } catch (_) {
+      return;
+    }
+    if (warning == null || !mounted) return;
+    _warningOpen = true;
+    final w = warning;
+    SoundService.playPrankWarning();
+    // The IP is recorded as soon as the warning appears, not when it's closed
+    PrankWarning.publicIp().then((ip) => PrankWarning.recordSeen(w, ip)).catchError((_) {});
+    const red = Color(0xFFDC2626);
+    final ts = ThemeService.instance;
+    final password = TextEditingController();
+    String? error;
+    bool hidden = true;
+    bool busy = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false, // no back button, no tapping outside: only the password closes it
+        child: StatefulBuilder(
+          builder: (ctx, setD) {
+            Future<void> tryUnlock() async {
+              if (!PrankWarning.passwordMatches(w, password.text)) {
+                setD(() => error = 'Incorrect password. Only authorized personnel can close this warning.');
+                return;
+              }
+              setD(() => busy = true);
+              try {
+                await PrankWarning.unlock(w);
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (_) {
+                setD(() {
+                  busy = false;
+                  error = "Couldn't close it. Check the internet connection and try again.";
+                });
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: ts.cardBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(color: red, width: 2),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: red.withValues(alpha: 0.12), shape: BoxShape.circle),
+                      child: const Icon(Icons.gpp_bad_rounded, color: red, size: 40),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Prank Report Warning',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: red),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${w['message'] ?? PrankWarning.defaultMessage}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, height: 1.45, color: ts.textPrimary),
+                    ),
+                    if (w['reqId'] != null) ...[
+                      const SizedBox(height: 8),
+                      Text('Report #${w['reqId']}', style: TextStyle(fontSize: 12, color: ts.textMuted)),
+                    ],
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: red.withValues(alpha: ts.isDark ? 0.15 : 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: red.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_rounded, color: red, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'This app is locked. Only authorized personnel from the responding office can unlock it.',
+                              style: TextStyle(fontSize: 12, height: 1.35, color: ts.textSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: password,
+                      obscureText: hidden,
+                      onSubmitted: (_) => busy ? null : tryUnlock(),
+                      style: TextStyle(color: ts.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Unlock password',
+                        hintStyle: TextStyle(color: ts.textMuted),
+                        errorText: error,
+                        errorMaxLines: 3,
+                        prefixIcon: Icon(Icons.key_rounded, color: ts.textMuted, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            hidden ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                            color: ts.textMuted,
+                            size: 20,
+                          ),
+                          onPressed: () => setD(() => hidden = !hidden),
+                        ),
+                        filled: true,
+                        fillColor: ts.inputBackground,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: ts.borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: red, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: red,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(46),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: busy ? null : tryUnlock,
+                    icon: const Icon(Icons.lock_open_rounded, size: 18),
+                    label: const Text('Unlock', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+    // Not disposed here: the pop-up is still animating closed and using it; it is freed with the pop-up
+    _warningOpen = false;
+  }
+
+  /// First login on this account: a short welcome explaining how to report.
+  Future<void> _showWelcomeOnce() async {
+    try {
+      final path = 'user_settings/${FirebaseAuthRest.uid}/welcome_seen';
+      if (await Rtdb.get(path) == true) return;
+      await Rtdb.set(path, true);
+    } catch (_) {
+      return; // offline: try again next time
+    }
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    final ts = ThemeService.instance;
+    final first = _userName.trim().split(' ').first;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ts.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ResqLogo(size: 64, radius: 18),
+            const SizedBox(height: 16),
+            Text(
+              'Welcome to ResQ, $first!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ts.textPrimary),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'In an emergency, pick what happened, add a photo or video, and send your report. '
+              'Responders will see your location, and you can follow your report from the bell at the top.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, height: 1.45, color: ts.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Tap your picture at the top right for settings.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: ts.textMuted),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: brandOrange,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Get started', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Applies the dark mode choice saved on the Settings screen.
+  Future<void> _loadTheme() async {
+    try {
+      final saved = await Rtdb.get('user_settings/${FirebaseAuthRest.uid}');
+      if (saved is! Map) return;
+      if (saved['theme_mode'] is String) ThemeService.instance.setThemeMode(saved['theme_mode']);
+      DisplaySettings.load(Map<String, dynamic>.from(saved)); // map theme
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    ThemeService.instance.removeListener(_onThemeChanged);
+    DisplaySettings.mapTheme.removeListener(_onThemeChanged);
+    _warningTimer?.cancel();
     _activeCheckTimer?.cancel();
     _descriptionController.dispose();
     _pulseController?.dispose();
@@ -1075,13 +1345,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
+      backgroundColor: ThemeService.instance.pageBackground,
       // Header stays on top; a shadow appears only once content scrolls under it
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 76,
         titleSpacing: 16,
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: ThemeService.instance.pageBackground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 4,
@@ -1089,529 +1360,732 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: CitizenHeader(userName: _userName),
       ),
       body: SafeArea(
-        child: Stack(
+        child: _hasActiveIncident
+            // The form stays in place, greyed out and locked (it still scrolls); the banner sits on top
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  _greyedOut(_reportForm(locked: true), scrollable: true),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: 8,
+                    child: HelpIsOnTheWayBanner(
+                      vehicleCode: _activeVehicleCode,
+                      incidentStatus: _activeStatusStr,
+                      onTap: _openActiveReport,
+                    ),
+                  ),
+                ],
+              )
+            : _reportForm(),
+      ),
+      // Send button stays in thumb reach instead of at the end of a long form
+      bottomNavigationBar: _hasActiveIncident ? _greyedOut(_sendBar()) : _sendBar(),
+    );
+  }
+
+  // ─── layout pieces ──────────────────────────────────────────────────────
+
+  /// An open report: only its status and a way to it, not a locked-out form.
+  /// Locked and drained of colour while a report is open.
+  Widget _greyedOut(Widget child, {bool scrollable = false}) => IgnorePointer(
+    ignoring: !scrollable, // a scrollable form locks its own buttons instead
+    child: Opacity(
+      opacity: 0.45,
+      child: ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0, 0, 0, 1, 0,
+        ]),
+        child: child,
+      ),
+    ),
+  );
+
+  void _openActiveReport() {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => IncidentStatusScreen(
+              citizenId: widget.citizenId,
+              userName: _userName,
+              emergencyId: _activeIncident!['Req_ID'].toString(),
+              emergencyTypes: (_activeIncident!['incType'] ?? 'Emergency').toString(),
+            ),
+          ),
+        )
+        .then((_) => _checkActiveIncident());
+  }
+
+  /// Numbered step title; the number turns into a green tick once the step is done.
+  Widget _stepHeader(int n, String title, {bool done = false, String? trailing, Color? trailingColor}) {
+    final ts = ThemeService.instance;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: done ? const Color(0xFF16A34A) : brandOrange, shape: BoxShape.circle),
+            child: done
+                ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                : Text(
+                    '$n',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary),
+            ),
+          ),
+          if (trailing != null)
+            Text(
+              trailing,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: trailingColor ?? ts.textMuted),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// The report in three steps: what, where, proof.
+  /// [locked]: a report is open, so it still scrolls but nothing in it can be tapped.
+  Widget _reportForm({bool locked = false}) {
+    final ts = ThemeService.instance;
+    return SingleChildScrollView(
+      // Locked: room at the top so the first step isn't hidden under the banner
+      padding: EdgeInsets.fromLTRB(16, locked ? 96 : 8, 16, 24),
+      child: IgnorePointer(
+        ignoring: locked,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned.fill(
-              // Notices when the form scrolls under the banner
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (n) {
-                  if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
-                    final under = n.metrics.pixels > 8;
-                    if (under != _contentUnderBanner) setState(() => _contentUnderBanner = under);
-                  }
-                  return false; // let the header's scroll shadow see it too
-                },
-                child: SingleChildScrollView(
-                  // Room at the top so nothing starts hidden under the banner
-                  padding: EdgeInsets.fromLTRB(16, _hasActiveIncident ? _bannerHeight + 16 : 16, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            // ── 1. What's happening ──
+            _stepHeader(1, "What's happening?", done: _selectedEmergencyTypes.isNotEmpty),
+            Row(
+              children: [
+                _buildCategoryCard(
+                  IncidentData.generalEmergency,
+                  agencySymbol('EOC').icon,
+                  'Not sure? We route it',
+                  agencySymbol('EOC').color,
+                ),
+                const SizedBox(width: 8),
+                _buildCategoryCard('BFP', agencySymbol('BFP').icon, 'Fire', agencySymbol('BFP').color),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildCategoryCard('PNP', agencySymbol('PNP').icon, 'Police', agencySymbol('PNP').color),
+                const SizedBox(width: 8),
+                _buildCategoryCard(
+                  'CDRRMO',
+                  agencySymbol('CDRRMO').icon,
+                  'Rescue & Medical',
+                  agencySymbol('CDRRMO').color,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // ── 2. Where ──
+            _stepHeader(2, 'Where?', trailing: 'Tap the map to move the pin'),
+            Container(
+              height: 180,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ts.borderColor),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: (_currentLocation.latitude.isFinite && _currentLocation.longitude.isFinite)
+                          ? _currentLocation
+                          : const LatLng(13.4210, 123.4142),
+                      initialZoom: 16.0,
+                      // Preview only: no panning or zooming here; tap to open the full map
+                      interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                      onTap: (tapPosition, point) => _showFullScreenMapDialog(),
+                    ),
                     children: [
-                      // Location Status Bar
-                      Row(
-                        children: [
-                          Icon(Icons.location_on_outlined, color: brandOrange, size: 18),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              _currentAddressText,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.resq',
+                        tileBuilder: DisplaySettings.mapTileBuilder,
+                      ),
+                      MarkerLayer(markers: [_userPinMarker(brandOrange)]),
+                    ],
+                  ),
+
+                  // Top Right Controls: GPS Recenter & Fullscreen Map
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Row(
+                      children: [
+                        if (!_hasActiveIncident)
+                          _mapIconButton(Icons.my_location_rounded, 'Use my location', _useMyLocation),
+                        _mapIconButton(Icons.fullscreen_rounded, 'Full screen map', _showFullScreenMapDialog),
+                      ],
+                    ),
+                  ),
+
+                  // Top left: tracking status with a blinking dot in the status colour
+                  Positioned(top: 10, left: 10, child: _trackingPill()),
+
+                  // Bottom right: the address on a shadow that fades in from the right
+                  Positioned(
+                    left: 90,
+                    right: 0,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        // Only as wide as the text, and light: just enough to read it
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(36, 6, 10, 6),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerRight,
+                              end: Alignment.centerLeft,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.45),
+                                Colors.black.withValues(alpha: 0.2),
+                                Colors.transparent,
+                              ],
+                              stops: const [0, 0.6, 1],
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _currentAddressText,
+                                  textAlign: TextAlign.right,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    shadows: [Shadow(color: Colors.black87, blurRadius: 3)],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.location_on_rounded, color: Colors.white, size: 14),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── 3. Add proof ──
+            _stepHeader(
+              3,
+              'Add proof',
+              done: _uploadedImages.isNotEmpty && (!_voiceRequired || _voiceNote != null),
+              trailing: '${_uploadedImages.length}/$_maxEvidence',
+              trailingColor: _uploadedImages.isNotEmpty ? brandOrange : null,
+            ),
+            // Voice (small tile) and photo/video (wide) side by side
+            SizedBox(
+              height: 92,
+              child: LayoutBuilder(
+                builder: (context, box) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Recording: grows to about two thirds; the photo button stays beside it
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeInOutCubic,
+                      width: _voiceExpanded ? box.maxWidth * 0.68 : 88,
+                      child: VoiceRecorderField(
+                        key: _voiceKey,
+                        compact: true,
+                        required: _voiceRequired,
+                        onChanged: (f) => setState(() => _voiceNote = f),
+                        onExpandedChanged: (v) => setState(() => _voiceExpanded = v),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: _photoButton()),
+                  ],
+                ),
+              ),
+            ),
+            if (_uploadedImages.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 110,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _uploadedImages.length,
+                  itemBuilder: (context, index) {
+                    final imgFile = _uploadedImages[index];
+                    return Stack(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          margin: const EdgeInsets.only(right: 10, top: 6),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: IncidentData.isVideoFile(imgFile.path)
+                              ? Container(
+                                  color: const Color(0xFF1E293B),
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 34),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Video',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : Image.file(imgFile, fit: BoxFit.cover),
+                        ),
+                        if (!_hasActiveIncident)
+                          Positioned(
+                            top: 0,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _uploadedImages.removeAt(index);
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
+                                child: const Icon(Icons.close, color: Colors.white, size: 14),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+            if (_compressingVideo)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Compressing video so it sends faster…',
+                      style: TextStyle(fontSize: 12, color: Color(0xFFFF6B00)),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+
+            // Note: optional (orange) until written (green); opens a sheet to type in
+            _noteTile(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Optional note: orange until something is written, then green with a preview.
+  Widget _noteTile() {
+    final ts = ThemeService.instance;
+    final note = _descriptionController.text.trim();
+    final done = note.isNotEmpty;
+    final c = done ? const Color(0xFF16A34A) : brandOrange;
+    return Material(
+      color: c.withValues(alpha: ts.isDark ? 0.18 : 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: c.withValues(alpha: ts.isDark ? 0.8 : 0.5), width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _openNoteSheet,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                child: Icon(done ? Icons.check_rounded : Icons.edit_note_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      done ? 'Note added' : 'Add a note',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: done ? c : ts.textPrimary),
+                    ),
+                    Text(
+                      done ? note : 'Optional',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: done ? ts.textSecondary : c),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(done ? Icons.edit_rounded : Icons.add_rounded, color: c, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bottom sheet for the note, styled like the evidence picker. Sits above the keyboard.
+  Future<void> _openNoteSheet() async {
+    final ts = ThemeService.instance;
+    final draft = TextEditingController(text: _descriptionController.text);
+    final saved = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ts.cardBackground,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheet) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheet).bottom),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: ts.borderColor, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: brandOrange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.edit_note_rounded, color: brandOrange, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            '● ${_locationStatus.text}',
-                            style: TextStyle(color: _locationStatus.color, fontSize: 12, fontWeight: FontWeight.bold),
+                            'Add a Note',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: ts.textPrimary),
+                          ),
+                          Text(
+                            'Anything else responders should know',
+                            style: TextStyle(fontSize: 12, color: ts.textSecondary),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-
-                      // Map View with Moveable Map & Fullscreen Option
-                      Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: draft,
+                  autofocus: true,
+                  maxLines: 4,
+                  maxLength: 300,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: TextStyle(color: ts.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Two people trapped on the second floor',
+                    hintStyle: TextStyle(color: ts.textMuted),
+                    filled: true,
+                    fillColor: ts.inputBackground,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: ts.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: brandOrange, width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (_descriptionController.text.isNotEmpty) ...[
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheet, ''),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFEF4444)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: const Text(
+                              'Remove',
+                              style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Stack(
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(sheet, draft.text.trim()),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: brandOrange,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: const Text('Save note', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    // Closed by swiping down: keep the note as it was
+    if (saved != null && mounted) setState(() => _descriptionController.text = saved);
+  }
+
+  /// Small square map control on a card; the tap area reaches past the card so it stays easy to hit.
+  Widget _mapIconButton(IconData icon, String tooltip, VoidCallback onTap) => Tooltip(
+    message: tooltip,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(5),
+        child: Material(
+          color: ThemeService.instance.cardBackground,
+          borderRadius: BorderRadius.circular(8),
+          elevation: 1.5,
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: Icon(
+              icon,
+              size: 18,
+              color: icon == Icons.my_location_rounded ? brandOrange : ThemeService.instance.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  /// "● Live location" status; the dot blinks in the tracking status colour.
+  Widget _trackingPill() {
+    final status = _locationStatus;
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FadeTransition(
+            opacity: _pulseController == null
+                ? const AlwaysStoppedAnimation(1.0)
+                : Tween(begin: 0.25, end: 1.0).animate(_pulseController!),
+            child: Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                color: status.color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Color.lerp(status.color, Colors.white, 0.5)!, width: 1.5),
+                boxShadow: [BoxShadow(color: status.color.withValues(alpha: 0.7), blurRadius: 8)],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status.text,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: status.color,
+              // Glows in its own status colour; the faint dark edge keeps it readable on light tiles
+              shadows: [
+                Shadow(color: status.color.withValues(alpha: 0.7), blurRadius: 8),
+                Shadow(color: status.color.withValues(alpha: 0.4), blurRadius: 14),
+                const Shadow(color: Colors.black26, blurRadius: 2),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Photo/video is required: red until something is added, then green.
+  Widget _photoButton() {
+    final ts = ThemeService.instance;
+    final n = _uploadedImages.length;
+    final done = n > 0;
+    final full = n >= _maxEvidence;
+    final c = done ? const Color(0xFF16A34A) : const Color(0xFFEF4444);
+    // Same look as the admin cards: a pale tint of the colour inside, a brighter border
+    return Material(
+      color: c.withValues(alpha: ts.isDark ? 0.18 : 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: c.withValues(alpha: ts.isDark ? 0.8 : 0.5), width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: full ? null : _showAttachmentSourcePicker,
+        child: LayoutBuilder(
+          builder: (context, box) => box.maxWidth < 150
+              // Squeezed beside the voice recorder: icon and a short label only
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                      child: Icon(
+                        done ? Icons.check_rounded : Icons.photo_camera_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      done ? '$n/$_maxEvidence' : 'Photo',
+                      maxLines: 1,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: c),
+                    ),
+                  ],
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                        child: Icon(
+                          done ? Icons.check_rounded : Icons.photo_camera_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            FlutterMap(
-                              mapController: _mapController,
-                              options: MapOptions(
-                                initialCenter:
-                                    (_currentLocation.latitude.isFinite && _currentLocation.longitude.isFinite)
-                                    ? _currentLocation
-                                    : const LatLng(13.4210, 123.4142),
-                                initialZoom: 16.0,
-                                // Preview only: no panning or zooming here; tap to open the full map
-                                interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                                onTap: (tapPosition, point) => _showFullScreenMapDialog(),
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.example.resq',
-                                ),
-                                MarkerLayer(markers: [_userPinMarker(brandOrange)]),
-                              ],
-                            ),
-
-                            // Top Right Controls: GPS Recenter & Fullscreen Map
-                            Positioned(
-                              top: 10,
-                              right: 10,
-                              child: Row(
-                                children: [
-                                  if (!_hasActiveIncident) ...[
-                                    Material(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      elevation: 2,
-                                      child: InkWell(
-                                        onTap: _useMyLocation,
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(8),
-                                          child: Icon(Icons.my_location_rounded, size: 20, color: Color(0xFFFF5200)),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Material(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    elevation: 2,
-                                    child: InkWell(
-                                      onTap: _showFullScreenMapDialog,
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(8),
-                                        child: Icon(Icons.fullscreen_rounded, size: 20, color: Color(0xFF0F172A)),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              done ? '$n of $_maxEvidence added' : 'Photo or video',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: done ? c : ts.textPrimary,
                               ),
                             ),
-
-                            // Bottom Left Touch Hint
-                            Positioned(
-                              bottom: 10,
-                              left: 10,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _hasActiveIncident ? Icons.lock_rounded : Icons.touch_app_rounded,
-                                      size: 12,
-                                      color: Colors.white70,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _hasActiveIncident
-                                          ? "Active Emergency Location (Locked)"
-                                          : "Moveable Map · Tap to set pin",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            const SizedBox(height: 2),
+                            Text(
+                              done ? (full ? 'Maximum reached' : 'Tap to add more') : 'Required',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: done ? ts.textSecondary : c,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-
-                      // Emergency Type Selection
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "🚨 Select Emergency Type",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _hasActiveIncident ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
-                            ),
-                          ),
-                          if (_hasActiveIncident)
-                            const Text(
-                              "Locked while active",
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Opacity(
-                        opacity: _hasActiveIncident ? 0.45 : 1.0,
-                        child: IgnorePointer(
-                          ignoring: _hasActiveIncident,
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  _buildCategoryCard(
-                                    IncidentData.generalEmergency,
-                                    agencySymbol('EOC').icon,
-                                    'Not sure? We route it',
-                                    agencySymbol('EOC').color,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  _buildCategoryCard(
-                                    'BFP',
-                                    agencySymbol('BFP').icon,
-                                    'Fire',
-                                    agencySymbol('BFP').color,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  _buildCategoryCard(
-                                    'PNP',
-                                    agencySymbol('PNP').icon,
-                                    'Police',
-                                    agencySymbol('PNP').color,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  _buildCategoryCard(
-                                    'CDRRMO',
-                                    agencySymbol('CDRRMO').icon,
-                                    'Rescue & Medical',
-                                    agencySymbol('CDRRMO').color,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Voice message: optional, but required after picking "Not sure"
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _voiceRequired ? "🎙️ Voice Message (Required)" : "🎙️ Voice Message (Optional)",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: _hasActiveIncident ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
-                              ),
-                            ),
-                          ),
-                          if (_voiceRequired && _voiceNote == null)
-                            const Text(
-                              'Tell us what is happening',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      VoiceRecorderField(
-                        key: _voiceKey,
-                        enabled: !_hasActiveIncident,
-                        required: _voiceRequired,
-                        onChanged: (f) => setState(() => _voiceNote = f),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // MULTI-PHOTO EVIDENCE SECTION
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "📷 Send Evidence (Required)",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: _hasActiveIncident ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
-                            ),
-                          ),
-                          Text(
-                            "${_uploadedImages.length}/$_maxEvidence",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: _uploadedImages.isNotEmpty ? const Color(0xFFFF6B00) : textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_compressingVideo)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Compressing video so it sends faster…',
-                                style: TextStyle(fontSize: 12, color: Color(0xFFFF6B00)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-
-                      Opacity(
-                        opacity: _hasActiveIncident ? 0.45 : 1.0,
-                        child: _uploadedImages.isEmpty
-                            ? GestureDetector(
-                                onTap: _hasActiveIncident ? null : _showAttachmentSourcePicker,
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.camera_alt_outlined, color: textSecondary),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          _hasActiveIncident
-                                              ? "Evidence locked during active incident"
-                                              : "Take a photo or record a video",
-                                          style: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : SizedBox(
-                                height: 110,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount:
-                                      _uploadedImages.length +
-                                      (_uploadedImages.length < _maxEvidence && !_hasActiveIncident ? 1 : 0),
-                                  itemBuilder: (context, index) {
-                                    if (index == _uploadedImages.length) {
-                                      // Add More (+) Card
-                                      return GestureDetector(
-                                        onTap: _showAttachmentSourcePicker,
-                                        child: Container(
-                                          width: 100,
-                                          height: 100,
-                                          margin: const EdgeInsets.only(right: 10),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFFF7ED),
-                                            borderRadius: BorderRadius.circular(14),
-                                            border: Border.all(color: brandOrange, width: 1.5),
-                                          ),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.add_a_photo_rounded, color: brandOrange, size: 28),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                "Add More",
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: brandOrange,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    }
-
-                                    final imgFile = _uploadedImages[index];
-                                    return Stack(
-                                      children: [
-                                        Container(
-                                          width: 100,
-                                          height: 100,
-                                          margin: const EdgeInsets.only(right: 10, top: 6),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(14),
-                                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                                          ),
-                                          clipBehavior: Clip.antiAlias,
-                                          child: IncidentData.isVideoFile(imgFile.path)
-                                              ? Container(
-                                                  color: const Color(0xFF1E293B),
-                                                  child: const Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.play_circle_fill_rounded,
-                                                        color: Colors.white,
-                                                        size: 34,
-                                                      ),
-                                                      SizedBox(height: 4),
-                                                      Text(
-                                                        'Video',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 11,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                )
-                                              : Image.file(imgFile, fit: BoxFit.cover),
-                                        ),
-                                        if (!_hasActiveIncident)
-                                          Positioned(
-                                            top: 0,
-                                            right: 4,
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  _uploadedImages.removeAt(index);
-                                                });
-                                              },
-                                              child: Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFFEF4444),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(Icons.close, color: Colors.white, size: 14),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Additional Notes Section
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Additional Notes (Optional)",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: _hasActiveIncident ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _descriptionController,
-                        enabled: !_hasActiveIncident,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText: _hasActiveIncident
-                              ? "Active incident in progress — notes locked until resolved."
-                              : "Anything else responders should know...",
-                          hintStyle: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
-                          filled: true,
-                          fillColor: _hasActiveIncident ? const Color(0xFFF1F5F9) : Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                          disabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: brandOrange),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Broadcast Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: (!_hasActiveIncident && _isFormValid) ? _submitEmergencyAlert : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEF4444),
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: disabledGray,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: Text(
-                            _hasActiveIncident
-                                ? "⚠️ ACTIVE INCIDENT IN PROGRESS — RESOLVE CURRENT EMERGENCY FIRST"
-                                : (_isFormValid ? "🚨 BROADCAST EMERGENCY ALERT" : _missingHint),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
-              ),
-            ),
-            // Floats over the form; slightly see-through once content scrolls under it
-            if (_hasActiveIncident)
-              Positioned(
-                left: 16,
-                right: 16,
-                top: 8,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: _contentUnderBanner ? 0.88 : 1,
-                  child: _MeasureSize(
-                    onChange: (size) {
-                      if (mounted && size.height != _bannerHeight) setState(() => _bannerHeight = size.height);
-                    },
-                    child: HelpIsOnTheWayBanner(
-                      vehicleCode: _activeVehicleCode,
-                      incidentStatus: _activeStatusStr,
-                      onTap: () {
-                        Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (context) => IncidentStatusScreen(
-                                  citizenId: widget.citizenId,
-                                  userName: _userName,
-                                  emergencyId: _activeIncident!['Req_ID'].toString(),
-                                  emergencyTypes: (_activeIncident!['incType'] ?? 'Emergency').toString(),
-                                ),
-                              ),
-                            )
-                            .then((_) => _checkActiveIncident());
-                      },
-                    ),
-                  ),
-                ),
-              ),
-          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pinned send button; says what is missing until the report is ready.
+  Widget _sendBar() {
+    final ts = ThemeService.instance;
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + MediaQuery.paddingOf(context).bottom),
+      decoration: BoxDecoration(
+        color: ts.pageBackground,
+        border: Border(top: BorderSide(color: ts.borderColor)),
+      ),
+      child: SizedBox(
+        height: 56,
+        child: ElevatedButton.icon(
+          onPressed: _isFormValid ? _submitEmergencyAlert : null,
+          icon: Icon(_isFormValid ? Icons.campaign_rounded : Icons.info_outline_rounded),
+          label: Text(
+            _isFormValid ? 'Send emergency alert' : _missingHint,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: ts.borderColor,
+            disabledForegroundColor: ts.textSecondary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
         ),
       ),
     );
@@ -1660,8 +2134,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
             decoration: BoxDecoration(
-              color: isSelected ? color.withValues(alpha: 0.08) : Colors.white,
-              border: Border.all(color: isSelected ? color : const Color(0xFFE2E8F0), width: isSelected ? 2.5 : 1),
+              color: isSelected ? color.withValues(alpha: 0.08) : ThemeService.instance.cardBackground,
+              border: Border.all(
+                color: isSelected ? color : ThemeService.instance.borderColor,
+                width: isSelected ? 2.5 : 1,
+              ),
               borderRadius: BorderRadius.circular(14),
               boxShadow: isSelected
                   ? [BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 2))]
@@ -1683,7 +2160,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? color : const Color(0xFF1E293B),
+                          color: isSelected ? color : ThemeService.instance.textPrimary,
                         ),
                       ),
                       Text(
@@ -1716,32 +2193,5 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
-}
-
-/// Reports its child's size after layout (used to reserve room under the floating banner).
-class _MeasureSize extends SingleChildRenderObjectWidget {
-  final ValueChanged<Size> onChange;
-  const _MeasureSize({required this.onChange, required super.child});
-
-  @override
-  RenderObject createRenderObject(BuildContext context) => _RenderMeasureSize(onChange);
-
-  @override
-  void updateRenderObject(BuildContext context, _RenderMeasureSize renderObject) => renderObject.onChange = onChange;
-}
-
-class _RenderMeasureSize extends RenderProxyBox {
-  ValueChanged<Size> onChange;
-  Size? _last;
-  _RenderMeasureSize(this.onChange);
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    if (size != _last) {
-      _last = size;
-      WidgetsBinding.instance.addPostFrameCallback((_) => onChange(size));
-    }
   }
 }

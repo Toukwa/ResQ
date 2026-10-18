@@ -193,6 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) {
         final pageBg = ThemeService.instance.pageBackground;
         return Scaffold(
+          resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
           backgroundColor: pageBg,
           body: SafeArea(
             child: AnimatedContainer(
@@ -470,10 +471,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
+                        color: themedBg(const Color(0xFFF3F4F6)),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
@@ -484,7 +485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           SizedBox(width: 8),
                           Text(
                             'Saving...',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF4B5563)),
+                            style: TextStyle(fontSize: 12, color: themedInk(const Color(0xFF4B5563))),
                           ),
                         ],
                       ),
@@ -818,6 +819,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _saveSetting({'show_unit_labels': v ? 1 : 0});
         },
       },
+      {
+        'icon': Icons.dark_mode_outlined,
+        'title': 'Dark Map',
+        'subtitle': 'Map colours on their own, separate from the app theme',
+        'value': DisplaySettings.mapDark,
+        'onChanged': (bool v) {
+          final mode = v ? 'Dark' : 'Light';
+          setState(() => DisplaySettings.mapTheme.value = mode);
+          _saveSetting({'map_theme': mode});
+        },
+      },
     ];
     for (final item in switches) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
@@ -1005,27 +1017,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       margin: const EdgeInsets.only(bottom: 14),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFDE8E8),
+                        color: themedBg(const Color(0xFFFDE8E8)),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: const Color(0xFFF8B4B4)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Color(0xFF9B1C1C), size: 18),
+                          Icon(Icons.error_outline, color: themedInk(const Color(0xFF9B1C1C)), size: 18),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               errorMessage!,
-                              style: const TextStyle(color: Color(0xFF9B1C1C), fontSize: 12),
+                              style: TextStyle(color: themedInk(const Color(0xFF9B1C1C)), fontSize: 12),
                             ),
                           ),
                         ],
                       ),
                     ),
                   // Current Password
-                  const Text(
+                  Text(
                     'Current Password',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themedInk(const Color(0xFF374151))),
                   ),
                   const SizedBox(height: 6),
                   TextField(
@@ -1047,9 +1059,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 14),
                   // New Password
-                  const Text(
+                  Text(
                     'New Password',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themedInk(const Color(0xFF374151))),
                   ),
                   const SizedBox(height: 6),
                   TextField(
@@ -1071,9 +1083,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 14),
                   // Confirm New Password
-                  const Text(
+                  Text(
                     'Confirm New Password',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themedInk(const Color(0xFF374151))),
                   ),
                   const SizedBox(height: 6),
                   TextField(

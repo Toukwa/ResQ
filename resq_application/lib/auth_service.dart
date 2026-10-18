@@ -1,7 +1,7 @@
 import 'services/firebase_services.dart';
 
 class AuthService {
-  static Future<({bool success, String? error})> registerCitizen({
+  static Future<({Map<String, dynamic>? data, String? error})> registerCitizen({
     required String fullName,
     required String contactNo,
     required String email,
@@ -10,7 +10,7 @@ class AuthService {
     required String barangay,
   }) async {
     try {
-      await FirebaseService.register(
+      final data = await FirebaseService.register(
         fullName: fullName,
         contactNo: contactNo,
         email: email,
@@ -18,9 +18,9 @@ class AuthService {
         birthdate: birthdate,
         barangay: barangay,
       );
-      return (success: true, error: null);
+      return (data: data, error: null);
     } catch (e) {
-      return (success: false, error: e.toString());
+      return (data: null, error: e.toString());
     }
   }
 

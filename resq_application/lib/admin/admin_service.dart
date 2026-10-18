@@ -74,9 +74,9 @@ class AdminService {
     }
   }
 
-  static Future<List<int>?> downloadAuditLogPackageZip(String targetDate) async {
+  static Future<List<int>?> downloadAuditLogPackageZip(String targetDate, {String department = 'ALL'}) async {
     try {
-      return await FirebaseService.downloadAuditLogPackageZip(targetDate);
+      return await FirebaseService.downloadAuditLogPackageZip(targetDate, department: department);
     } catch (_) {
       return null;
     }

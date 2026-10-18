@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/prank_warning.dart';
 import '../../shared/resq_dropdown.dart';
 import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
@@ -38,7 +39,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   // Authenticated user profile
   String _userName = 'Admin Dispatcher';
   String _userRole = 'Dispatcher';
-  String _userDepartment = 'CDRRMO';
+  String _userDepartment = '';
   String _userEmail = 'admin@resq.gov.ph';
   String _userInitials = 'AD';
   // Appearance state (backed by user_settings table)
@@ -67,6 +68,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     super.initState();
     _setupRxDart();
     _loadAllData();
+    _loadUnlockCode();
   }
   void _setupRxDart() {
     _searchSubscription = _searchSubject
@@ -138,7 +140,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
       if (profile != null && mounted) {
         final name = (profile['name'] as String?) ?? (profile['userName'] as String?) ?? 'Admin Dispatcher';
         final role = (profile['role'] as String?) ?? (profile['userRole'] as String?) ?? 'Dispatcher';
-        final dept = (profile['department'] as String?) ?? (profile['deptName'] as String?) ?? 'CDRRMO';
+        final dept = (profile['agency'] as String?) ?? (profile['department'] as String?) ?? (profile['deptName'] as String?) ?? '';
         final email = (profile['email'] as String?) ?? 'admin@resq.gov.ph';
         final parts = name.trim().split(RegExp(r'\s+'));
         String initials = 'AD';
@@ -372,7 +374,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                         ),
                       ),
                       Text(
-                        '$_userRole • $_userDepartment',
+                        _userDepartment.isEmpty ? _userRole : '$_userRole • $_userDepartment',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11,
@@ -478,10 +480,10 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
+                        color: themedBg(const Color(0xFFF3F4F6)),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
@@ -492,7 +494,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                           SizedBox(width: 8),
                           Text(
                             'Saving...',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF4B5563)),
+                            style: TextStyle(fontSize: 12, color: themedInk(const Color(0xFF4B5563))),
                           ),
                         ],
                       ),
@@ -685,7 +687,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                     Text(_userEmail, style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                     const SizedBox(height: 10),
                     Wrap(spacing: 6, runSpacing: 6, children: [
-                      pill(_userDepartment, const Color(0xFF3B82F6)),
+                      if (_userDepartment.isNotEmpty) pill(_userDepartment, const Color(0xFF3B82F6)),
                       pill(_userRole, const Color(0xFF94A3B8)),
                       pill('Active', const Color(0xFF10B981), icon: Icons.circle),
                     ]),
@@ -911,6 +913,17 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _saveSetting({'show_unit_labels': v ? 1 : 0});
         },
       },
+      {
+        'icon': Icons.dark_mode_outlined,
+        'title': 'Dark Map',
+        'subtitle': 'Map colours on their own, separate from the app theme',
+        'value': DisplaySettings.mapDark,
+        'onChanged': (bool v) {
+          final mode = v ? 'Dark' : 'Light';
+          setState(() => DisplaySettings.mapTheme.value = mode);
+          _saveSetting({'map_theme': mode});
+        },
+      },
     ];
     for (final item in switches) {
       if (_matchesSearch(item['title'] as String, item['subtitle'] as String)) {
@@ -1049,7 +1062,145 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         ),
       );
     }
+    if (_matchesSearch('Prank Warning Unlock Password', 'Password that closes a prank warning on a citizen phone')) {
+      const red = Color(0xFFDC2626);
+      final ts = ThemeService.instance;
+      list.add(const SizedBox(height: 10));
+      list.add(
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _showUnlockCodeDialog,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: red.withValues(alpha: ts.isDark ? 0.15 : 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: red.withValues(alpha: ts.isDark ? 0.6 : 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.key_rounded, color: red, size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Prank Warning Unlock Password',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: red),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _unlockCode == null
+                            ? 'Not set yet: ask the Super Admin to set it before sending a prank warning'
+                            : "View your agency's password that closes a prank warning. Share only with authorized personnel.",
+                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: red, size: 20),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return list;
+  }
+
+  String? _unlockCode;
+
+  Future<void> _loadUnlockCode() async {
+    try {
+      final code = await PrankWarning.myUnlockCode();
+      if (mounted) setState(() => _unlockCode = code);
+    } catch (_) {}
+  }
+
+  /// Shows the agency's unlock password (set by the Super Admin; admins can only view it).
+  Future<void> _showUnlockCodeDialog() async {
+    const red = Color(0xFFDC2626);
+    final ts = ThemeService.instance;
+    await _loadUnlockCode();
+    if (!mounted) return;
+    final code = _unlockCode;
+    bool hidden = true;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          backgroundColor: ts.cardBackground,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.key_rounded, color: red, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Prank Warning Unlock Password',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ts.textPrimary)),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "A citizen who gets a prank warning from your agency can't close it on their own. Authorized "
+                  "personnel type this password on the citizen's phone to unlock it. Only the Super Admin can change it.",
+                  style: TextStyle(fontSize: 12, height: 1.45, color: ts.textSecondary),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: ts.inputBackground,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ts.borderColor),
+                  ),
+                  child: code == null
+                      ? Text('Not set yet. Ask the Super Admin to set it.',
+                          style: TextStyle(fontSize: 13, color: ts.textSecondary))
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                hidden ? '•' * code.length : code,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: hidden ? 2 : 0.5,
+                                  color: red,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: hidden ? 'Show' : 'Hide',
+                              icon: Icon(hidden ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                                  size: 18, color: ts.textSecondary),
+                              onPressed: () => setD(() => hidden = !hidden),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          ],
+        ),
+      ),
+    );
   }
   // ---------------------------------------------------------------------------
   // CHANGE PASSWORD DIALOG MODAL
@@ -1098,27 +1249,27 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                       margin: const EdgeInsets.only(bottom: 14),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFDE8E8),
+                        color: themedBg(const Color(0xFFFDE8E8)),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: const Color(0xFFF8B4B4)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Color(0xFF9B1C1C), size: 18),
+                          Icon(Icons.error_outline, color: themedInk(const Color(0xFF9B1C1C)), size: 18),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               errorMessage!,
-                              style: const TextStyle(color: Color(0xFF9B1C1C), fontSize: 12),
+                              style: TextStyle(color: themedInk(const Color(0xFF9B1C1C)), fontSize: 12),
                             ),
                           ),
                         ],
                       ),
                     ),
                   // Current Password
-                  const Text(
+                  Text(
                     'Current Password',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themedInk(const Color(0xFF374151))),
                   ),
                   const SizedBox(height: 6),
                   TextField(
@@ -1140,9 +1291,9 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                   ),
                   const SizedBox(height: 14),
                   // New Password
-                  const Text(
+                  Text(
                     'New Password',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themedInk(const Color(0xFF374151))),
                   ),
                   const SizedBox(height: 6),
                   TextField(
@@ -1164,9 +1315,9 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                   ),
                   const SizedBox(height: 14),
                   // Confirm New Password
-                  const Text(
+                  Text(
                     'Confirm New Password',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themedInk(const Color(0xFF374151))),
                   ),
                   const SizedBox(height: 6),
                   TextField(

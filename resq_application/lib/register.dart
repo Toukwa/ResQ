@@ -9,6 +9,7 @@ import 'shared/iriga_address.dart';
 import 'shared/resq_logo.dart';
 import 'services/password_policy.dart';
 import 'shared/resq_toast.dart';
+import 'shared/terms.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _googleBusy = false;
   DateTime? _birthdate;
   String? _barangay;
+  final _terms = TermsConsentController();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -38,6 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _terms.dispose();
     super.dispose();
   }
 
@@ -73,9 +76,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // 4. Terms (a minor's parent may agree later; that never blocks signing up)
+    final termsProblem = _terms.check();
+    if (termsProblem != null) {
+      _showFeedbackMessage(termsProblem);
+      return;
+    }
+
     setState(() => _isNetworkLoading = true);
 
-    // 4. Fire network packet payload to your backend server architecture
+    // 5. Fire network packet payload to your backend server architecture
     final result = await AuthService.registerCitizen(
       fullName: fullName,
       contactNo: contactNo,
@@ -88,16 +98,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (mounted) {
       setState(() => _isNetworkLoading = false);
 
-      if (result.success) {
-        // Pop up contextual notification success dialog box
-        ScaffoldMessenger.of(context).showResqSnackBar(
-          const SnackBar(
-            content: Text('Account successfully created! You can now log in.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Take them backward down the application tree layout stack straight to the login UI
-        Navigator.pop(context);
+      if (result.data != null) {
+        try {
+          await Terms.saveAcceptance(_terms); // still signed in until the email code
+        } catch (_) {} // asked again at login if this didn't save
+        if (!mounted) return;
+        // Back to the login screen, which asks for the code just emailed
+        Navigator.pop(context, result);
       } else {
         _showFeedbackMessage(result.error ?? 'Registration rejected. Email might be taken or backend is down.');
       }
@@ -110,7 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     hintStyle: TextStyle(color: grey.withValues(alpha: 0.7)),
     prefixIcon: Icon(icon, color: grey, size: 20),
     filled: true,
-    fillColor: const Color(0xFFF8FAFC),
+    fillColor: ThemeService.instance.inputBackground,
     contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -219,7 +226,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _buildFieldLabel('Birthdate', textDark),
         BirthdatePicker(
           enabled: !_isNetworkLoading,
-          onChanged: (d) => setState(() => _birthdate = d),
+          onChanged: (d) {
+            setState(() => _birthdate = d);
+            _terms.setMinor(d != null && Terms.isMinor(d));
+          },
           decoration: (hint) => _selectDecor(
             hint,
             Icons.cake_outlined,
@@ -227,8 +237,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             borderGrey,
             brandOrange,
           ).copyWith(prefixIcon: null, contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12)),
-          textStyle: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
-          menuColor: Colors.white,
+          textStyle: TextStyle(fontSize: 14, color: ThemeService.instance.textPrimary),
+          menuColor: ThemeService.instance.cardBackground,
         ),
         const SizedBox(height: 10),
         _buildFieldLabel('Barangay', textDark),
@@ -279,7 +289,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           textDark,
           () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
+        TermsConsentSection(controller: _terms),
+        const SizedBox(height: 14),
         ElevatedButton(
           onPressed: _isNetworkLoading ? null : _processAccountRegistration, // Disabled while transmitting
           style: ElevatedButton.styleFrom(
@@ -342,6 +354,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final pageBg = ts.isDark ? const Color(0xFF111827) : const Color(0xFFF9FAFB);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: isDesktop ? pageBg : cardContainerBg,
       // Header stays on top; a shadow appears only once content scrolls under it
       appBar: isDesktop
@@ -420,7 +433,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         hintStyle: TextStyle(color: grey.withValues(alpha: 0.7)),
         prefixIcon: Icon(icon, color: grey, size: 20),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: ThemeService.instance.inputBackground,
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -457,7 +470,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onPressed: onToggle,
         ),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: ThemeService.instance.inputBackground,
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

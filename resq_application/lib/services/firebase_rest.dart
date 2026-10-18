@@ -157,6 +157,13 @@ class FirebaseAuthRest {
     return (uid: uid!, email: (r['email'] ?? '').toString(), name: r['displayName']?.toString());
   }
 
+  /// Emails [newEmail] a link that moves the signed-in account's login to it once clicked
+  /// (the only email change allowed while email enumeration protection is on).
+  static Future<void> sendEmailChangeLink(String newEmail) async {
+    await _post(_identity('sendOobCode'),
+        {'requestType': 'VERIFY_AND_CHANGE_EMAIL', 'idToken': await getIdToken(), 'newEmail': newEmail.trim()});
+  }
+
   static Future<void> sendPasswordReset(String email) async {
     await _post(_identity('sendOobCode'), {'requestType': 'PASSWORD_RESET', 'email': email.trim()});
   }

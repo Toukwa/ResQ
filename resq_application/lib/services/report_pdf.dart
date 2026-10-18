@@ -126,6 +126,15 @@ class ReportPdf {
         // ── 5. Department performance ──
         _section('5. Department Performance', 'Incidents handled, completion rate and response time per department.'),
         _table(r.departmentPerformance),
+
+        // ── 6. Top incident type and barangay ──
+        _section('6. Top Incident Type and Barangay',
+            'Per week and per month, for each department: the most reported incident type and the barangay with the most reports.',
+            _chartBox('Reports per Barangay', _barChart(r.countsByBarangay, maxBars: 10))),
+        pw.SizedBox(height: 10),
+        _table(r.topByPeriod(monthly: false)),
+        pw.SizedBox(height: 10),
+        _table(r.topByPeriod(monthly: true)),
       ],
     ));
     return doc.save();
@@ -173,11 +182,21 @@ class ReportPdf {
   static pw.Widget _noData() =>
       pw.Center(child: pw.Text('No data for this period.', style: pw.TextStyle(color: _grey, fontSize: 9)));
 
+  /// The PDF's built-in font only has Latin-1 characters: swap common typed ones
+  /// (dashes, curly quotes, ellipsis) for plain ones and drop the rest (emoji),
+  /// so citizens' notes never print as empty boxes.
+  static String _safe(String text) => text
+      .replaceAll(RegExp('[\u2013\u2014\u2212]'), '-')
+      .replaceAll(RegExp('[\u2018\u2019]'), "'")
+      .replaceAll(RegExp('[\u201C\u201D]'), '"')
+      .replaceAll('\u2026', '...')
+      .replaceAll(RegExp('[^\u0000-\u00FF]'), '');
+
   static pw.Widget _table(ReportTable t) => t.rows.isEmpty
       ? pw.Text('No ${t.title.toLowerCase()} data for this period.', style: pw.TextStyle(color: _grey, fontSize: 9))
       : pw.TableHelper.fromTextArray(
           headers: t.columns,
-          data: t.rows,
+          data: [for (final r in t.rows) [for (final c in r) _safe(c)]],
           headerStyle: pw.TextStyle(color: PdfColors.white, fontSize: 7.5, fontWeight: pw.FontWeight.bold),
           headerDecoration: pw.BoxDecoration(color: _dark),
           cellStyle: const pw.TextStyle(fontSize: 7.5),

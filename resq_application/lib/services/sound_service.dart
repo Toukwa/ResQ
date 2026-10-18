@@ -85,6 +85,17 @@ class SoundService {
     _socket = null;
   }
 
+  /// The prank-report warning on a citizen's phone: a low falling buzzer, three times.
+  /// Plays even when alert sounds are off, so the warning can't go unnoticed.
+  static Future<void> playPrankWarning() async {
+    try {
+      await _player.stop();
+      await _player.play(AssetSource('sounds/prank_warning.wav'));
+    } catch (e) {
+      debugPrint('Prank warning sound failed: $e');
+    }
+  }
+
   /// Plays [cue] if sounds are on. Rapid repeats (e.g. several units sent at
   /// once) play only once.
   /// [urgent] (an EOC alert) plays even right after another sound.

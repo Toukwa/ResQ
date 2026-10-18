@@ -221,6 +221,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
     final Color borderGrey = ts.borderColor;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: bgCanvas,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
@@ -348,6 +349,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                         _buildStatusPill("En Route", _countStatus("En Route"), 2),
                         _buildStatusPill("Completed", _countStatus("Completed"), 3),
                         _buildStatusPill("Declined", _countStatus("Declined"), 4),
+                        _buildStatusPill("Invalid", _countStatus("Invalid"), 5),
                       ],
                     ),
                   ),

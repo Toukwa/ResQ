@@ -1,6 +1,7 @@
 import '../../shared/staff_notifications_panel.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/search_shortcut.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/theme_service.dart';
@@ -38,6 +39,7 @@ class EocHeader extends StatefulWidget {
 class _EocHeaderState extends State<EocHeader> {
   late String _timeString;
   final TextEditingController _searchController = TextEditingController();
+  final _searchFocus = FocusNode(); // Ctrl+F lands here
 
   // RxDart streams for reactive clock & debounced search
   StreamSubscription? _clockSubscription;
@@ -47,6 +49,7 @@ class _EocHeaderState extends State<EocHeader> {
   @override
   void initState() {
     super.initState();
+    SearchShortcut.register(_searchFocus);
     _timeString = _formatDateTime(DateTime.now());
 
     // RxDart periodic clock tick every second
@@ -64,6 +67,8 @@ class _EocHeaderState extends State<EocHeader> {
 
   @override
   void dispose() {
+    SearchShortcut.unregister(_searchFocus);
+    _searchFocus.dispose();
     _clockSubscription?.cancel();
     _searchSubscription?.cancel();
     _searchSubject.close();
@@ -177,6 +182,7 @@ class _EocHeaderState extends State<EocHeader> {
             height: 38,
             child: TextField(
               controller: _searchController,
+              focusNode: _searchFocus,
               onChanged: (value) => _searchSubject.add(value),
               style: TextStyle(fontSize: 12, color: textPrimary),
               decoration: InputDecoration(
@@ -208,6 +214,11 @@ class _EocHeaderState extends State<EocHeader> {
           PopupMenuButton<String>(
             offset: const Offset(0, 44),
             tooltip: 'Notifications',
+            // Opening the list marks everything read, like the phone app: the list still shows
+            // what was new this time, and the badge clears
+            onOpened: () {
+              if (widget.unreadCount > 0) widget.onClearUnread();
+            },
             color: ThemeService.instance.cardBackground,
             surfaceTintColor: Colors.transparent,
             elevation: 8,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../shared/severity_gate.dart';
+import '../../shared/dashboard_analytics_view.dart';
 import '../../services/firebase_rest.dart';
 import '../../shared/resq_dropdown.dart';
 import '../../shared/incident_details_dialog.dart';
@@ -50,7 +51,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   bool _isLoading = true;
   io.Socket? _socket;
   double _mapZoom = 15.0;
-  int _selectedTabIndex = 0; // 0: Requests, 1: Units, 2: Activity
+  int _selectedTabIndex = 0; // 0: Requests, 1: Units, 2: Activity, 3: Analytics
 
   // RxDart: batches rapid socket refresh signals into a single data fetch
   final PublishSubject<String> _refreshStream = PublishSubject<String>();
@@ -346,7 +347,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     if (_dept == 'ALL') return _metrics['dispatchedToday'] ?? 0;
     return _incidents.where((i) {
       final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-      return st != 'pending' && st != 'cancelled' && st != 'declined' && _matchesDepartment(i);
+      return st != 'pending' && st != 'cancelled' && st != 'declined' && st != 'invalid' && _matchesDepartment(i);
     }).length;
   }
 
@@ -423,6 +424,17 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   Map<String, dynamic> _getStatusConfig(dynamic rawStatus) {
     final ts = ThemeService.instance;
     final s = (rawStatus ?? 'pending').toString().trim().toLowerCase();
+    if (s == 'invalid') {
+      return {
+        'label': 'Invalid',
+        'textColor': const Color(0xFF7C3AED),
+        'bgColor': ts.isDark ? const Color(0xFF3B1F6B) : const Color(0xFFF3E8FF),
+        'borderColor': const Color(0xFFDDD6FE),
+        'dotColor': const Color(0xFF7C3AED),
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
+      };
+    }
     if (s == 'en route' || s == 'en_route') {
       return {
         'label': 'En Route',
@@ -939,7 +951,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 count: '$_activeIncidentsCount',
                 title: 'Active Incidents',
                 icon: Icons.warning_amber_rounded,
-                backgroundColor: const Color(0xFFFFEFF1),
+                backgroundColor: themedBg(const Color(0xFFFFEFF1)),
                 borderColor: const Color(0xFFFFDDE1),
                 accentColor: const Color(0xFFEB5757),
               ),
@@ -950,7 +962,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 count: '$_availableUnitsCount',
                 title: 'Available Units',
                 icon: Icons.check_circle_outline,
-                backgroundColor: const Color(0xFFEFFFF4),
+                backgroundColor: themedBg(const Color(0xFFEFFFF4)),
                 borderColor: const Color(0xFFD3F8DF),
                 accentColor: const Color(0xFF27AE60),
               ),
@@ -961,7 +973,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 count: '$_enRouteUnitsCount',
                 title: 'En Route',
                 icon: Icons.navigation_outlined,
-                backgroundColor: const Color(0xFFF2F6FF),
+                backgroundColor: themedBg(const Color(0xFFF2F6FF)),
                 borderColor: const Color(0xFFDCE6FF),
                 accentColor: const Color(0xFF2F80ED),
               ),
@@ -972,7 +984,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 count: '$_dispatchedTodayCount',
                 title: 'Dispatched Today',
                 icon: Icons.local_shipping_outlined,
-                backgroundColor: const Color(0xFFF7F3FF),
+                backgroundColor: themedBg(const Color(0xFFF7F3FF)),
                 borderColor: const Color(0xFFEBE0FF),
                 accentColor: const Color(0xFF9B51E0),
               ),
@@ -1008,33 +1020,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.resq.admin.dashboard',
-                          tileBuilder: ts.isDark
-                              ? (context, tileWidget, tile) => ColorFiltered(
-                                  colorFilter: const ColorFilter.matrix(<double>[
-                                    -0.2126,
-                                    -0.7152,
-                                    -0.0722,
-                                    0,
-                                    255,
-                                    -0.2126,
-                                    -0.7152,
-                                    -0.0722,
-                                    0,
-                                    255,
-                                    -0.2126,
-                                    -0.7152,
-                                    -0.0722,
-                                    0,
-                                    255,
-                                    0,
-                                    0,
-                                    0,
-                                    1,
-                                    0,
-                                  ]),
-                                  child: tileWidget,
-                                )
-                              : null,
+                          tileBuilder: DisplaySettings.mapTileBuilder,
                         ),
                         MarkerLayer(markers: _buildMapMarkers()),
                         // Every admin sees the whole fleet live
@@ -1184,6 +1170,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       ),
                       _buildTopTabItem(index: 1, label: "Units", icon: Icons.local_shipping_outlined),
                       _buildTopTabItem(index: 2, label: "Activity", icon: Icons.show_chart_rounded),
+                      _buildTopTabItem(index: 3, label: "Analytics", icon: Icons.insights_rounded),
                     ],
                   ),
                 ),
@@ -1195,7 +1182,16 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               Expanded(
                 child: IndexedStack(
                   index: _selectedTabIndex,
-                  children: [_buildRequestsTabView(), _buildUnitsTabView(), _buildActivityTabView()],
+                  children: [
+                    _buildRequestsTabView(),
+                    _buildUnitsTabView(),
+                    _buildActivityTabView(),
+                    DashboardAnalyticsView(
+                      incidents: _incidents.where(_matchesDepartment).toList(),
+                      vehicles: _filteredVehicles,
+                      showAgencies: _dept == 'ALL',
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1473,9 +1469,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3E8FF),
+                    color: themedBg(const Color(0xFFF3E8FF)),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFD8B4FE)),
+                    border: Border.all(color: themedBg(const Color(0xFFD8B4FE))),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,

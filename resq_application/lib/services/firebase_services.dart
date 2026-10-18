@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import '../shared/iriga_address.dart';
 
 import 'dart:convert';
@@ -34,7 +35,24 @@ class FirebaseService {
     required String password,
   }) async {
     final uid = await FirebaseAuthRest.signIn(email, password);
+    await _applyPendingEmail(uid, email);
     return _afterSignIn(uid);
+  }
+
+  /// A Super Admin changed this account's email: logging in with the new one finishes it;
+  /// logging in with the old one sends the confirmation link to the new address.
+  static Future<void> _applyPendingEmail(String uid, String typedEmail) async {
+    try {
+      final pending = await Rtdb.get('users/$uid/pendingEmail');
+      if (pending is! String || pending.isEmpty) return;
+      if (pending.toLowerCase() == typedEmail.trim().toLowerCase()) {
+        await Rtdb.update('users/$uid', {'email': pending.toLowerCase(), 'pendingEmail': null});
+      } else {
+        await FirebaseAuthRest.sendEmailChangeLink(pending);
+      }
+    } catch (e) {
+      debugPrint('Pending email change failed: $e');
+    }
   }
 
   /// Google sign-in. A first-time Google user gets a Citizen profile.
@@ -158,23 +176,15 @@ class FirebaseService {
     final mfaSetting = settings is Map ? settings['mfa_enabled'] : null;
     final mfaEnabled = mfaSetting != false && mfaSetting != 0;
 
-    if (mfaEnabled && await _isTrustedDevice(uid, _int(user['id']))) {
-      await _logEvent(user, 'LOGIN_TRUSTED_DEVICE', {'email': user['email'], 'mfa': 'skipped_trusted_device'});
-      return {'success': true, 'mfaRequired': false, 'user': user};
-    }
-
+    // The email code is asked at sign-up, on a phone that hasn't passed it for this
+    // account yet, and after a week without logging in
     if (mfaEnabled) {
-      await EmailOtpService.sendCode(email: user['email'], userName: user['fullName'] ?? 'User');
-      return {
-        'success': true,
-        'mfaRequired': true,
-        'userId': user['id'],
-        'targetEmail': user['email'],
-        'maskedEmail': EmailOtpService.maskEmail(user['email']),
-      };
+      if (!await _isTrustedDevice(uid, user['id'])) return _sendLoginCode(user, reason: 'new_device');
+      if (!await _loggedInRecently(uid)) return _sendLoginCode(user, reason: 'inactive');
     }
 
-    await _logEvent(user, 'LOGIN', {'email': user['email'], 'mfa': false});
+    await _markLoggedIn(uid);
+    await _logEvent(user, 'LOGIN', {'email': user['email'], 'mfa': mfaEnabled ? 'skipped_recent_login' : false});
     return {'success': true, 'mfaRequired': false, 'user': user};
   }
 
@@ -185,28 +195,57 @@ class FirebaseService {
     final ok = await EmailOtpService.verify(otpCode);
     if (!ok) return {'success': false, 'error': 'Incorrect 6-digit verification code'};
     final user = await _profile(FirebaseAuthRest.uid!);
+    await _markLoggedIn(FirebaseAuthRest.uid!);
     await _logEvent(user, 'LOGIN_MFA_VERIFIED', {'email': user['email'], 'mfa': true});
     return {'success': true, 'user': user};
   }
 
-  static String _hashToken(String token) => sha256.convert(utf8.encode(token)).toString();
+  static const _codeAfter = Duration(days: 7);
 
-  static int? _int(dynamic v) => v == null ? null : int.tryParse(v.toString());
+  /// Emails a code and tells the screen to ask for it.
+  static Future<Map<String, dynamic>> _sendLoginCode(Map<String, dynamic> user, {String reason = 'signup'}) async {
+    await EmailOtpService.sendCode(email: user['email'], userName: user['fullName'] ?? 'User', reason: reason);
+    return {
+      'success': true,
+      'mfaRequired': true,
+      'userId': user['id'],
+      'targetEmail': user['email'],
+      'maskedEmail': EmailOtpService.maskEmail(user['email']),
+    };
+  }
 
-  /// True if the user ticked "Remember this device" here within the last 30 days.
-  static Future<bool> _isTrustedDevice(String uid, int? userId) async {
-    if (userId == null) return false;
-    final token = await SessionService.getDeviceToken(userId);
-    if (token == null) return false;
+  /// True if this account logged in (and had passed the email code) within the last 7 days.
+  static Future<bool> _loggedInRecently(String uid) async {
     try {
-      final device = await Rtdb.get('trusted_devices/$uid/${_hashToken(token)}');
-      return device != null && DateTime.now().millisecondsSinceEpoch <= (device['expiresAt'] as int);
+      final last = await Rtdb.get('user_settings/$uid/last_login');
+      return last is int && DateTime.now().millisecondsSinceEpoch - last < _codeAfter.inMilliseconds;
     } catch (_) {
       return false;
     }
   }
 
-  /// Register this device as trusted so future logins skip MFA for 30 days.
+  static Future<void> _markLoggedIn(String uid) async {
+    try {
+      await Rtdb.update('user_settings/$uid', {'last_login': {'.sv': 'timestamp'}});
+    } catch (_) {}
+  }
+
+  static String _hashToken(String token) => sha256.convert(utf8.encode(token)).toString();
+
+  /// True if the email code was entered on this phone for this account.
+  static Future<bool> _isTrustedDevice(String uid, dynamic userId) async {
+    final id = int.tryParse('$userId');
+    if (id == null) return false;
+    final token = await SessionService.getDeviceToken(id);
+    if (token == null) return false;
+    try {
+      return await Rtdb.get('trusted_devices/$uid/${_hashToken(token)}') != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Remembers that this phone passed the email code (it stays trusted; only inactivity asks again).
   static Future<bool> trustDevice({
     required int userId,
     required String deviceToken,
@@ -215,7 +254,7 @@ class FirebaseService {
     try {
       await Rtdb.set('trusted_devices/${FirebaseAuthRest.uid}/${_hashToken(deviceToken)}', {
         'label': deviceLabel,
-        'expiresAt': DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch,
+        'trustedAt': {'.sv': 'timestamp'},
       });
       return true;
     } catch (_) {
@@ -232,9 +271,9 @@ class FirebaseService {
       final uid = await FirebaseAuthRest.restore();
       if (uid == null) return null;
       final device = await Rtdb.get('trusted_devices/$uid/${_hashToken(deviceToken)}');
-      if (device == null || DateTime.now().millisecondsSinceEpoch > (device['expiresAt'] as int)) {
-        return null;
-      }
+      // A week without logging in: back to the login screen for a fresh code
+      if (device == null || !await _loggedInRecently(uid)) return null;
+      await _markLoggedIn(uid);
       final user = await _profile(uid);
       await _logEvent(user, 'LOGIN_TRUSTED_DEVICE', {'email': user['email'], 'mfa': 'skipped_trusted_device'});
       return user;
@@ -243,12 +282,12 @@ class FirebaseService {
     }
   }
 
-  /// Signs out. Remembered devices stay trusted until they expire.
+  /// Signs out. This phone stays trusted for the account.
   static Future<void> signOut() => FirebaseAuthRest.signOut();
 
   static Future<void> sendPasswordReset(String email) => FirebaseAuthRest.sendPasswordReset(email);
 
-  static Future<void> register({
+  static Future<Map<String, dynamic>> register({
     required String fullName,
     required String contactNo,
     required String email,
@@ -272,7 +311,8 @@ class FirebaseService {
     await Rtdb.set('users/$uid', user);
     await Rtdb.set('user_ids/$id', uid);
     await _logEvent(user, 'REGISTER', {'email': email});
-    await FirebaseAuthRest.signOut();
+    // Verify the new email straight away; entering the code logs them in
+    return _sendLoginCode(user);
   }
 
 
@@ -359,9 +399,9 @@ class FirebaseService {
   static Future<List<dynamic>> getActivityLogs({int limit = 50}) =>
       AdminData.logs(limit: limit, from: getStartOfCurrentWeekMonday()).then(_loose);
 
-  static Future<List<int>?> downloadAuditLogPackageZip(String targetDate) async {
+  static Future<List<int>?> downloadAuditLogPackageZip(String targetDate, {String department = 'ALL'}) async {
     try {
-      return await AdminData.auditZip(targetDate);
+      return await AdminData.auditZip(targetDate, department: department);
     } catch (_) {
       return null;
     }
@@ -624,6 +664,19 @@ class FirebaseService {
     } catch (e) {
       return (success: false, message: e is HttpException ? e.message : 'Could not change password.');
     }
+  }
+
+  /// Saves the signed-in user's own name, phone number and/or profile picture.
+  static Future<void> updateMyProfile({String? fullName, String? contactNo, String? photoUrl}) async {
+    final uid = FirebaseAuthRest.uid!;
+    final changes = <String, dynamic>{
+      if (fullName != null) 'fullName': fullName.trim(),
+      if (contactNo != null) 'contactNo': contactNo.trim(),
+      'photoUrl': ?photoUrl,
+    };
+    if (changes.isEmpty) return;
+    await Rtdb.update('users/$uid', changes);
+    await _logEvent(await _profile(uid), 'PROFILE_UPDATED', {'updatedFields': changes.keys.toList()});
   }
 
   static Future<Map<String, dynamic>?> getUserProfile(int userId) async {

@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'log_details.dart';
 import 'package:intl/intl.dart';
 
 import '../services/theme_service.dart';
@@ -21,7 +22,7 @@ Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log) {
     String typeBg = '#E2E8F0';
     String typeColor = '#475569';
 
-    if (status == 'FAILED') {
+    if (status == 'FAILED' || action.startsWith('PRANK_WARNING')) {
       iconName = 'warning_amber_rounded';
       iconBg = '#FEF2F2';
       iconColor = '#EF4444';
@@ -66,7 +67,8 @@ Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log) {
       'title': actorDisplay,
       'type': action,
       'category': entityType,
-      'description': "Action '$action' recorded on entity [$entityType] #${log['entity_id'] ?? 'N/A'}",
+      'description': LogDetails.describe(Map<String, dynamic>.from(log)),
+      'raw': Map<String, dynamic>.from(log),
       'status': status,
       'requestId': log['entity_id']?.toString() ?? 'N/A',
       'time': DateFormat('hh:mm a').format(parsedTime),

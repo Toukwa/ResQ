@@ -29,6 +29,11 @@ class AppConfig {
   /// Kept because screens still pass it to the live-update socket, which ignores it.
   static const String apiBaseUrl = '$baseUrl/api';
 
+  /// Road routing (OSRM) used to fill a tracker's signal gaps along the road.
+  /// The public demo server is for testing only (about 1 request per second, no guarantee);
+  /// for real use, point this at your own OSRM server loaded with the Bicol map.
+  static const String osrmBaseUrl = 'https://router.project-osrm.org';
+
   /// Hotlines on the login screen's "Call Agencies" button. Dialed straight
   /// from the phone, so they work without internet.
   /// TODO: PLACEHOLDERS - replace with the real Iriga City numbers before release.

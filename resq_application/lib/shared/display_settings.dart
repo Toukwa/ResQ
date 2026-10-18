@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
+import '../services/theme_service.dart';
 
 /// The map and display settings (Settings > Map / Appearance). Maps listen to
 /// [changes] and redraw when a toggle is flipped.
@@ -8,8 +11,13 @@ class DisplaySettings {
   static final showUnitLabels = ValueNotifier<bool>(true);
   static final reducedMotion = ValueNotifier<bool>(false);
 
+  /// Map colours on their own: 'Match app', 'Light' or 'Dark', so the map can stay
+  /// light while the rest of the app is dark (or the other way round).
+  static final mapTheme = ValueNotifier<String>('Match app');
+  static const mapThemes = ['Match app', 'Light', 'Dark'];
+
   static final Listenable changes =
-      Listenable.merge([autoCenterOnIncident, showUnitLabels, reducedMotion]);
+      Listenable.merge([autoCenterOnIncident, showUnitLabels, reducedMotion, mapTheme, ThemeService.instance]);
 
   /// Applies saved settings (stored as 1/0).
   static void load(Map<String, dynamic>? s) {
@@ -18,7 +26,27 @@ class DisplaySettings {
     autoCenterOnIncident.value = on('auto_center_on_incident', true);
     showUnitLabels.value = on('show_unit_labels', true);
     reducedMotion.value = on('reduced_motion', false);
+    if (mapThemes.contains(s['map_theme'])) mapTheme.value = s['map_theme'] as String;
   }
+
+  // ── Map theme ───────────────────────────────────────────────────────────
+
+  static bool get mapDark => switch (mapTheme.value) {
+        'Dark' => true,
+        'Light' => false,
+        _ => ThemeService.instance.isDark,
+      };
+
+  static const _invert = ColorFilter.matrix(<double>[
+    -0.2126, -0.7152, -0.0722, 0, 255, //
+    -0.2126, -0.7152, -0.0722, 0, 255, //
+    -0.2126, -0.7152, -0.0722, 0, 255, //
+    0, 0, 0, 1, 0,
+  ]);
+
+  /// Give to every TileLayer: darkens the tiles when the map theme is dark.
+  static TileBuilder? get mapTileBuilder =>
+      mapDark ? (context, tileWidget, tile) => ColorFiltered(colorFilter: _invert, child: tileWidget) : null;
 
   // ── Unit labels ─────────────────────────────────────────────────────────
 

@@ -15,6 +15,15 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+// camera_android_camerax uses CallbackToFutureAdapter but doesn't declare the library it
+// lives in, and newer CameraX no longer brings it along, so its Java compile fails.
+subprojects {
+    if (name == "camera_android_camerax") {
+        pluginManager.withPlugin("com.android.library") {
+            dependencies.add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
+        }
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }

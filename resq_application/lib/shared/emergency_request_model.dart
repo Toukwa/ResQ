@@ -306,6 +306,7 @@ String displayIncidentStatus(String rawStatus) {
   if (enRoute.contains(s)) return 'En Route';
   if (s == 'completed') return 'Completed';
   if (s == 'denied' || s == 'declined' || s == 'cancelled') return 'Cancelled';
+  if (s == 'invalid') return 'Invalid';
   return 'Pending';
 }
 

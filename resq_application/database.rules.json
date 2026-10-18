@@ -18,12 +18,18 @@
         // You may edit your own name and phone number
         "fullName": { ".write": "auth != null && auth.uid === $uid && data.exists()", ".validate": "newData.isString() && newData.val().length > 0" },
         "contactNo": { ".write": "auth != null && auth.uid === $uid && data.exists()", ".validate": "newData.isString()" },
+        // Minors whose parent/guardian hasn't agreed to the Terms yet (shown to admins)
+        "guardianPending": { ".write": "auth != null && auth.uid === $uid && root.child('users/' + $uid).exists()", ".validate": "newData.isBoolean()" },
+        // Your own profile picture (a Cloudinary link)
+        "photoUrl": { ".write": "auth != null && auth.uid === $uid && root.child('users/' + $uid).exists()", ".validate": "newData.isString() && newData.val().beginsWith('https://res.cloudinary.com/') && newData.val().length <= 300" },
         // Birthdate and address can be added later (Google sign-in) or changed by you
         "birthdate": { ".write": "auth != null && auth.uid === $uid && root.child('users/' + $uid).exists()", ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
         "barangay": { ".write": "auth != null && auth.uid === $uid && root.child('users/' + $uid).exists()", ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64" },
         "address": { ".write": "auth != null && auth.uid === $uid && root.child('users/' + $uid).exists()", ".validate": "newData.isString() && newData.val().length <= 160" },
         // Report Now guests finishing sign-up: the email must be the one just added to their login
-        "email": { ".write": "auth != null && auth.uid === $uid && data.parent().child('guest').val() === true && auth.token.email != null && newData.val() === auth.token.email.toLowerCase()" },
+        "email": { ".write": "auth != null && auth.uid === $uid && (data.parent().child('guest').val() === true || data.parent().child('pendingEmail').val() === auth.token.email.toLowerCase()) && auth.token.email != null && newData.val() === auth.token.email.toLowerCase()" },
+        // New email set by a Superadmin, waiting for the user to confirm it; they clear it once their login uses it
+        "pendingEmail": { ".write": "auth != null && auth.uid === $uid && !newData.exists() && data.val() === auth.token.email.toLowerCase()", ".validate": "newData.isString() && newData.val().length <= 120" },
         "guest": {
           ".write": "auth != null && auth.uid === $uid && data.val() === true && !newData.exists()",
           ".validate": "newData.isBoolean()"
@@ -31,7 +37,7 @@
         // The report this citizen has open (one at a time). Set together with the report itself;
         // removed by staff when it ends, or by the citizen once it has ended.
         "activeReq": {
-          ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.exists() && newData.parent().parent().parent().child('incidents/' + newData.val() + '/citizenUid').val() === auth.uid) || (auth.uid === $uid && !newData.exists() && data.exists() && (root.child('incidents/' + data.val() + '/reqStatus').val() === 'Completed' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Declined' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Cancelled' || !root.child('incidents/' + data.val()).exists())) || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+          ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.exists() && newData.parent().parent().parent().child('incidents/' + newData.val() + '/citizenUid').val() === auth.uid) || (auth.uid === $uid && !newData.exists() && data.exists() && (root.child('incidents/' + data.val() + '/reqStatus').val() === 'Completed' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Declined' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Cancelled' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Invalid' || !root.child('incidents/' + data.val()).exists())) || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
           ".validate": "newData.isString()"
         }
       },
@@ -74,6 +80,28 @@
       }
     },
 
+    // Prank warning unlock passwords, one per agency: the Superadmin sets them; that agency's admins can view theirs
+    "unlock_codes": {
+      ".read": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'",
+      "$agency": {
+        ".read": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/department').val() === $agency",
+        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'",
+        ".validate": "($agency === 'BFP' || $agency === 'PNP' || $agency === 'CDRRMO') && newData.hasChildren(['code']) && newData.child('code').isString() && newData.child('code').val().length >= 6 && newData.child('code').val().length <= 32"
+      }
+    },
+
+    // Prank-caller warnings: admins send one; the citizen reads theirs and records seeing it (with their IP)
+    "prank_warnings": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        "ipAddress": { ".write": "auth != null && auth.uid === $uid && data.parent().exists()", ".validate": "newData.isString() && newData.val().length <= 64" },
+        "seenAt": { ".write": "auth != null && auth.uid === $uid && data.parent().exists()", ".validate": "newData.val() === now" },
+        "acknowledgedAt": { ".write": "auth != null && auth.uid === $uid && data.parent().exists()", ".validate": "newData.val() === now" }
+      }
+    },
+
     "system_logs": {
       ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
       ".indexOn": ["timestamp", "user_ID", "action"],
@@ -107,6 +135,7 @@
         "description": { ".validate": "newData.isString() && newData.val().length <= 2000" },
         "residentName": { ".validate": "newData.isString() && newData.val().length <= 100" },
         "contactNo": { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "barangay": { ".validate": "newData.isString() && newData.val().length <= 64" },
         "image_path": { ".validate": "newData.isString() && newData.val().length <= 3000" },
         "voice_path": { ".validate": "newData.isString() && newData.val().length <= 300" },
         // An agency rates severity only on reports sent straight to it (its name in the type),
@@ -128,6 +157,11 @@
           }
         },
         // Reports linked as the same emergency (Fleet & Vehicles): only agencies on the report
+        // The report this one duplicates (set when an agency links it as a duplicate)
+        "duplicateOf": {
+          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
+          ".validate": "newData.isNumber()"
+        },
         "linkGroup": {
           ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
           ".validate": "newData.isNumber()"
@@ -141,8 +175,9 @@
         },
         // Overall status and completion time: only agencies on the report
         "reqStatus": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
-          ".validate": "newData.val() === 'Pending' || newData.val() === 'Accepted' || newData.val() === 'En Route' || newData.val() === 'Dispatched' || newData.val() === 'Arrived' || newData.val() === 'Completed' || newData.val() === 'Declined' || newData.val() === 'Cancelled'"
+          // Staff of an agency on the report; or the reporting citizen marking it Invalid when their prank warning for it is unlocked
+          ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()) || (newData.val() === 'Invalid' && data.parent().child('citizenUid').val() === auth.uid && root.child('prank_warnings/' + auth.uid + '/reqId').val() + '' === $reqId))",
+          ".validate": "newData.val() === 'Pending' || newData.val() === 'Accepted' || newData.val() === 'En Route' || newData.val() === 'Dispatched' || newData.val() === 'Arrived' || newData.val() === 'Completed' || newData.val() === 'Declined' || newData.val() === 'Cancelled' || newData.val() === 'Invalid'"
         },
         "completedAt": { ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()", ".validate": "newData.isString()" },
         "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
@@ -182,14 +217,31 @@
       }
     },
 
+    // Road routes filling a tracker's signal gaps: worked out by the first staff screen that
+    // shows the gap, then reused by everyone (so the routing server is asked once per gap)
+    "gap_routes": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      "$uid": {
+        "$gap": {
+          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin') && (!data.exists() || !newData.exists())",
+          ".validate": "$gap.matches(/^[0-9]+_[0-9]+$/) && newData.hasChildren(['ok', 'polyline'])",
+          "ok": { ".validate": "newData.isBoolean()" },
+          "polyline": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+          "savedAt": { ".validate": "newData.val() === now" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "tracker_history": {
-      // Route points appended by each tracker every 30 s. Only staff can view them; points
-      // are never edited, and only a Superadmin may delete them (old-history cleanup).
+      // Route points uploaded by each tracker (buffered on the board, so points recorded without
+      // signal arrive later). Only staff can view them; a point is never changed (re-sending the
+      // same point after a lost reply is allowed), and only a Superadmin may delete them (old-history cleanup).
       ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
       "$uid": {
         ".indexOn": ["ts"],
         "$pointId": {
-          ".write": "auth != null && ((auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app') && !data.exists()) || (!newData.exists() && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'))",
+          ".write": "auth != null && ((auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app') && (!data.exists() || (newData.exists() && data.child('ts').val() === newData.child('ts').val()))) || (!newData.exists() && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'))",
           ".validate": "newData.hasChildren(['latitude', 'longitude', 'ts'])",
           "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
           "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },

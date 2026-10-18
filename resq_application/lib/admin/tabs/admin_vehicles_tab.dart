@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/map_format.dart';
+import '../../shared/resq_dialog.dart';
+import '../../shared/closed_reports_tabs.dart';
+import '../../shared/search_shortcut.dart';
+import '../../shared/prank_warning_dialog.dart';
 import '../../shared/voice_note.dart';
 import '../../shared/not_sure_card.dart';
 import '../../shared/severity_gate.dart';
@@ -42,6 +47,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   List<dynamic> _vehicles = [];
   bool _isLoading = true;
   String? _errorMessage;
+  final _searchFocus = FocusNode(); // Ctrl+F lands here
   bool _isActionInProgress = false;
 
   String _localSearchQuery = '';
@@ -59,6 +65,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   @override
   void initState() {
     super.initState();
+    SearchShortcut.register(_searchFocus);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _fetchData();
@@ -79,6 +86,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   @override
   void dispose() {
+    SearchShortcut.unregister(_searchFocus);
+    _searchFocus.dispose();
     _offlineRecheck?.cancel();
     _socket?.disconnect();
     _socket?.dispose();
@@ -263,6 +272,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     if (s == 'dispatched' || s == 'en route' || s == 'en_route' || s == 'arrived' || s == 'active' || s == 'in_progress' || s == 'in progress') return 'En Route';
     if (s == 'completed') return 'Completed';
     if (s == 'cancelled' || s == 'declined' || s == 'denied') return 'Cancelled';
+    if (s == 'invalid') return 'Invalid';
     return 'Pending';
   }
 
@@ -285,7 +295,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
       // Filter by selected Queue dropdown filter
       if (_selectedQueueFilter == 'All') {
-        if (statusLow == 'cancelled' || statusLow == 'declined' || statusLow == 'completed') return false;
+        if (statusLow == 'cancelled' || statusLow == 'declined' || statusLow == 'completed' || statusLow == 'invalid') return false;
       } else if (_selectedQueueFilter == 'Pending') {
         if (statusLow != 'pending') return false;
       } else if (_selectedQueueFilter == 'Accepted') {
@@ -296,6 +306,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         if (statusLow != 'completed') return false;
       } else if (_selectedQueueFilter == 'Cancelled') {
         if (statusLow != 'cancelled' && statusLow != 'declined') return false;
+      } else if (_selectedQueueFilter == 'Invalid') {
+        if (statusLow != 'invalid') return false;
       }
 
       // Search query filter
@@ -326,6 +338,29 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
       final status = IncidentData.statusFor(req, widget.department, '').toLowerCase();
       if (status != 'cancelled' && status != 'declined') return false;
+
+      if (query.isNotEmpty) {
+        final idStr = _formatReqIdStr(req).toLowerCase();
+        final typeStr = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? '').toString().toLowerCase();
+        final locStr = (req['Barangay'] ?? req['location'] ?? '').toString().toLowerCase();
+
+        return idStr.contains(query) || typeStr.contains(query) || locStr.contains(query);
+      }
+
+      return true;
+    }).toList();
+  }
+
+
+  /// Invalid (prank) reports: closed after the warning was unlocked.
+  List<dynamic> get _invalidIncidentsForDept {
+    final query = (widget.searchFilter.isNotEmpty ? widget.searchFilter : _localSearchQuery).toLowerCase().trim();
+
+    return _departmentIncidents.where((req) {
+      if (req is! Map) return false;
+
+      final status = IncidentData.statusFor(req, widget.department, '').toLowerCase();
+      if (status != 'invalid') return false;
 
       if (query.isNotEmpty) {
         final idStr = _formatReqIdStr(req).toLowerCase();
@@ -722,7 +757,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3EC),
+                      color: themedBg(const Color(0xFFFFF3EC)),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -751,6 +786,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             ),
             child: TextField(
               onChanged: (val) => setState(() => _localSearchQuery = val),
+              focusNode: _searchFocus,
               style: TextStyle(fontSize: 12, color: ts.isDark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Search requests...',
@@ -792,24 +828,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   // SEPARATE BOTTOM CONTAINER: CANCELLED & COMPLETED REQUESTS
   // ==========================================
   Widget _buildCancelledRequestsColumn() {
-    final isCancelledTab = _bottomTabFilter == 'Cancelled';
-    final list = isCancelledTab ? _cancelledIncidentsForDept : _completedIncidentsForDept;
-    final ts = ThemeService.instance;
-
-    final containerBg = isCancelledTab
-        ? (ts.isDark ? const Color(0xFF2D1215) : const Color(0xFFFFF5F5))
-        : (ts.isDark ? const Color(0xFF062C19) : const Color(0xFFF0FDF4));
-    final containerBorder = isCancelledTab
-        ? (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1))
-        : (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0));
-
-    final cancelledActiveBg = ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1);
-    final cancelledActiveText = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757);
-
-    final completedActiveBg = ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0);
-    final completedActiveText = ts.isDark ? const Color(0xFF86EFAC) : const Color(0xFF16A34A);
-
-    final unselectedText = ts.isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600;
+    final tab = _bottomTabFilter;
+    final list = tab == 'Invalid' ? _invalidIncidentsForDept : tab == 'Cancelled' ? _cancelledIncidentsForDept : _completedIncidentsForDept;
+    final containerBg = ClosedReportsTabs.panel(tab).bg;
+    final containerBorder = ClosedReportsTabs.panel(tab).border;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -821,89 +843,17 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              // Cancelled Tab Pill
-              InkWell(
-                onTap: () => setState(() => _bottomTabFilter = 'Cancelled'),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isCancelledTab ? cancelledActiveBg : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.cancel_outlined, size: 13, color: isCancelledTab ? cancelledActiveText : unselectedText),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Cancelled',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isCancelledTab ? cancelledActiveText : unselectedText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-
-              // Completed Tab Pill
-              InkWell(
-                onTap: () => setState(() => _bottomTabFilter = 'Completed'),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: !isCancelledTab ? completedActiveBg : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle_outline, size: 13, color: !isCancelledTab ? completedActiveText : unselectedText),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Completed',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: !isCancelledTab ? completedActiveText : unselectedText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isCancelledTab
-                      ? (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFE5E5))
-                      : (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${list.length}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: isCancelledTab ? cancelledActiveText : completedActiveText,
-                  ),
-                ),
-              ),
-            ],
+          ClosedReportsHeader(
+            selected: tab,
+            count: list.length,
+            onSelect: (t) => setState(() => _bottomTabFilter = t),
           ),
           const SizedBox(height: 8),
           Expanded(
             child: list.isEmpty
                 ? Center(
                     child: Text(
-                      isCancelledTab ? 'No cancelled requests' : 'No completed incidents',
+                      ClosedReportsTabs.emptyText(tab),
                       style: const TextStyle(fontSize: 11, color: Color(0xFFA0A0A0)),
                     ),
                   )
@@ -928,9 +878,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final type = (req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency').toString();
     final status = IncidentData.statusFor(req, widget.department, 'Declined');
     final isCompleted = status.toLowerCase() == 'completed';
+    final isInvalid = status.toLowerCase() == 'invalid';
     final ts = ThemeService.instance;
 
-    final primaryColor = isCompleted
+    final primaryColor = isInvalid
+        ? ClosedReportsTabs.textOf('Invalid')
+        : isCompleted
         ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
         : (ts.isDark ? const Color(0xFFF87171) : const Color(0xFFEB5757));
 
@@ -1105,6 +1058,28 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Flagged before it's even opened
+                if (status.toLowerCase() == 'pending' && req['duplicateOf'] == null && _duplicatesOf(req).isNotEmpty) ...[
+                  Tooltip(
+                    message: 'Possible duplicate: open to review',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _amber.withValues(alpha: ts.isDark ? 0.25 : 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.content_copy_rounded, size: 10, color: _amber),
+                          SizedBox(width: 3),
+                          Text('Duplicate?', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: _amber)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
@@ -1178,6 +1153,177 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ]),
       );
 
+  // ── Possible duplicates: same place, same kind of emergency, around the same time ──
+
+  static const _amber = Color(0xFFD97706);
+
+  /// Reports already offered as duplicates this session (the prompt opens once per report).
+  final Set<int> _dupPrompted = {};
+
+  /// Open reports of this agency that [req] may duplicate, best match first.
+  List<DuplicateMatch> _duplicatesOf(Map<String, dynamic> req) {
+    if (widget.department.toUpperCase() == 'ALL') return const [];
+    return IncidentData.similarReports(
+      req,
+      [for (final i in _incidents) if (i is Map) i],
+      department: widget.department,
+    );
+  }
+
+  /// Amber notice in the request panel; opens the review prompt.
+  Widget _buildDuplicateNotice(Map<String, dynamic> req, int reqId, List<DuplicateMatch> matches, ThemeService ts) {
+    final first = matches.first.report;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _amber.withValues(alpha: ts.isDark ? 0.16 : 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _amber.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.content_copy_rounded, size: 18, color: _amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Possible duplicate report',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                Text(
+                  matches.length == 1
+                      ? 'Looks like ${_formatReqIdStr(first)}: ${matches.first.reasons.join(', ')}'
+                      : '${matches.length} similar open reports nearby',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: ts.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _isActionInProgress ? null : () => _showDuplicatePrompt(req, reqId, matches),
+            style: TextButton.styleFrom(foregroundColor: _amber),
+            child: const Text('Review', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shows the similar reports; the admin may link this one to one of them as a duplicate.
+  Future<void> _showDuplicatePrompt(Map<String, dynamic> req, int reqId, List<DuplicateMatch> matches) async {
+    _dupPrompted.add(reqId);
+    final ts = ThemeService.instance;
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => ResqDialog(
+        icon: Icons.content_copy_rounded,
+        color: _amber,
+        title: 'Possible duplicate',
+        subtitle: '${_formatReqIdStr(req)} looks like ${matches.length == 1 ? 'another report' : 'other reports'}',
+        maxWidth: 520,
+        cancelLabel: 'Not a duplicate',
+        primaryLabel: null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Linking makes this report a duplicate: it takes the status the other report is in, '
+              'and from then on actions and dispatches on either apply to both.',
+              style: TextStyle(fontSize: 12, height: 1.4, color: ts.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            for (final m in matches.take(5))
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: ts.subtleBackground,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ts.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Icon(_getEmergencyIcon(m.report), color: const Color(0xFFFF5C00), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(_formatReqIdStr(m.report),
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: mapStatusBgColor(IncidentData.statusFor(m.report, widget.department)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  IncidentData.statusFor(m.report, widget.department),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: mapStatusColor(IncidentData.statusFor(m.report, widget.department)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text('${m.report['incType'] ?? 'Emergency'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: ts.textSecondary)),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              for (final r in m.reasons)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _amber.withValues(alpha: ts.isDark ? 0.2 : 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(r,
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _amber)),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.pop(ctx, _getReqId(m.report)),
+                      icon: const Icon(Icons.link_rounded, size: 16),
+                      label: const Text('Link', style: TextStyle(fontWeight: FontWeight.w800)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B5CF6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await _runLinkAction(
+      () => IncidentData.linkAsDuplicate(reqId, picked, department: widget.department),
+      'Linked as a duplicate of REQ-${picked.toString().padLeft(4, '0')}; its status now follows that report.',
+    );
+  }
+
   // ── Linked reports: the same emergency reported more than once ──────────────
 
   /// Report ids linked with [req] (same link group), from the loaded list.
@@ -1191,175 +1337,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           _getReqId(Map<String, dynamic>.from(i)),
     ]..sort();
   }
-
-  /// Open reports of this agency that [reqId] could be linked with.
-  List<Map<String, dynamic>> _linkCandidates(int reqId, Map req) {
-    final already = _linkedTo(req).toSet();
-    final list = [
-      for (final i in _incidents)
-        if (i is Map)
-          Map<String, dynamic>.from(i),
-    ].where((i) {
-      final id = _getReqId(i);
-      if (id == reqId || already.contains(id)) return false;
-      if (!IncidentData.isForDepartment(i, widget.department)) return false;
-      final st = IncidentData.statusFor(i, widget.department, 'Pending').toLowerCase();
-      return !const ['completed', 'declined', 'cancelled'].contains(st);
-    }).toList();
-    return list;
-  }
-
-  Widget _buildLinkedReports(Map<String, dynamic> req, int reqId, ThemeService ts) {
-    const purple = Color(0xFF8B5CF6);
-    final linked = _linkedTo(req);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: purple.withValues(alpha: ts.isDark ? 0.12 : 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: purple.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.link_rounded, size: 18, color: purple),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                linked.isEmpty ? 'Not linked to other reports' : 'Linked reports (actions & dispatches sync)',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _isActionInProgress ? null : () => _showLinkPicker(req, reqId),
-              icon: const Icon(Icons.add_link_rounded, size: 16),
-              label: const Text('Link similar report', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-              style: TextButton.styleFrom(foregroundColor: purple),
-            ),
-          ]),
-          if (linked.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (final id in linked)
-                InputChip(
-                  label: Text('REQ-${id.toString().padLeft(4, '0')}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                  avatar: const Icon(Icons.link_rounded, size: 14, color: purple),
-                  onPressed: () => setState(() => _selectedRequestId = id),
-                  onDeleted: _isActionInProgress ? null : () => _unlink(id),
-                  deleteButtonTooltipMessage: 'Unlink',
-                  backgroundColor: ts.cardBackground,
-                  side: BorderSide(color: purple.withValues(alpha: 0.4)),
-                  visualDensity: VisualDensity.compact,
-                ),
-            ]),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showLinkPicker(Map<String, dynamic> req, int reqId) async {
-    final candidates = _linkCandidates(reqId, req);
-    final ts = ThemeService.instance;
-    final picked = await showDialog<int>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: ts.cardBackground,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: ts.borderColor)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.add_link_rounded, color: Color(0xFF8B5CF6), size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Link a similar report',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: ts.textPrimary)),
-                      Text('Actions and dispatches on one will apply to both',
-                          style: TextStyle(fontSize: 12, color: ts.textSecondary)),
-                    ]),
-                  ),
-                ]),
-                const SizedBox(height: 14),
-                if (candidates.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text('No other open reports to link.', style: TextStyle(color: ts.textSecondary, fontSize: 12)),
-                  )
-                else
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        for (final c in candidates)
-                          Builder(builder: (_) {
-                            final id = _getReqId(c);
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => Navigator.pop(ctx, id),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: ts.borderColor),
-                                  ),
-                                  child: Row(children: [
-                                    Icon(_getEmergencyIcon('${c['type'] ?? c['incType'] ?? ''}'),
-                                        size: 18, color: const Color(0xFFFF5C00)),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                        Text(_formatReqIdStr(c),
-                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ts.textPrimary)),
-                                        Text('${c['type'] ?? c['incType'] ?? 'Emergency'} · ${_formatTime(c)}',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(fontSize: 11, color: ts.textSecondary)),
-                                      ]),
-                                    ),
-                                  ]),
-                                ),
-                              ),
-                            );
-                          }),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    if (picked == null || !mounted) return;
-    await _runLinkAction(() => IncidentData.linkIncidents(reqId, picked), 'Reports linked.');
-  }
-
-  Future<void> _unlink(int id) => _runLinkAction(() => IncidentData.unlinkIncident(id), 'Report unlinked.');
 
   Future<void> _runLinkAction(Future<void> Function() action, String done) async {
     setState(() => _isActionInProgress = true);
@@ -1402,6 +1379,16 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final isDispatched = statusLow == 'dispatched' || statusLow == 'en route' || statusLow == 'en_route' || statusLow == 'in progress' || isArrived;
     final isCancelled = statusLow == 'cancelled' || statusLow == 'declined';
     final isCompleted = statusLow == 'completed';
+    // Possible duplicates: only for reports still open and not already linked as one
+    final duplicates = (isCancelled || isCompleted || statusLow == 'invalid' || req['duplicateOf'] != null)
+        ? const <DuplicateMatch>[]
+        : _duplicatesOf(req);
+    if (isPending && duplicates.isNotEmpty && reqIdNum != 0 && !_dupPrompted.contains(reqIdNum)) {
+      _dupPrompted.add(reqIdNum);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedRequestId == reqIdNum) _showDuplicatePrompt(req, reqIdNum, duplicates);
+      });
+    }
 
     final ts = ThemeService.instance;
 
@@ -1497,6 +1484,29 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   ),
                 ),
               ),
+              // Prank caller warning: admins only (it locks with this agency's unlock password)
+              if (req['citizenUid'] != null)
+                FutureBuilder<Map<String, dynamic>>(
+                  future: IncidentData.me(), // cached after the first call
+                  builder: (context, snap) => snap.data?['role'] != 'Admin'
+                      ? const SizedBox.shrink()
+                      : Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: IconButton(
+                            tooltip: 'Warn prank caller',
+                            onPressed: _isActionInProgress
+                                ? null
+                                : () => showPrankWarningDialog(context, Map<String, dynamic>.from(req)),
+                            style: IconButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xFFDC2626).withValues(alpha: ts.isDark ? 0.2 : 0.08),
+                              side: BorderSide(color: const Color(0xFFDC2626).withValues(alpha: 0.5)),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 20),
+                          ),
+                        ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1519,8 +1529,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       _buildVoiceMessage('${req['voice_path']}', ts),
                       const SizedBox(height: 16),
                     ],
-                    _buildLinkedReports(req, reqIdNum, ts),
-                    const SizedBox(height: 16),
+                    if (duplicates.isNotEmpty) _buildDuplicateNotice(req, reqIdNum, duplicates, ts),
                   Row(
                     children: [
                       Expanded(child: _buildDetailBox('Barangay', location)),
@@ -1632,8 +1641,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFFEB5757),
-                            backgroundColor: const Color(0xFFFFF0F0),
-                            side: const BorderSide(color: Color(0xFFFFDDE1)),
+                            backgroundColor: themedBg(const Color(0xFFFFF0F0)),
+                            side: BorderSide(color: themedBg(const Color(0xFFFFDDE1))),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -2080,6 +2089,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ResqOption('Dispatched', 'Dispatched', icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB)),
         ResqOption('Completed', 'Completed', icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
         ResqOption('Cancelled', 'Cancelled', icon: Icons.cancel_rounded, color: const Color(0xFFEF4444)),
+        ResqOption('Invalid', 'Invalid (prank)', icon: Icons.gpp_bad_rounded, color: const Color(0xFF7C3AED)),
           ],
         ),
       );

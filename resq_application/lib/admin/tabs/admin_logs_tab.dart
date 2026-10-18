@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../shared/log_details.dart';
 import '../../shared/resq_dropdown.dart';
 import '../../shared/resq_date_picker.dart';
 import 'package:intl/intl.dart';
@@ -221,7 +222,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
+                        color: themedBg(const Color(0xFFE2E8F0)),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -358,7 +359,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
                 ),
                 SizedBox(width: 16),
-                Text('Building full-day PDF audit log & evidence photos package...'),
+                // Expanded so the text wraps instead of running off the snackbar
+                Expanded(child: Text('Building full-day PDF audit log & evidence photos package...')),
               ],
             ),
             duration: const Duration(seconds: 15),
@@ -366,7 +368,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
         );
       }
 
-      final zipBytes = await AdminService.downloadAuditLogPackageZip(dateStr);
+      final zipBytes = await AdminService.downloadAuditLogPackageZip(dateStr, department: widget.department);
       if (zipBytes == null || zipBytes.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -488,7 +490,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             'title': actorDisplay,
             'type': action,
             'category': entityType,
-            'description': "Action '$action' recorded on entity [$entityType] #${log['entity_id'] ?? 'N/A'}",
+            'description': LogDetails.describe(Map<String, dynamic>.from(log)),
+            'raw': Map<String, dynamic>.from(log),
             'status': status,
             'requestId': log['entity_id']?.toString() ?? 'N/A',
             'time': DateFormat('hh:mm a').format(parsedTime),
@@ -1167,7 +1170,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   const SizedBox(width: 4),
                   Text(
                     _hasActiveFilters ? "Filtered Search Stream" : "Live Stream (Recent 7)",
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: themedInk(const Color(0xFF10B981))),
                   ),
                 ],
               ),
@@ -1180,7 +1183,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: themedBg(const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -1298,6 +1301,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                     event['description'] as String,
                     style: TextStyle(fontSize: 11, color: ts.isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B), height: 1.2),
                   ),
+                  // Citizen / report / prank details, collapsed until opened
+                  if (event['raw'] is Map) LogDetailsPanel(log: event['raw'] as Map<String, dynamic>),
                   const SizedBox(height: 3),
                   Row(
                     children: [
@@ -1343,9 +1348,9 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: ThemeService.instance.subtleBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: ThemeService.instance.borderColor),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

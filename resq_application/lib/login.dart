@@ -13,7 +13,8 @@ import 'shared/resq_logo.dart';
 import 'shared/call_agencies_sheet.dart';
 import 'shared/role_home.dart';
 import 'shared/resq_toast.dart';
-
+import 'shared/terms.dart';
+import 'services/firebase_rest.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,10 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final userId = await SessionService.getTrustedUserId();
       if (userId != null) {
         final token = await SessionService.getOrCreateDeviceToken(userId);
-        final user = await FirebaseService.checkTrustedDevice(
-          userId: userId,
-          deviceToken: token,
-        );
+        final user = await FirebaseService.checkTrustedDevice(userId: userId, deviceToken: token);
         if (user != null && mounted) {
           _navigateToRoleScreen(user);
           return;
@@ -68,16 +66,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showResqSnackBar(
-        const SnackBar(content: Text('Please fill out all fields.')),
-      );
+      ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(content: Text('Please fill out all fields.')));
       return;
     }
 
-    final result = await AuthService.loginCitizen(
-      email: email,
-      password: password,
-    );
+    final result = await AuthService.loginCitizen(email: email, password: password);
     _handleLoginResult(result);
   }
 
@@ -136,9 +129,12 @@ class _LoginScreenState extends State<LoginScreen> {
           final textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
           final borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
           Widget label(String text) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: textDark)),
-              );
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              text,
+              style: TextStyle(fontWeight: FontWeight.w600, color: textDark),
+            ),
+          );
 
           return AlertDialog(
             backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
@@ -151,10 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  decoration: BoxDecoration(color: red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.campaign_rounded, color: red, size: 24),
                 ),
                 const SizedBox(width: 12),
@@ -201,10 +194,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const Icon(Icons.error_outline, size: 16, color: red),
                         const SizedBox(width: 6),
-                        Expanded(child: Text(error!, style: const TextStyle(color: red, fontSize: 13))),
+                        Expanded(
+                          child: Text(error!, style: const TextStyle(color: red, fontSize: 13)),
+                        ),
                       ],
                     ),
                   ],
+                  // No checkbox here: nothing should slow down someone in an emergency
+                  const SizedBox(height: 14),
+                  Wrap(
+                    children: [
+                      Text('By continuing, you agree to our ', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                      GestureDetector(
+                        onTap: () => openTerms(context),
+                        child: const Text(
+                          'Terms and Conditions',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: red,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                            decorationColor: red,
+                          ),
+                        ),
+                      ),
+                      Text('.', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -219,7 +235,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         side: BorderSide(color: borderGrey),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: Text('Cancel', style: TextStyle(color: textDark, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(color: textDark, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -237,7 +256,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          : const Text(
+                              'Continue',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ],
@@ -283,15 +305,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       final rawError = result.error ?? 'Invalid credentials or server connection failed.';
-      final cleanError = rawError
-          .replaceFirst('HttpException: ', '')
-          .replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showResqSnackBar(
-        SnackBar(
-          content: Text(cleanError),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      final cleanError = rawError.replaceFirst('HttpException: ', '').replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(
+        context,
+      ).showResqSnackBar(SnackBar(content: Text(cleanError), backgroundColor: Colors.redAccent));
     }
   }
 
@@ -303,7 +320,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }) async {
     final otpController = TextEditingController();
     bool isVerifying = false;
-    bool rememberDevice = false;
     String? errorMessage;
 
     final displayEmail = maskedEmail ?? targetEmail;
@@ -327,11 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.mark_email_read_outlined,
-                    color: Color(0xFFFF6B00),
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFFFF6B00), size: 24),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -369,7 +381,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.info_outline, size: 14, color: ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706)),
+                        Icon(
+                          Icons.info_outline,
+                          size: 14,
+                          color: ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706),
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Test OTP Code: $testOtpCode',
@@ -391,12 +407,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.email_outlined, size: 16, color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB)),
+                      Icon(
+                        Icons.email_outlined,
+                        size: 16,
+                        color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Check your terminal log or enter code above (valid for 5 mins).',
-                          style: TextStyle(fontSize: 12, color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8)),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                          ),
                         ),
                       ),
                     ],
@@ -433,47 +456,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 if (errorMessage != null) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12),
-                  ),
+                  Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
                 ],
                 const SizedBox(height: 4),
-                // ── Remember this device checkbox ──────────────────
-                InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => setDialogState(() => rememberDevice = !rememberDevice),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: Checkbox(
-                            value: rememberDevice,
-                            activeColor: const Color(0xFFFF6B00),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            onChanged: (v) => setDialogState(() => rememberDevice = v ?? false),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Remember this device for 30 days',
-                            style: TextStyle(fontSize: 13, color: ts.isDark ? Colors.grey.shade300 : const Color(0xFF475569)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: Text('Cancel', style: TextStyle(color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF64748B))),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF64748B)),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -496,21 +490,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         });
 
                         try {
-                          final result = await FirebaseService.verifyMfa(
-                            userId: userId,
-                            otpCode: code,
-                          );
+                          final result = await FirebaseService.verifyMfa(userId: userId, otpCode: code);
 
                           if (result != null && result['success'] == true) {
-                            // Register device if user chose to be remembered
-                            if (rememberDevice) {
-                              final token = await SessionService.getOrCreateDeviceToken(userId);
-                              await FirebaseService.trustDevice(
-                                userId: userId,
-                                deviceToken: token,
-                              );
-                              await SessionService.saveTrustedUserId(userId);
-                            }
+                            // Trust this device so the OTP isn't asked again here for 7 days
+                            final token = await SessionService.getOrCreateDeviceToken(userId);
+                            await FirebaseService.trustDevice(userId: userId, deviceToken: token);
+                            await SessionService.saveTrustedUserId(userId);
                             if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
                             if (!mounted) return;
                             final verifiedUser = Map<String, dynamic>.from(result['user'] as Map);
@@ -545,8 +531,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _navigateToRoleScreen(Map<String, dynamic> userData) async {
     // Citizens from Google sign-in (or older accounts) still need a birthdate and address
-    final missingDetails = (userData['birthdate'] ?? '').toString().isEmpty ||
-        (userData['barangay'] ?? '').toString().isEmpty;
+    final missingDetails =
+        (userData['birthdate'] ?? '').toString().isEmpty || (userData['barangay'] ?? '').toString().isEmpty;
     final isCitizen = (userData['role'] ?? 'Citizen') == 'Citizen' && userData['guest'] != true;
     final needsPassword = isCitizen && await FirebaseService.needsPassword();
     if (!mounted) return;
@@ -563,15 +549,22 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (!mounted) return;
     }
+    // Accounts that never saw the sign-up checkbox (Google, older ones) or a newer Terms version
+    if (isCitizen && !await Terms.accepted()) {
+      final birth = DateTime.tryParse('${await Rtdb.get('users/${FirebaseAuthRest.uid}/birthdate') ?? ''}');
+      if (!mounted) return;
+      if (!await showTermsAcceptanceDialog(context, birthdate: birth)) {
+        await FirebaseService.signOut();
+        return;
+      }
+      if (!mounted) return;
+    }
     final userId = int.tryParse(userData['id']?.toString() ?? '0') ?? 0;
     final fullName = userData['fullName']?.toString() ?? 'User';
     final email = userData['email']?.toString() ?? '';
     final userRole = userData['role']?.toString() ?? 'Citizen';
     final deptIdRaw = userData['deptID'] ?? userData['dept_ID'];
-    String department = (userData['department'] ??
-            userData['Department_Name'] ??
-            userData['dept'] ??
-            '')
+    String department = (userData['department'] ?? userData['Department_Name'] ?? userData['dept'] ?? '')
         .toString()
         .trim()
         .toUpperCase();
@@ -604,31 +597,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (home == RoleHome.superAdmin) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => SuperAdminShell(
-            isSuperAdmin: true,
-            userId: userId,
-          ),
-        ),
+        MaterialPageRoute(builder: (context) => SuperAdminShell(isSuperAdmin: true, userId: userId)),
       );
     } else if (home == RoleHome.admin) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => AdminShell(
-            userId: userId,
-            department: department,
-          ),
+          builder: (context) => AdminShell(userId: userId, department: department),
         ),
       );
     } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => HomeScreen(
-            citizenId: userId.toString(),
-            userName: fullName,
-          ),
+          builder: (context) => HomeScreen(citizenId: userId.toString(), userName: fullName),
         ),
       );
     }
@@ -638,25 +620,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showResqSnackBar(
-        const SnackBar(content: Text('Enter your email address first.')),
-      );
+      ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(content: Text('Enter your email address first.')));
       return;
     }
 
     try {
       await FirebaseService.sendPasswordReset(email);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showResqSnackBar(
-        SnackBar(content: Text('Password reset link sent to $email.')),
-      );
+      ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(content: Text('Password reset link sent to $email.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showResqSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('HttpException: ', '')),
-          backgroundColor: Colors.redAccent,
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('HttpException: ', '')), backgroundColor: Colors.redAccent),
       );
     }
   }
@@ -674,10 +649,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
     Widget loginForm = SingleChildScrollView(
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 40 : 28,
-        vertical: isDesktop ? 30 : 50,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: isDesktop ? 40 : 28, vertical: isDesktop ? 30 : 50),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -689,34 +661,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 Text(
                   "ResQ",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: textDark,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: textDark),
                 ),
-                const Text(
-                  'Emergency Response Portal',
-                  style: TextStyle(fontSize: 12, color: textGrey),
-                ),
+                const Text('Emergency Response Portal', style: TextStyle(fontSize: 12, color: textGrey)),
               ],
             ),
           ),
           const SizedBox(height: 40),
           Text(
-            'Email / Username',
+            'Email',
             style: TextStyle(fontWeight: FontWeight.w600, color: textDark),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
             style: TextStyle(color: textDark),
-            decoration: _inputDecor(
-              'you@example.com',
-              Icons.person_outline,
-              borderGrey,
-              brandOrange,
-            ),
+            decoration: _inputDecor('Enter Email', Icons.email_outlined, borderGrey, brandOrange),
           ),
           const SizedBox(height: 20),
           Text(
@@ -734,8 +695,7 @@ class _LoginScreenState extends State<LoginScreen> {
               borderGrey,
               brandOrange,
               isPassword: true,
-              onToggle: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
+              onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
           const SizedBox(height: 12),
@@ -745,10 +705,7 @@ class _LoginScreenState extends State<LoginScreen> {
               onTap: _handleForgotPassword,
               child: const Text(
                 'Forgot password?',
-                style: TextStyle(
-                  color: brandOrange,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: brandOrange, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -758,16 +715,11 @@ class _LoginScreenState extends State<LoginScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: brandOrange,
               minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             child: const Text(
               'Log In',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
           // Phones only: sign-up is for citizens; the desktop app is for staff
@@ -776,27 +728,19 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  "Don't have an account? ",
-                  style: TextStyle(color: textGrey),
-                ),
+                const Text("Don't have an account? ", style: TextStyle(color: textGrey)),
                 GestureDetector(
                   onTap: () async {
                     // Register returns a result when the user picked Google there
                     final googleResult = await Navigator.push<({Map<String, dynamic>? data, String? error})>(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const RegisterScreen()),
                     );
                     if (googleResult != null) _handleLoginResult(googleResult);
                   },
                   child: const Text(
                     'Create one',
-                    style: TextStyle(
-                      color: brandOrange,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: brandOrange, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -808,6 +752,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_checkingTrustedDevice) {
       return Scaffold(
+        resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
         backgroundColor: pageBg,
         body: const Center(
           child: Column(
@@ -815,8 +760,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               CircularProgressIndicator(color: Color(0xFFFF6B00)),
               SizedBox(height: 16),
-              Text('Checking saved session…',
-                  style: TextStyle(color: Color(0xFF94A3B8))),
+              Text('Checking saved session…', style: TextStyle(color: Color(0xFF94A3B8))),
             ],
           ),
         ),
@@ -824,6 +768,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: isDesktop ? pageBg : cardContainerBg,
       // Phones only: emergency hotlines pinned to the bottom, apart from the login form
       bottomNavigationBar: isDesktop
@@ -880,9 +825,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: cardContainerBg,
                   surfaceTintColor: Colors.transparent,
                   shadowColor: ts.isDark ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                   child: loginForm,
                 )
               : loginForm,
@@ -907,9 +850,7 @@ class _LoginScreenState extends State<LoginScreen> {
       suffixIcon: isPassword
           ? IconButton(
               icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
+                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                 size: 18,
                 color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8),
               ),

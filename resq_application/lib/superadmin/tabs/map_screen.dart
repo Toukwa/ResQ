@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/closed_reports_tabs.dart';
 import '../../shared/incident_details_dialog.dart';
 import '../../shared/map_pin.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -165,7 +166,7 @@ class _MapScreenState extends State<MapScreen> {
   List<dynamic> get _activeIncidents => _incidents.where((inc) {
     if (inc is! Map) return false;
     final s = (inc['status'] ?? inc['reqStatus'] ?? inc['Status'] ?? '').toString().toLowerCase();
-    return s != 'cancelled' && s != 'declined' && s != 'completed';
+    return s != 'cancelled' && s != 'declined' && s != 'completed' && s != 'invalid';
   }).toList();
 
   /// Cancelled / Declined incidents.
@@ -173,6 +174,13 @@ class _MapScreenState extends State<MapScreen> {
     if (inc is! Map) return false;
     final s = (inc['status'] ?? inc['reqStatus'] ?? inc['Status'] ?? '').toString().toLowerCase();
     return s == 'cancelled' || s == 'declined';
+  }).toList();
+
+  /// Invalid (prank) reports: closed after the warning was unlocked.
+  List<dynamic> get _invalidIncidents => _incidents.where((inc) {
+    if (inc is! Map) return false;
+    final s = (inc['status'] ?? inc['reqStatus'] ?? inc['Status'] ?? '').toString().toLowerCase();
+    return s == 'invalid';
   }).toList();
 
   /// Completed incidents.
@@ -289,6 +297,7 @@ class _MapScreenState extends State<MapScreen> {
       builder: (context, _) {
         final ts = ThemeService.instance;
         return Scaffold(
+          resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
           backgroundColor: ts.pageBackground,
           body: Row(
             children: [
@@ -336,34 +345,8 @@ class _MapScreenState extends State<MapScreen> {
                                           TileLayer(
                                             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                             userAgentPackageName: 'com.resq.admin.dashboard',
+                                            tileBuilder: DisplaySettings.mapTileBuilder,
                                             tileProvider: CancellableNetworkTileProvider(),
-                                            tileBuilder: ts.isDark
-                                                ? (context, tileWidget, tile) => ColorFiltered(
-                                                    colorFilter: const ColorFilter.matrix(<double>[
-                                                      -0.2126,
-                                                      -0.7152,
-                                                      -0.0722,
-                                                      0,
-                                                      255,
-                                                      -0.2126,
-                                                      -0.7152,
-                                                      -0.0722,
-                                                      0,
-                                                      255,
-                                                      -0.2126,
-                                                      -0.7152,
-                                                      -0.0722,
-                                                      0,
-                                                      255,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      1,
-                                                      0,
-                                                    ]),
-                                                    child: tileWidget,
-                                                  )
-                                                : null,
                                           ),
                                           MarkerLayer(
                                             markers: _incidents
@@ -1157,24 +1140,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildCancelledRequestsColumn() {
-    final isCancelledTab = _bottomTabFilter == 'Cancelled';
-    final list = isCancelledTab ? _cancelledIncidents : _completedIncidents;
+    final tab = _bottomTabFilter;
+    final list = tab == 'Invalid' ? _invalidIncidents : tab == 'Cancelled' ? _cancelledIncidents : _completedIncidents;
     final ts = ThemeService.instance;
-
-    final containerBg = isCancelledTab
-        ? (ts.isDark ? const Color(0xFF2D1215) : const Color(0xFFFFF5F5))
-        : (ts.isDark ? const Color(0xFF062C19) : const Color(0xFFF0FDF4));
-    final containerBorder = isCancelledTab
-        ? (ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1))
-        : (ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0));
-
-    final cancelledActiveBg = ts.isDark ? const Color(0xFF5F1D24) : const Color(0xFFFFDDE1);
-    final cancelledActiveText = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757);
-
-    final completedActiveBg = ts.isDark ? const Color(0xFF14532D) : const Color(0xFFBBF7D0);
-    final completedActiveText = ts.isDark ? const Color(0xFF86EFAC) : const Color(0xFF16A34A);
-
-    final unselectedText = ts.isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600;
+    final containerBg = ClosedReportsTabs.panel(tab).bg;
+    final containerBorder = ClosedReportsTabs.panel(tab).border;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1186,104 +1156,10 @@ class _MapScreenState extends State<MapScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              // Cancelled Tab Pill
-              Flexible(
-                child: InkWell(
-                  onTap: () => setState(() => _bottomTabFilter = 'Cancelled'),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isCancelledTab ? cancelledActiveBg : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.cancel_outlined,
-                          size: 13,
-                          color: isCancelledTab ? cancelledActiveText : unselectedText,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'Cancelled',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isCancelledTab ? cancelledActiveText : unselectedText,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-
-              // Completed Tab Pill
-              Flexible(
-                child: InkWell(
-                  onTap: () => setState(() => _bottomTabFilter = 'Completed'),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: !isCancelledTab ? completedActiveBg : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 13,
-                          color: !isCancelledTab ? completedActiveText : unselectedText,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'Completed',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: !isCancelledTab ? completedActiveText : unselectedText,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isCancelledTab
-                      ? (ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFFE5E5))
-                      : (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${list.length}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: isCancelledTab ? cancelledActiveText : completedActiveText,
-                  ),
-                ),
-              ),
-            ],
+          ClosedReportsHeader(
+            selected: tab,
+            count: list.length,
+            onSelect: (t) => setState(() => _bottomTabFilter = t),
           ),
           const SizedBox(height: 8),
           list.isEmpty
@@ -1291,7 +1167,7 @@ class _MapScreenState extends State<MapScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Center(
                     child: Text(
-                      isCancelledTab ? 'No cancelled requests' : 'No completed incidents',
+                      ClosedReportsTabs.emptyText(tab),
                       style: TextStyle(
                         fontSize: 11,
                         color: ts.isDark ? const Color(0xFF64748B) : const Color(0xFFA0A0A0),
@@ -1329,8 +1205,11 @@ class _MapScreenState extends State<MapScreen> {
     final type = formatEmergencyTypeLabel(req['Emergency_Type'] ?? req['type'] ?? req['incType'] ?? 'Emergency');
     final status = formatStatus(req['Status'] ?? req['status'] ?? req['reqStatus'] ?? 'Declined');
     final isCompleted = status.toLowerCase() == 'completed';
+    final isInvalid = status.toLowerCase() == 'invalid';
 
-    final primaryColor = isCompleted
+    final primaryColor = isInvalid
+        ? ClosedReportsTabs.textOf('Invalid')
+        : isCompleted
         ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
         : (ts.isDark ? const Color(0xFFF87171) : const Color(0xFFEB5757));
 

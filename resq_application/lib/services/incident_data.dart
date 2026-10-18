@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
 
@@ -6,6 +7,8 @@ import '../shared/incident_catalog.dart';
 
 import '../config.dart';
 import 'firebase_rest.dart';
+import 'report_data.dart' show emergencyTypesOf;
+import '../shared/iriga_address.dart';
 import 'live_socket.dart';
 import 'media_upload.dart';
 import 'sound_service.dart';
@@ -31,7 +34,7 @@ class IncidentData {
   /// Closed incidents (completed, declined or cancelled) are taken off the staff maps.
   static bool showOnMap(dynamic incident) =>
       incident is Map &&
-      !const {'completed', 'declined', 'cancelled'}.contains('${incident['reqStatus'] ?? incident['status']}'.toLowerCase());
+      !const {'completed', 'declined', 'cancelled', 'invalid'}.contains('${incident['reqStatus'] ?? incident['status']}'.toLowerCase());
 
   static String _nowIso() => DateTime.now().toUtc().toIso8601String();
 
@@ -131,8 +134,9 @@ class IncidentData {
 
   static List<Map<String, dynamic>> _deptStatusList(Map<String, dynamic> incident) {
     final raw = incident['dept_status'];
+    final invalid = '${incident['reqStatus']}'.toLowerCase() == 'invalid';
     if (raw is Map && raw.isNotEmpty) {
-      return [for (final e in raw.entries) {'dept_name': e.key, 'status': e.value}];
+      return [for (final e in raw.entries) {'dept_name': e.key, 'status': invalid ? 'Invalid' : e.value}];
     }
     return [
       for (final d in involvedDepartments(incident['incType']))
@@ -157,6 +161,8 @@ class IncidentData {
   /// on their own. 'ALL' (the Super Admin) sees the overall status.
   static String statusFor(Map incident, String? dept, [String fallback = 'Pending']) {
     final overall = '${incident['Status'] ?? incident['status'] ?? incident['reqStatus'] ?? fallback}';
+    // A prank report closed as Invalid is Invalid for every agency, whatever its own status was
+    if ('${incident['reqStatus']}'.toLowerCase() == 'invalid') return 'Invalid';
     final mine = normalizeDepartment(dept);
     if (mine == 'ALL') return overall;
     final own = (incident['dept_status'] as Map?)?[mine];
@@ -186,6 +192,18 @@ class IncidentData {
     final status = incident['dept_status'];
     if (status is Map && status.isNotEmpty) return [for (final k in status.keys) '$k'];
     return involvedDepartments(incident['incType']?.toString());
+  }
+
+  /// How [dept] came to be on [incident]: 'Direct report' (its own type of emergency),
+  /// 'Assigned by EOC' (a General Emergency the EOC handed out) or 'Help request'
+  /// (the EOC asked it to help, or it sent units to help).
+  static String routeFor(Map incident, String dept) {
+    final d = normalizeDepartment(dept);
+    final type = incident['incType']?.toString();
+    final helpers = incident['helpers'];
+    if (helpers is Map && helpers.keys.map((k) => normalizeDepartment('$k')).contains(d)) return 'Help request';
+    if (isGeneral(type)) return 'Assigned by EOC';
+    return involvedDepartments(type).contains(d) ? 'Direct report' : 'Help request';
   }
 
   /// Who rates a report's severity: the EOC for a General Emergency (when assigning it),
@@ -355,6 +373,12 @@ class IncidentData {
     final urls = uploads.take(images.length).toList();
     final voiceUrl = voiceNote == null ? null : uploads.last;
     final id = await Rtdb.nextId('counters/incidents');
+    // Barangay where it happened (for the barangay analytics); the reporter's own as a fallback
+    String? barangay;
+    try {
+      barangay = await IrigaAddress.barangayAt(latitude, longitude);
+    } catch (_) {}
+    barangay ??= (user['barangay'] as String?);
 
     final incident = {
       'Req_ID': id,
@@ -366,6 +390,7 @@ class IncidentData {
       'description': description,
       'latitude': latitude,
       'longitude': longitude,
+      'barangay': ?barangay,
       'reqStatus': 'Pending',
       'image_path': urls.isEmpty ? null : urls.join(','),
       'voice_path': ?voiceUrl,
@@ -380,7 +405,7 @@ class IncidentData {
       final open = await Rtdb.get('users/${FirebaseAuthRest.uid}/activeReq');
       if (open != null) {
         final status = '${await Rtdb.get('incidents/$open/reqStatus')}'.toLowerCase();
-        if (const ['completed', 'declined', 'cancelled', 'null'].contains(status)) {
+        if (const ['completed', 'declined', 'cancelled', 'invalid', 'null'].contains(status)) {
           await Rtdb.remove('users/${FirebaseAuthRest.uid}/activeReq');
         }
       }
@@ -393,8 +418,35 @@ class IncidentData {
       await Rtdb.set('incidents/$id', incident);
     }
 
-    await log('EMERGENCY_REQUEST_CREATED', 'emergency_request', id,
-        {'type': incidentType, 'location': {'latitude': latitude, 'longitude': longitude}});
+    // Full record for the audit logs: who reported and what. No IP address here;
+    // IPs are only collected and logged for prank warnings.
+    final videos = images.where((f) => isVideoFile(f.path)).length;
+    await log('EMERGENCY_REQUEST_CREATED', 'emergency_request', id, {
+      'citizen': {
+        'id': user['id'],
+        'name': user['fullName'],
+        'email': user['email'] ?? '',
+        'contactNo': user['contactNo'] ?? '',
+        'birthdate': user['birthdate'] ?? '',
+        'barangay': user['barangay'] ?? '',
+        'address': user['address'] ?? '',
+        'accountType': user['guest'] == true ? 'Guest (Report Now)' : (user['role'] ?? 'Citizen'),
+      },
+      'report': {
+        'reqId': id,
+        'type': incidentType,
+        'description': description,
+        'barangay': barangay ?? '',
+        'latitude': latitude,
+        'longitude': longitude,
+        'photos': images.length - videos,
+        'videos': videos,
+        'voiceMessage': voiceUrl != null,
+        'reportedAt': (reportedAt ?? DateTime.now()).toIso8601String(),
+        'source': ?source,
+        'departments': involvedDepartments(incidentType),
+      },
+    });
     await addNotification(
       title: 'New Emergency: $incidentType',
       message: 'A new $incidentType emergency request (#$id) has been reported.',
@@ -589,6 +641,103 @@ class IncidentData {
     return const [];
   }
 
+  // ─── possible duplicates ─────────────────────────────────────────────────
+
+  static const duplicateWindow = Duration(hours: 6);
+
+  static double _metersBetween(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371000.0;
+    double rad(double d) => d * math.pi / 180;
+    final dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
+    final a = math.pow(math.sin(dLat / 2), 2) +
+        math.cos(rad(lat1)) * math.cos(rad(lat2)) * math.pow(math.sin(dLon / 2), 2);
+    return 2 * r * math.asin(math.sqrt(a));
+  }
+
+  /// Open reports in [all] that look like the same emergency as [incident], best match first.
+  /// Compares location (within 300 m strongly, 1 km weakly), incident type, agency and
+  /// time (reported within [duplicateWindow] of each other). It has to be nearby, and
+  /// close enough on the rest, to count. [department]: only reports that agency is on.
+  static List<DuplicateMatch> similarReports(Map incident, Iterable<Map> all, {String? department}) {
+    final id = _int(incident['Req_ID']);
+    final lat = double.tryParse('${incident['latitude']}'), lng = double.tryParse('${incident['longitude']}');
+    final when = DateTime.tryParse('${incident['SOS_timeStamp'] ?? ''}');
+    if (id == null || lat == null || lng == null) return const [];
+    final mine = normalizeDepartment(department);
+    final myTypes = emergencyTypesOf('${incident['incType'] ?? ''}').toSet();
+    final myAgencies = agenciesOf(incident).map(normalizeDepartment).toSet();
+    final out = <DuplicateMatch>[];
+
+    for (final other in all) {
+      final otherId = _int(other['Req_ID']);
+      if (otherId == null || otherId == id || _closed(other)) continue;
+      if (mine != 'ALL' && !isForDepartment(other, mine)) continue;
+      if (other['linkGroup'] != null && '${other['linkGroup']}' == '${incident['linkGroup']}') continue; // already linked
+      final oLat = double.tryParse('${other['latitude']}'), oLng = double.tryParse('${other['longitude']}');
+      if (oLat == null || oLng == null) continue;
+      final oWhen = DateTime.tryParse('${other['SOS_timeStamp'] ?? ''}');
+      if (when != null && oWhen != null && when.difference(oWhen).abs() > duplicateWindow) continue;
+
+      final meters = _metersBetween(lat, lng, oLat, oLng);
+      if (meters > 1000) continue; // has to be nearby
+      var score = meters <= 300 ? 3 : 1;
+      final reasons = <String>[meters < 1000 ? '${meters.round()} m away' : '${(meters / 1000).toStringAsFixed(1)} km away'];
+
+      final otherTypes = emergencyTypesOf('${other['incType'] ?? ''}').toSet();
+      if ('${other['incType']}' == '${incident['incType']}') {
+        score += 3;
+        reasons.add('same incident type');
+      } else if (myTypes.intersection(otherTypes).isNotEmpty) {
+        score += 2;
+        reasons.add('shares an incident type');
+      }
+      if (myAgencies.intersection(agenciesOf(other).map(normalizeDepartment).toSet()).isNotEmpty) {
+        score += 1;
+        reasons.add('same agency');
+      }
+      if (when != null && oWhen != null) {
+        final mins = when.difference(oWhen).inMinutes.abs();
+        if (mins <= 60) score += 1;
+        reasons.add(mins < 60 ? '$mins min apart' : '${(mins / 60).toStringAsFixed(1)} h apart');
+      }
+      // Nearby with the same kind of emergency, or right on top of each other
+      if (score >= 5) out.add(DuplicateMatch(Map<String, dynamic>.from(other), score, reasons));
+    }
+    out.sort((a, b) => b.score.compareTo(a.score));
+    return out;
+  }
+
+  /// Admin: links [duplicate] to [original] as a duplicate and moves it to the original's
+  /// status for this agency (Pending, Accepted, Dispatched…). From then on actions and
+  /// dispatches on either apply to both, like any linked reports.
+  static Future<void> linkAsDuplicate(int duplicate, int original, {required String department}) async {
+    final mine = normalizeDepartment(department);
+    if (mine == 'ALL') throw const HttpException('Only an agency can link a duplicate report.');
+    await linkIncidents(duplicate, original);
+    final orig = await Rtdb.get('incidents/$original'), dup = await Rtdb.get('incidents/$duplicate');
+    if (orig == null || dup == null) throw const HttpException('Report not found.');
+    final status = statusFor(orig, mine, 'Pending');
+    final statuses = Map<String, String>.from(((dup['dept_status'] as Map?) ?? {}).map((k, v) => MapEntry('$k', '$v')));
+    statuses[mine] = status;
+    final overall = overallStatus(statuses.values);
+    await Rtdb.update('incidents/$duplicate', {
+      'dept_status/$mine': status,
+      'reqStatus': overall,
+      'duplicateOf': original,
+      if (overall == 'Completed' && dup['completedAt'] == null) 'completedAt': _nowIso(),
+      // Keep the original's rating so the duplicate isn't asked for one again
+      if (dup['severity'] == null && orig['severity'] != null && !isGeneral(dup['incType']?.toString()))
+        'severity': orig['severity'],
+    });
+    if (overall == 'Completed' || overall == 'Declined') await clearActiveReport(dup['citizenUid'], duplicate);
+    await log('DUPLICATE_LINKED', 'emergency_request', duplicate, {
+      'duplicate_of': original,
+      'status': status,
+      'department': mine,
+    });
+    LiveEvents.emit('refreshIncidentQueueEvent', {});
+  }
+
   // ─── linked reports ──────────────────────────────────────────────────────
 
   /// Links [a] and [b] as the same emergency (e.g. two people reporting one fire).
@@ -637,7 +786,7 @@ class IncidentData {
   }
 
   static bool _closed(Map incident) =>
-      const ['completed', 'declined', 'cancelled'].contains('${incident['reqStatus']}'.toLowerCase());
+      const ['completed', 'declined', 'cancelled', 'invalid'].contains('${incident['reqStatus']}'.toLowerCase());
 
   /// Linked reports this agency is on and hasn't finished, to apply an action to.
   static Future<List<int>> _linkedOpenForMe(int reqId, String? department) async {
@@ -649,7 +798,7 @@ class IncidentData {
       if (mine != 'ALL') {
         if (!isForDepartment(inc, mine)) continue;
         final own = '${(inc['dept_status'] as Map?)?[mine] ?? ''}'.toLowerCase();
-        if (const ['completed', 'declined', 'cancelled'].contains(own)) continue;
+        if (const ['completed', 'declined', 'cancelled', 'invalid'].contains(own)) continue;
       }
       out.add(id);
     }
@@ -687,7 +836,7 @@ class IncidentData {
     if (user['role'] == 'Admin' && !isForDepartment(incident, user['department']?.toString())) {
       if (!help) throw const HttpException('This request is not assigned to your department.');
       if (agenciesOf(incident).isEmpty) throw const HttpException('Waiting for the EOC to assign this report.');
-      if (const ['completed', 'declined', 'cancelled'].contains('${incident['reqStatus']}'.toLowerCase())) {
+      if (const ['completed', 'declined', 'cancelled', 'invalid'].contains('${incident['reqStatus']}'.toLowerCase())) {
         throw const HttpException('This report is already closed.');
       }
       joining = normalizeDepartment(user['department']?.toString());
@@ -930,4 +1079,12 @@ class IncidentData {
 
   static Future<int> unreadNotificationCount(int userId) async =>
       (await getNotifications(userId)).where((n) => n['isRead'] != true).length;
+}
+
+/// A report that may be the same emergency, with why (distance, type, agency, time).
+class DuplicateMatch {
+  final Map<String, dynamic> report;
+  final int score;
+  final List<String> reasons;
+  const DuplicateMatch(this.report, this.score, this.reasons);
 }

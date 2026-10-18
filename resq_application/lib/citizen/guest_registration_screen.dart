@@ -7,6 +7,7 @@ import '../services/session_service.dart';
 import '../shared/birthdate_picker.dart';
 import '../shared/iriga_address.dart';
 import '../shared/resq_toast.dart';
+import '../services/theme_service.dart';
 
 /// Shown to a Report Now guest once their report has ended. It turns the guest
 /// account into a full one (same account, same reports) before they can go on.
@@ -22,9 +23,9 @@ class GuestRegistrationScreen extends StatefulWidget {
 class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
   static const _orange = Color(0xFFFF6B00);
   static const _red = Color(0xFFEF4444);
-  static const _textDark = Color(0xFF0F172A);
-  static const _textGrey = Color(0xFF94A3B8);
-  static const _border = Color(0xFFE2E8F0);
+  Color get _textDark => ThemeService.instance.textPrimary;
+  Color get _textGrey => ThemeService.instance.textSecondary;
+  Color get _border => ThemeService.instance.borderColor;
 
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -97,7 +98,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: ThemeService.instance.cardBackground,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -111,7 +112,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
               child: const Icon(Icons.logout_rounded, color: _red, size: 22),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Log out without registering?',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _textDark),
@@ -119,9 +120,9 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
             ),
           ],
         ),
-        content: const Text(
+        content: Text(
           "You'll be asked to finish this the next time you use Report Now on this phone.",
-          style: TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+          style: TextStyle(fontSize: 13, color: ThemeService.instance.textSecondary, height: 1.4),
         ),
         actions: [
           Row(
@@ -131,10 +132,10 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                   onPressed: () => Navigator.pop(c, false),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
-                    side: const BorderSide(color: _border),
+                    side: BorderSide(color: _border),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text('Stay', style: TextStyle(color: _textDark, fontWeight: FontWeight.w600)),
+                  child: Text('Stay', style: TextStyle(color: _textDark, fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -161,14 +162,14 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
 
   InputDecoration _decor(String hint, IconData? icon) => InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: _textGrey),
+    hintStyle: TextStyle(color: _textGrey),
     prefixIcon: icon == null ? null : Icon(icon, color: _textGrey, size: 20),
     filled: true,
-    fillColor: const Color(0xFFF8FAFC),
+    fillColor: ThemeService.instance.inputBackground,
     contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _border),
+      borderSide: BorderSide(color: _border),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -180,7 +181,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
     padding: const EdgeInsets.only(bottom: 6, top: 12),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark),
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark),
     ),
   );
 
@@ -189,13 +190,14 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
     return PopScope(
       canPop: false, // finishing sign-up (or logging out) is the only way on
       child: Scaffold(
-        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
+        backgroundColor: ThemeService.instance.cardBackground,
         // Header stays on top; a shadow appears only once content scrolls under it
         appBar: AppBar(
           automaticallyImplyLeading: false,
           toolbarHeight: 72,
           titleSpacing: 24,
-          backgroundColor: Colors.white,
+          backgroundColor: ThemeService.instance.cardBackground,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 4,
@@ -211,7 +213,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                 child: const Icon(Icons.how_to_reg_rounded, color: _orange),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -240,14 +242,14 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED),
+                          color: ThemeService.instance.isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFED7AA)),
+                          border: Border.all(color: ThemeService.instance.isDark ? const Color(0xFF9A3412) : const Color(0xFFFED7AA)),
                         ),
                         child: Text(
                           'Thank you, ${widget.userName}. To keep using ResQ, finish setting up your account. '
                           'Your reports stay with it, and next time you can log in with your email.',
-                          style: const TextStyle(fontSize: 13, height: 1.4, color: Color(0xFF9A3412)),
+                          style: TextStyle(fontSize: 13, height: 1.4, color: ThemeService.instance.isDark ? const Color(0xFFFDBA74) : const Color(0xFF9A3412)),
                         ),
                       ),
                       _label('Email Address'),
@@ -262,8 +264,8 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                         enabled: !_busy,
                         onChanged: (d) => setState(() => _birthdate = d),
                         decoration: (hint) => _decor(hint, null),
-                        textStyle: const TextStyle(fontSize: 14, color: _textDark),
-                        menuColor: Colors.white,
+                        textStyle: TextStyle(fontSize: 14, color: _textDark),
+                        menuColor: ThemeService.instance.cardBackground,
                       ),
                       _label('Barangay'),
                       ResqSelect<String>(
@@ -276,7 +278,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
           onChanged: (v) => setState(() => _barangay = v),
         ),
                       const SizedBox(height: 6),
-                      const Text(IrigaAddress.city, style: TextStyle(fontSize: 12, color: _textGrey)),
+                      Text(IrigaAddress.city, style: TextStyle(fontSize: 12, color: _textGrey)),
                       _label('Password'),
                       TextField(
                         controller: _password,
@@ -301,7 +303,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                         decoration: _decor('••••••••', Icons.lock_outline),
                       ),
                       const SizedBox(height: 6),
-                      const Text('Use ${PasswordPolicy.hint}.', style: TextStyle(fontSize: 12, color: _textGrey)),
+                      Text('Use ${PasswordPolicy.hint}.', style: TextStyle(fontSize: 12, color: _textGrey)),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Row(
@@ -337,7 +339,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: _busy ? null : _logOut,
-                        child: const Text('Log out instead', style: TextStyle(color: _textGrey)),
+                        child: Text('Log out instead', style: TextStyle(color: _textGrey)),
                       ),
                     ],
                   ),

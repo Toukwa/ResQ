@@ -81,6 +81,7 @@ class _Incident {
   DateTime? get completed => DateTime.tryParse(data['completedAt']?.toString() ?? '')?.toLocal();
 
   String statusFor(String dept) {
+    if (status.toLowerCase() == 'invalid') return status; // prank report: Invalid for every agency
     final raw = data['dept_status'];
     if (raw is Map) {
       for (final e in raw.entries) {
@@ -136,6 +137,24 @@ class _Dispatch {
 }
 
 /// A simple table: header row plus data rows, shown on screen and exported as CSV.
+/// One week or month for one department in the top-type / top-barangay analytics.
+class PeriodTop {
+  final DateTime start;
+  final String label;
+  final String department;
+  final int reports;
+  final (String, int)? topType;
+  final (String, int)? topBarangay;
+  const PeriodTop({
+    required this.start,
+    required this.label,
+    required this.department,
+    required this.reports,
+    required this.topType,
+    required this.topBarangay,
+  });
+}
+
 class ReportTable {
   final String title;
   final List<String> columns;
@@ -199,7 +218,7 @@ class Report {
               e.key,
               '${e.value.length}',
               '${count(e.value, 'completed')}',
-              '${e.value.length - count(e.value, 'completed') - count(e.value, 'declined') - count(e.value, 'cancelled')}',
+              '${e.value.length - count(e.value, 'completed') - count(e.value, 'declined') - count(e.value, 'cancelled') - count(e.value, 'invalid')}',
               '${count(e.value, 'declined') + count(e.value, 'cancelled')}',
             ])
         .toList();
@@ -208,7 +227,7 @@ class Report {
       'TOTAL',
       '$totalIncidents',
       '${count(all, 'completed')}',
-      '${totalIncidents - count(all, 'completed') - count(all, 'declined') - count(all, 'cancelled')}',
+      '${totalIncidents - count(all, 'completed') - count(all, 'declined') - count(all, 'cancelled') - count(all, 'invalid')}',
       '${count(all, 'declined') + count(all, 'cancelled')}',
     ]);
     return ReportTable('Emergency Count', ['Incident Type', 'Total', 'Completed', 'Open', 'Declined / Cancelled'], rows);
@@ -324,7 +343,106 @@ class Report {
         rows);
   }
 
-  List<ReportTable> get all => [emergencyCount, responseTimes, responseByType, vehicleUsage, departmentPerformance];
+  List<ReportTable> get all => [
+        emergencyCount,
+        responseTimes,
+        responseByType,
+        vehicleUsage,
+        departmentPerformance,
+        topByPeriod(monthly: false),
+        topByPeriod(monthly: true),
+      ];
+
+  // ── Top incident type and barangay per week / month ─────────────────────
+
+  /// Barangay where a report happened ('Unknown' for reports from before it was saved).
+  static String _barangayOf(_Incident i) {
+    final b = '${i.data['barangay'] ?? ''}'.trim();
+    return b.isEmpty ? 'Unknown' : b;
+  }
+
+  /// The departments a report counts under here: the one being viewed, or each it was sent to
+  /// (a General Emergency still with the EOC counts under "EOC").
+  Iterable<String> _deptsOf(_Incident i) {
+    final own = IncidentData.normalizeDepartment(department);
+    if (own != 'ALL') return [own];
+    return i.departments.isEmpty ? const ['EOC'] : i.departments;
+  }
+
+  static DateTime periodStart(DateTime t, {required bool monthly}) {
+    final d = DateTime(t.year, t.month, t.day);
+    return monthly ? DateTime(t.year, t.month) : d.subtract(Duration(days: d.weekday - 1)); // Monday
+  }
+
+  static String periodLabel(DateTime start, {required bool monthly}) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (monthly) return '${months[start.month - 1]} ${start.year}';
+    final end = start.add(const Duration(days: 6));
+    return 'Week of ${months[start.month - 1]} ${start.day}'
+        '${end.month != start.month ? ' - ${months[end.month - 1]} ${end.day}' : '-${end.day}'}, ${end.year}';
+  }
+
+  /// Per week or month and per department: how many reports, the most common incident type,
+  /// and the barangay with the most reports. Newest period first.
+  List<PeriodTop> periodTops({required bool monthly}) {
+    final groups = <(DateTime, String), List<_Incident>>{};
+    for (final i in _incidents) {
+      final start = periodStart(i.reported, monthly: monthly);
+      for (final d in _deptsOf(i)) {
+        groups.putIfAbsent((start, d), () => []).add(i);
+      }
+    }
+    (String, int)? top(Iterable<String> values) {
+      final counts = <String, int>{};
+      for (final v in values) {
+        counts[v] = (counts[v] ?? 0) + 1;
+      }
+      if (counts.isEmpty) return null;
+      final best = counts.entries.reduce((a, b) => b.value > a.value ? b : a);
+      return (best.key, best.value);
+    }
+
+    final out = [
+      for (final e in groups.entries)
+        PeriodTop(
+          start: e.key.$1,
+          label: periodLabel(e.key.$1, monthly: monthly),
+          department: e.key.$2,
+          reports: e.value.length,
+          topType: top(e.value.expand((i) => i.types)),
+          topBarangay: top(e.value.map(_barangayOf)),
+        ),
+    ]..sort((a, b) {
+        final byTime = b.start.compareTo(a.start);
+        return byTime != 0 ? byTime : a.department.compareTo(b.department);
+      });
+    return out;
+  }
+
+  ReportTable topByPeriod({required bool monthly}) => ReportTable(
+        monthly ? 'Top Incident Type and Barangay per Month' : 'Top Incident Type and Barangay per Week',
+        [monthly ? 'Month' : 'Week', 'Department', 'Reports', 'Top Incident Type', 'Top Barangay'],
+        [
+          for (final p in periodTops(monthly: monthly))
+            [
+              p.label,
+              p.department,
+              '${p.reports}',
+              p.topType == null ? '-' : '${p.topType!.$1} (${p.topType!.$2})',
+              p.topBarangay == null ? '-' : '${p.topBarangay!.$1} (${p.topBarangay!.$2})',
+            ],
+        ],
+      );
+
+  /// Reports per barangay over the whole period, most first.
+  Map<String, int> get countsByBarangay {
+    final m = <String, int>{};
+    for (final i in _incidents) {
+      final b = _barangayOf(i);
+      m[b] = (m[b] ?? 0) + 1;
+    }
+    return Map.fromEntries(m.entries.toList()..sort((a, b) => b.value.compareTo(a.value)));
+  }
 
   // ── Chart data (PDF export) ─────────────────────────────────────────────
 
@@ -344,10 +462,16 @@ class Report {
 
   /// Incidents grouped as Completed / Open / Declined or Cancelled.
   Map<String, int> get countsByOutcome {
-    final m = {'Completed': 0, 'Open': 0, 'Declined / Cancelled': 0};
+    final m = {'Completed': 0, 'Open': 0, 'Declined / Cancelled': 0, 'Invalid (prank)': 0};
     for (final i in _incidents) {
       final s = i.status.toLowerCase();
-      final key = s == 'completed' ? 'Completed' : (s == 'declined' || s == 'cancelled') ? 'Declined / Cancelled' : 'Open';
+      final key = s == 'completed'
+          ? 'Completed'
+          : (s == 'declined' || s == 'cancelled')
+              ? 'Declined / Cancelled'
+              : s == 'invalid'
+                  ? 'Invalid (prank)'
+                  : 'Open';
       m[key] = m[key]! + 1;
     }
     return m;

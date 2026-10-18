@@ -19,9 +19,36 @@ extension ResqSnackBar on ScaffoldMessengerState {
       duration: bar.duration,
       onVisible: bar.onVisible,
       dismissDirection: DismissDirection.down,
-      content: _ResqToast(content: bar.content, tone: tone, action: bar.action, messenger: this),
+      content: _ResqToast(content: _cleanContent(bar.content), tone: tone, action: bar.action, messenger: this),
     ));
   }
+}
+
+/// Strips technical prefixes ("HttpException: ", "Exception: "…) so users only see the message.
+final _techPrefix = RegExp(r'^\s*(?:\w*(?:Exception|Error)(?: \(\w+\))?:\s*)+');
+
+String cleanErrorText(String text) => text.replaceAll(_techPrefix, '').replaceAll(RegExp(r'\w*Exception:\s*'), '');
+
+/// Emoji and pictographs (❌, ✅, 🚨…): the toast already shows an icon for its tone.
+final _emoji = RegExp(
+  r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]',
+  unicode: true,
+);
+
+String _snackText(String text) => cleanErrorText(text).replaceAll(_emoji, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+
+Widget _cleanContent(Widget content) {
+  if (content is Text && content.data != null) {
+    return Text(
+      _snackText(content.data!),
+      key: content.key,
+      style: content.style,
+      textAlign: content.textAlign,
+      maxLines: content.maxLines,
+      overflow: content.overflow,
+    );
+  }
+  return content;
 }
 
 enum _Tone {

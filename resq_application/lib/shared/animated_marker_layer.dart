@@ -40,6 +40,10 @@ class _AnimatedMarkerLayerState extends State<AnimatedMarkerLayer> with SingleTi
 
   // Jumps longer than this (~1 km) snap instead of sliding across the map.
   static const double _snapMeters = 1000;
+  // After a signal gap this long, a move further than [_gapSnapMeters] snaps too: sliding
+  // straight across the gap would draw the vehicle through buildings instead of along the road.
+  static const Duration _signalGap = Duration(seconds: 20);
+  static const double _gapSnapMeters = 150;
   // Moves shorter than this are GPS jitter while parked; ignore them.
   static const double _jitterMeters = 3;
   static const Distance _distance = Distance();
@@ -79,7 +83,9 @@ class _AnimatedMarkerLayerState extends State<AnimatedMarkerLayer> with SingleTi
         continue;
       }
       final current = _pos(track);
-      if (_distance(current, target) > _snapMeters) {
+      final silent = track.lastUpdate == null ? Duration.zero : now - track.lastUpdate!;
+      if (_distance(current, target) > _snapMeters ||
+          (silent >= _signalGap && _distance(current, target) > _gapSnapMeters)) {
         track
           ..from = target
           ..to = target

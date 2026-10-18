@@ -14,7 +14,7 @@
 // Set to false to use mobile data only (Wi-Fi stays off).
 #define ENABLE_WIFI false
 // Shown at boot so you can confirm the right file was uploaded.
-#define SKETCH_VERSION "v7-fast"
+#define SKETCH_VERSION "v8-buffered"
 
 #if ENABLE_CELLULAR
 #define TINY_GSM_MODEM_SIM7600
@@ -64,7 +64,18 @@ constexpr unsigned long HEARTBEAT_INTERVAL_MS = 30000;          // Write even wi
 constexpr uint16_t GPS_RATE_MS = 200;                            // 5 position fixes per second
 constexpr unsigned long WIFI_RETRY_INTERVAL_MS = 10000;
 constexpr unsigned long CELLULAR_RETRY_INTERVAL_MS = 30000;
-constexpr unsigned long HISTORY_INTERVAL_MS = 30000;            // How often a point is added to the route history
+// Route history: a point is recorded on the board (online or not) when the vehicle turns
+// or has moved far enough, so the drawn route follows the road's bends instead of cutting
+// corners. Points wait in a buffer and are uploaded in batches, so a signal loss leaves
+// no hole in the route: everything recorded offline goes up once the signal is back.
+constexpr unsigned long HISTORY_MAX_INTERVAL_MS = 30000;        // A point at least this often (also when parked)
+constexpr unsigned long HISTORY_MIN_INTERVAL_MS = 2000;         // Never more often than this
+constexpr double HISTORY_TURN_DEG = 20.0;                       // A turn this sharp records a point...
+constexpr double HISTORY_TURN_MIN_M = 15.0;                     // ...once it has moved this far
+constexpr double HISTORY_STRAIGHT_M = 150.0;                    // On a straight road, a point every 150 m
+constexpr unsigned long HISTORY_FLUSH_MS = 10000;               // Upload buffered points this often while online
+constexpr int HISTORY_BATCH = 25;                               // Points per upload
+constexpr int HISTORY_BUFFER = 720;                             // ~6 h of driving offline (17 KB of RAM)
 constexpr unsigned long GPS_STATUS_INTERVAL_MS = 2000;           // Serial monitor print interval
 constexpr unsigned long TOKEN_LIFETIME_MS = 50UL * 60UL * 1000UL; // Firebase ID tokens last 60 min
 
@@ -89,6 +100,19 @@ unsigned long lastCellularAttempt = 0;
 unsigned long lastLocationAttempt = 0;
 unsigned long lastLocationSent = 0;
 unsigned long lastHistoryPoint = 0;
+unsigned long lastHistoryFlush = 0;
+
+// ---------- Route history buffer ----------
+struct HistoryPoint {
+  double lat;
+  double lng;
+  float speedKph;
+  uint64_t tsMs; // UTC milliseconds, from the GPS clock (works without signal)
+};
+HistoryPoint history[HISTORY_BUFFER];
+int historyStart = 0; // oldest point
+int historyCount = 0;
+double lastPointLat = 0, lastPointLng = 0, lastPointCourse = -1;
 unsigned long lastWifiAttempt = 0;
 unsigned long lastGpsStatusPrint = 0;
 
@@ -336,20 +360,94 @@ String isoTimestamp() {
   return "";
 }
 
-// Appends the current fix to tracker_history/<uid>, which the app shows as the vehicle's route.
-// /trackers/<uid> only keeps the latest position, so this is the only record of past movement.
-bool sendHistoryPoint() {
-  char payload[200];
-  snprintf(payload, sizeof(payload),
-    "{\"latitude\":%.7f,\"longitude\":%.7f,\"speed_kph\":%.2f,\"ts\":{\".sv\":\"timestamp\"}}",
-    gps.location.lat(), gps.location.lng(), gps.speed.isValid() ? gps.speed.kmph() : 0.0);
+// UTC milliseconds since 1970 from the GPS clock (or NTP once synced), or 0 if unknown.
+uint64_t epochMs() {
+  const time_t now = time(nullptr);
+  if (now > 1700000000) return (uint64_t)now * 1000ULL;
+  if (!gps.date.isValid() || !gps.time.isValid() || gps.date.year() < 2021) return 0;
+  // Days since 1970-01-01 for the GPS date (civil-from-days, no timezone involved)
+  int y = gps.date.year(), m = gps.date.month(), d = gps.date.day();
+  y -= m <= 2;
+  const int era = y / 400;
+  const unsigned yoe = (unsigned)(y - era * 400);
+  const unsigned doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+  const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  const int64_t days = (int64_t)era * 146097 + (int64_t)doe - 719468;
+  return (uint64_t)(days * 86400LL + gps.time.hour() * 3600LL + gps.time.minute() * 60LL + gps.time.second()) * 1000ULL +
+         gps.time.centisecond() * 10ULL;
+}
+
+// Keeps the buffer from overflowing on a very long outage: drops every other point of the
+// older half, so the whole outage stays covered (just less detailed) instead of losing its start.
+void thinHistory() {
+  const int half = historyCount / 2;
+  int kept = 0;
+  for (int i = 0; i < half; i++) {
+    if (i % 2 == 0) history[(historyStart + kept++) % HISTORY_BUFFER] = history[(historyStart + i) % HISTORY_BUFFER];
+  }
+  for (int i = half; i < historyCount; i++) history[(historyStart + kept++) % HISTORY_BUFFER] = history[(historyStart + i) % HISTORY_BUFFER];
+  Serial.printf("[HISTORY] Buffer full - thinned %d old points to %d\n", half, (half + 1) / 2);
+  historyCount = kept;
+}
+
+// Records the current fix in the buffer when the vehicle has turned or moved far enough.
+void recordHistoryPoint() {
+  if (!gps.location.isValid() || gps.location.age() > 2000) return;
+  const unsigned long now = millis();
+  const bool first = lastHistoryPoint == 0;
+  if (!first && now - lastHistoryPoint < HISTORY_MIN_INTERVAL_MS) return;
+
+  const double lat = gps.location.lat(), lng = gps.location.lng();
+  const double moved = first ? 0 : TinyGPSPlus::distanceBetween(lastPointLat, lastPointLng, lat, lng);
+  const double course = gps.course.isValid() ? gps.course.deg() : -1;
+  double turn = 0;
+  if (course >= 0 && lastPointCourse >= 0) {
+    turn = fabs(course - lastPointCourse);
+    if (turn > 180) turn = 360 - turn;
+  }
+  const bool due = first || now - lastHistoryPoint >= HISTORY_MAX_INTERVAL_MS ||
+                   moved >= HISTORY_STRAIGHT_M || (turn >= HISTORY_TURN_DEG && moved >= HISTORY_TURN_MIN_M);
+  if (!due) return;
+
+  const uint64_t ts = epochMs();
+  if (ts == 0) return; // no clock yet: the point couldn't be placed in time
+  if (historyCount == HISTORY_BUFFER) thinHistory();
+  history[(historyStart + historyCount) % HISTORY_BUFFER] = {lat, lng, gps.speed.isValid() ? (float)gps.speed.kmph() : 0.0f, ts};
+  historyCount++;
+  lastHistoryPoint = now;
+  lastPointLat = lat;
+  lastPointLng = lng;
+  if (course >= 0 && (moved >= HISTORY_TURN_MIN_M || first)) lastPointCourse = course;
+}
+
+// Uploads up to HISTORY_BATCH buffered points to tracker_history/<uid> in one request.
+// Each point's key comes from its time, so re-sending a batch after a lost reply is harmless.
+bool flushHistory() {
+  if (historyCount == 0) return true;
+  if (!online() || !ensureSignedIn()) return false;
+  const int n = historyCount < HISTORY_BATCH ? historyCount : HISTORY_BATCH;
+  String body = "{";
+  char item[160];
+  for (int i = 0; i < n; i++) {
+    const HistoryPoint& p = history[(historyStart + i) % HISTORY_BUFFER];
+    snprintf(item, sizeof(item), "%s\"t%llu\":{\"latitude\":%.7f,\"longitude\":%.7f,\"speed_kph\":%.2f,\"ts\":%llu}",
+             i == 0 ? "" : ",", (unsigned long long)p.tsMs, p.lat, p.lng, p.speedKph, (unsigned long long)p.tsMs);
+    body += item;
+  }
+  body += "}";
 
   String response;
-  const int code = httpsRequest(rtdbClient(), RTDB_HOST, "POST",
+  const int code = httpsRequest(rtdbClient(), RTDB_HOST, "PATCH",
                                 "/tracker_history/" + trackerUid + ".json?auth=" + idToken + "&print=silent",
-                                "application/json", String(payload), response, true);
-  if (code == 200 || code == 204) return true;
-  Serial.printf("[FIREBASE ERROR %d via %s] Could not write history point\n", code, transportName());
+                                "application/json", body, response, true);
+  if (code == 200 || code == 204) {
+    historyStart = (historyStart + n) % HISTORY_BUFFER;
+    historyCount -= n;
+    Serial.printf("[HISTORY] Uploaded %d point(s), %d still buffered\n", n, historyCount);
+    return true;
+  }
+  if (code == 401) idToken = "";
+  Serial.printf("[FIREBASE ERROR %d via %s] Could not upload history (%d buffered)\n", code, transportName(), historyCount);
   return false;
 }
 
@@ -385,9 +483,6 @@ bool sendLocation() {
                                 "application/json", String(payload), response, true);
 
   if (code == 200 || code == 204) {
-    if (hasFix && (lastHistoryPoint == 0 || millis() - lastHistoryPoint >= HISTORY_INTERVAL_MS)) {
-      if (sendHistoryPoint()) lastHistoryPoint = millis();
-    }
     if (hasFix) {
       Serial.printf("[FIREBASE OK via %s] %s at %.5f, %.5f (%u sats)\n", transportName(), hardwareId.c_str(),
                     gps.location.lat(), gps.location.lng(), gps.satellites.value());
@@ -471,6 +566,15 @@ void loop() {
     connectCellular();
   }
 #endif
+
+  recordHistoryPoint(); // on the board, whether or not there is signal
+
+  // Buffered route points go up every few seconds; a backlog after an outage drains batch by batch
+  if (online() && historyCount > 0 &&
+      (now - lastHistoryFlush >= HISTORY_FLUSH_MS || historyCount > HISTORY_BATCH)) {
+    lastHistoryFlush = now;
+    flushHistory();
+  }
 
   const unsigned long interval = wifiUp() ? WIFI_INTERVAL_MS : CELLULAR_INTERVAL_MS;
   // Send when there is a new fix, or a heartbeat so the app doesn't mark it Offline.

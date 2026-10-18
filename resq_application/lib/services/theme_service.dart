@@ -41,3 +41,19 @@ class ThemeService extends ChangeNotifier {
   Color get hoverColor => _isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9);
   Color get shadowColor => _isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.04);
 }
+
+/// A pale badge/chip background as written for light mode; in dark mode, a deep shade of the same hue.
+Color themedBg(Color light) {
+  if (!ThemeService.instance.isDark) return light;
+  final hsl = HSLColor.fromColor(light);
+  if (hsl.saturation < 0.15) return ThemeService.instance.inputBackground;
+  return hsl.withSaturation(hsl.saturation.clamp(0.0, 0.55)).withLightness(0.2).toColor();
+}
+
+/// Dark text/icon colour as written for light mode; in dark mode, a light colour of the same hue.
+Color themedInk(Color light) {
+  if (!ThemeService.instance.isDark) return light;
+  final hsl = HSLColor.fromColor(light);
+  if (hsl.lightness >= 0.55) return light;
+  return hsl.withLightness(hsl.saturation < 0.3 ? 1 - hsl.lightness : 0.72).toColor();
+}

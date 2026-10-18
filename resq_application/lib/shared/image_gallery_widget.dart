@@ -659,6 +659,7 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: Colors.black,
       body: Stack(
         children: [

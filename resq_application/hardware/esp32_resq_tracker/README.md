@@ -26,6 +26,14 @@ Once the SIM7600 is wired, has its own suitable power supply, and holds a SIM wi
 
 Updates are sent every 1 s on Wi-Fi and every 3 s on mobile data (about 1 MB of data per hour), when there is a new GPS fix (otherwise a check-in every 30 s). The GPS is set to 5 fixes per second at boot, which needs the GPS RX wire (ESP32 pin 2).
 
+## Route history and signal loss
+
+The route shown in the app's vehicle History comes from points the tracker records on the board: on every turn, every 150 m on a straight road, and at least every 30 s. Points are kept in a buffer (about 6 hours of driving) and uploaded 25 at a time every 10 s. If the signal drops, recording continues, and everything is uploaded once the signal returns, so the route has no hole. Each point carries the GPS time, so late points land in the right place. Serial Monitor shows `[HISTORY] Uploaded n point(s)`.
+
+If a gap remains anyway (for example, the board was powered off), the app fills it with the likely road path, drawn dashed.
+
+To test without hardware, run `python tools/test_vehicle_sim.py`. It drives a fake tracker around Iriga City with two simulated signal cuts.
+
 ## Troubleshooting
 
 - `[SIM] Modem not responding`: check wiring, power and the RX/TX pins (they may be swapped).

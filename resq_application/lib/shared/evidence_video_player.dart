@@ -63,6 +63,7 @@ class _EvidenceVideoPageState extends State<_EvidenceVideoPage> {
   Widget build(BuildContext context) {
     final v = _video.value;
     return Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(

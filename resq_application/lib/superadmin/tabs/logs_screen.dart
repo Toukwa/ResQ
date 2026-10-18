@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../shared/log_details.dart';
 import '../../shared/resq_dropdown.dart';
 import '../../shared/resq_date_picker.dart';
 import 'package:intl/intl.dart';
@@ -347,7 +348,8 @@ class _LogsScreenState extends State<LogsScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
                 ),
                 SizedBox(width: 16),
-                Text('Building full-day PDF audit log & evidence photos package...'),
+                // Expanded so the text wraps instead of running off the snackbar
+                Expanded(child: Text('Building full-day PDF audit log & evidence photos package...')),
               ],
             ),
             duration: const Duration(seconds: 15),
@@ -481,7 +483,8 @@ class _LogsScreenState extends State<LogsScreen> {
             'title': actorDisplay,
             'type': action,
             'category': entityType,
-            'description': "Action '$action' recorded on entity [$entityType] #${log['entity_id'] ?? 'N/A'}",
+            'description': LogDetails.describe(Map<String, dynamic>.from(log)),
+            'raw': Map<String, dynamic>.from(log),
             'status': status,
             'requestId': log['entity_id']?.toString() ?? 'N/A',
             'time': DateFormat('hh:mm a').format(parsedTime),
@@ -1168,7 +1171,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   const SizedBox(width: 4),
                   Text(
                     _hasActiveFilters ? "Filtered Search Stream" : "Live Stream (Recent 7)",
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: themedInk(const Color(0xFF10B981))),
                   ),
                 ],
               ),
@@ -1299,6 +1302,8 @@ class _LogsScreenState extends State<LogsScreen> {
                     event['description'] as String,
                     style: TextStyle(fontSize: 11, color: ts.textSecondary, height: 1.2),
                   ),
+                  // Citizen / report / prank details, collapsed until opened
+                  if (event['raw'] is Map) LogDetailsPanel(log: event['raw'] as Map<String, dynamic>),
                   const SizedBox(height: 3),
                   Row(
                     children: [

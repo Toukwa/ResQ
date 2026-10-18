@@ -21,6 +21,7 @@ import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/resq_toast.dart';
 import '../../shared/map_format.dart';
+import '../../shared/dashboard_analytics_view.dart';
 
 enum IncidentQueueFilter { all, pending, enRoute, declined, active }
 
@@ -413,6 +414,17 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final ts = ThemeService.instance;
     final isDark = ts.isDark;
     final s = (rawStatus ?? 'pending').trim().toLowerCase();
+    if (s == 'invalid') {
+      return {
+        'label': 'Invalid',
+        'textColor': isDark ? const Color(0xFFC4B5FD) : const Color(0xFF7C3AED),
+        'bgColor': isDark ? const Color(0xFF3B1F6B) : const Color(0xFFF3E8FF),
+        'borderColor': isDark ? const Color(0xFF6D28D9) : const Color(0xFFDDD6FE),
+        'dotColor': const Color(0xFF7C3AED),
+        'cardBg': ts.cardBackground,
+        'cardBorder': ts.borderColor,
+      };
+    }
     if (s == 'en route' || s == 'en_route') {
       return {
         'label': 'En Route',
@@ -464,17 +476,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         'cardBorder': isDark ? const Color(0xFF451A03) : const Color(0xFFFDE68A),
       };
     }
-  }
-
-  Widget _buildSmallBadge(String text, Color textColor, Color bgColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
-      ),
-    );
   }
 
   void _locateIncidentOnMap(Map<String, dynamic> item) {
@@ -581,34 +582,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                       TileLayer(
                                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                         userAgentPackageName: 'com.resq.admin.dashboard',
+                                        tileBuilder: DisplaySettings.mapTileBuilder,
                                         tileProvider: CancellableNetworkTileProvider(),
-                                        tileBuilder: ts.isDark
-                                            ? (context, tileWidget, tile) => ColorFiltered(
-                                                colorFilter: const ColorFilter.matrix(<double>[
-                                                  -0.2126,
-                                                  -0.7152,
-                                                  -0.0722,
-                                                  0,
-                                                  255,
-                                                  -0.2126,
-                                                  -0.7152,
-                                                  -0.0722,
-                                                  0,
-                                                  255,
-                                                  -0.2126,
-                                                  -0.7152,
-                                                  -0.0722,
-                                                  0,
-                                                  255,
-                                                  0,
-                                                  0,
-                                                  0,
-                                                  1,
-                                                  0,
-                                                ]),
-                                                child: tileWidget,
-                                              )
-                                            : null,
                                       ),
                                       MarkerLayer(
                                         markers: _displayedIncidentQueueList.where(IncidentData.showOnMap).map((
@@ -870,12 +845,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                     _buildTopTabItem(index: 0, label: "Incidents", icon: Icons.warning_amber_rounded),
                                     _buildTopTabItem(index: 1, label: "Units", icon: Icons.local_shipping_outlined),
                                     _buildTopTabItem(index: 2, label: "Activity", icon: Icons.show_chart_rounded),
-                                    _buildTopTabItem(
-                                      index: 3,
-                                      label: "Requests",
-                                      icon: Icons.mail_outline_rounded,
-                                      badgeCount: _pendingCount,
-                                    ),
+                                    _buildTopTabItem(index: 3, label: "Analytics", icon: Icons.insights_rounded),
                                   ],
                                 ),
                               ),
@@ -939,8 +909,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                   // ------------------ TAB 2: ACTIVITY ------------------
                                   _buildActivityTabView(),
 
-                                  // ------------------ TAB 3: REQUESTS ------------------
-                                  _buildRequestsTabView(),
+                                  // ------------------ TAB 3: ANALYTICS ------------------
+                                  DashboardAnalyticsView(incidents: _unfilteredIncidentQueueList, vehicles: _vehiclesList),
                                 ],
                               ),
                             ),
@@ -1031,13 +1001,6 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final key = _selectedUnitFilter.toUpperCase();
     return _vehiclesList.where((v) => (v['deptName']?.toString() ?? '').toUpperCase().contains(key)).toList();
   }
-
-  /// Returns only pending incidents for the Requests tab.
-  List<dynamic> get _pendingIncidents => _unfilteredIncidentQueueList
-      .where((i) => ['pending', 'in_progress'].contains((i['reqStatus'] ?? i['status'] ?? '').toString().toLowerCase()))
-      .toList();
-
-  int get _pendingCount => _pendingIncidents.length;
 
   // Units Tab View — fully dynamic from vehicles-with-dept API
   Widget _buildUnitsTabView() {
@@ -1392,71 +1355,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     }
   }
 
-  // Incoming Requests Tab View — dynamic from active incidents (pending/in_progress)
-  Widget _buildRequestsTabView() {
-    final ts = ThemeService.instance;
-    final pending = _pendingIncidents;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Text(
-                'Incoming Requests',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: ts.isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
-                ),
-              ),
-              const Spacer(),
-              if (pending.isNotEmpty)
-                _buildSmallBadge(
-                  '${pending.length} pending',
-                  const Color(0xFFDC2626),
-                  ts.isDark ? const Color(0xFF451212) : const Color(0xFFFEF2F2),
-                ),
-            ],
-          ),
-        ),
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: ts.isDark ? const Color(0xFF3B0764) : const Color(0xFFFAF5FF),
-            borderRadius: BorderRadius.circular(8),
-            border: ts.isDark ? Border.all(color: const Color(0xFF6B21A8)) : null,
-          ),
-          child: Text(
-            'Tap a request to see its details, rate it and assign it to an agency.',
-            style: TextStyle(
-              fontSize: 11,
-              color: ts.isDark ? const Color(0xFFC084FC) : const Color(0xFF9333EA),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(
-          child: pending.isEmpty
-              ? _buildEmptyState(Icons.inbox_outlined, 'No pending requests', 'All incidents have been addressed')
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  itemCount: pending.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _buildDynamicRequestCard(pending[i]),
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDynamicRequestCard(dynamic incident) =>
-      _incidentCard(Map<String, dynamic>.from(incident as Map), showNotes: true);
-
-  /// One incident in the right-hand panel (Incidents and Requests tabs): same look as the
+  /// One incident in the right-hand panel (Incidents tab): same look as the
   /// details popup. Tapping it opens the full details; the Map button shows it on the map.
   Widget _incidentCard(Map<String, dynamic> item, {bool showNotes = false}) {
     final ts = ThemeService.instance;

@@ -35,6 +35,9 @@ dependencies:
   video_compress: ^3.1.4
   video_player: ^2.11.1
   video_player_win: ^3.3.0
+  device_info_plus: ^13.3.0
+  camera: ^0.12.0+2
+  window_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

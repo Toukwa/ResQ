@@ -1,4 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'login.dart';
 import 'citizen/home_screen.dart';
@@ -9,6 +13,7 @@ import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'shared/resq_logo.dart';
 import 'shared/role_home.dart';
+import 'shared/search_shortcut.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +32,75 @@ void main() async {
     }
   };
 
+  if (Platform.isWindows) {
+    await windowManager.ensureInitialized();
+    HardwareKeyboard.instance.addHandler(_desktopShortcuts);
+  }
+
   runApp(const MyApp());
+}
+
+/// Windows: F11 toggles full screen (Esc leaves it); Ctrl+F jumps to the screen's search box.
+bool _desktopShortcuts(KeyEvent event) {
+  if (event is! KeyDownEvent) return false;
+  final key = event.logicalKey;
+  if (key == LogicalKeyboardKey.f11) {
+    _DesktopFullScreen.toggle();
+    return true;
+  }
+  if (key == LogicalKeyboardKey.keyF && HardwareKeyboard.instance.isControlPressed) {
+    return SearchShortcut.focusVisible();
+  }
+  if (key == LogicalKeyboardKey.escape && _DesktopFullScreen.on) _DesktopFullScreen.toggle();
+  return false; // Esc still closes dialogs as usual
+}
+
+/// Full screen on Windows. window_manager's own setFullScreen keeps the title bar and
+/// sizes the window past the screen edges, so this hides the title bar and covers exactly
+/// the monitor the window is on, then puts the window back as it was.
+class _DesktopFullScreen {
+  static bool on = false;
+  static Rect? _saved;
+  static bool _wasMaximized = false;
+  static bool _busy = false;
+
+  static Future<void> toggle() async {
+    if (_busy) return;
+    _busy = true;
+    try {
+      if (!on) {
+        _wasMaximized = await windowManager.isMaximized();
+        if (_wasMaximized) await windowManager.unmaximize();
+        _saved = await windowManager.getBounds();
+        final screen = _screenOf(_saved!);
+        await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+        await windowManager.setBounds(screen);
+        on = true;
+      } else {
+        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+        if (_saved != null) await windowManager.setBounds(_saved!);
+        if (_wasMaximized) await windowManager.maximize();
+        on = false;
+      }
+    } finally {
+      _busy = false;
+    }
+  }
+
+  /// The monitor (in logical pixels, like window bounds) holding the window's centre.
+  static Rect _screenOf(Rect window) {
+    final displays = WidgetsBinding.instance.platformDispatcher.displays.toList();
+    Rect? best;
+    var x = 0.0;
+    for (final d in displays) {
+      // Displays don't report their position; laid out left to right is the common setup
+      final r = Rect.fromLTWH(x, 0, d.size.width / d.devicePixelRatio, d.size.height / d.devicePixelRatio);
+      best ??= r;
+      if (r.contains(window.center)) best = r;
+      x += r.width;
+    }
+    return best ?? Rect.fromLTWH(0, 0, window.width, window.height);
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -159,6 +232,7 @@ class _SessionInitializerState extends State<SessionInitializer> with SingleTick
     final ts = ThemeService.instance;
     final fade = CurvedAnimation(parent: _intro, curve: Curves.easeOut);
     return Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: ts.pageBackground,
       body: Center(
         child: FadeTransition(

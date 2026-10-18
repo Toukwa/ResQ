@@ -1,3 +1,4 @@
+import '../services/theme_service.dart';
 import 'package:flutter/material.dart';
 import 'map_pin.dart';
 import '../services/incident_data.dart';
@@ -53,13 +54,13 @@ Color departmentBadgeColor(String dept) {
 /// The agency symbols, as on the phone app's report cards. Used everywhere an
 /// incident or agency is shown (phone and staff screens) so they always match.
 ({IconData icon, Color color, Color bgColor}) agencySymbol(String? agency) => switch (agency) {
-      'BFP' => (icon: Icons.local_fire_department_outlined, color: const Color(0xFFDC2626), bgColor: const Color(0xFFFEE2E2)),
-      'PNP' => (icon: Icons.local_police_outlined, color: const Color(0xFF1E40AF), bgColor: const Color(0xFFDBEAFE)),
-      'CDRRMO' => (icon: Icons.health_and_safety_outlined, color: const Color(0xFF16A34A), bgColor: const Color(0xFFDCFCE7)),
+      'BFP' => (icon: Icons.local_fire_department_outlined, color: const Color(0xFFDC2626), bgColor: themedBg(const Color(0xFFFEE2E2))),
+      'PNP' => (icon: Icons.local_police_outlined, color: const Color(0xFF1E40AF), bgColor: themedBg(const Color(0xFFDBEAFE))),
+      'CDRRMO' => (icon: Icons.health_and_safety_outlined, color: const Color(0xFF16A34A), bgColor: themedBg(const Color(0xFFDCFCE7))),
       // General Emergency: the EOC decides who responds
-      'EOC' => (icon: Icons.support_agent_rounded, color: const Color(0xFFFF6B00), bgColor: const Color(0xFFFFEDD5)),
+      'EOC' => (icon: Icons.support_agent_rounded, color: const Color(0xFFFF6B00), bgColor: themedBg(const Color(0xFFFFEDD5))),
       // Several agencies on one report
-      _ => (icon: Icons.priority_high_rounded, color: const Color(0xFFF97316), bgColor: const Color(0xFFFFEDD5)),
+      _ => (icon: Icons.priority_high_rounded, color: const Color(0xFFF97316), bgColor: themedBg(const Color(0xFFFFEDD5))),
     };
 
 /// Incident severity, set by the EOC (Super Admin) before assigning: most to least serious.
@@ -68,12 +69,12 @@ const severityLevels = ['Immediate', 'Emergent', 'Urgent', 'Semi-urgent', 'Non-u
 
 /// Badge text and colours for a severity (or "Not rated").
 ({String label, Color color, Color bgColor}) severityStyle(String? severity) => switch (severity) {
-      'Immediate' => (label: 'Immediate', color: const Color(0xFFDC2626), bgColor: const Color(0xFFFEE2E2)),
-      'Emergent' => (label: 'Emergent', color: const Color(0xFFEA580C), bgColor: const Color(0xFFFFEDD5)),
-      'Urgent' => (label: 'Urgent', color: const Color(0xFFD97706), bgColor: const Color(0xFFFEF3C7)),
-      'Semi-urgent' => (label: 'Semi-urgent', color: const Color(0xFF2563EB), bgColor: const Color(0xFFDBEAFE)),
-      'Non-urgent' => (label: 'Non-urgent', color: const Color(0xFF16A34A), bgColor: const Color(0xFFDCFCE7)),
-      _ => (label: 'Not rated', color: const Color(0xFF64748B), bgColor: const Color(0xFFF1F5F9)),
+      'Immediate' => (label: 'Immediate', color: const Color(0xFFDC2626), bgColor: themedBg(const Color(0xFFFEE2E2))),
+      'Emergent' => (label: 'Emergent', color: const Color(0xFFEA580C), bgColor: themedBg(const Color(0xFFFFEDD5))),
+      'Urgent' => (label: 'Urgent', color: const Color(0xFFD97706), bgColor: themedBg(const Color(0xFFFEF3C7))),
+      'Semi-urgent' => (label: 'Semi-urgent', color: const Color(0xFF2563EB), bgColor: themedBg(const Color(0xFFDBEAFE))),
+      'Non-urgent' => (label: 'Non-urgent', color: const Color(0xFF16A34A), bgColor: themedBg(const Color(0xFFDCFCE7))),
+      _ => (label: 'Not rated', color: const Color(0xFF64748B), bgColor: themedBg(const Color(0xFFF1F5F9))),
     };
 
 /// Icon and colours for an incident, from the agencies it is sent to (not words in its name).
@@ -180,6 +181,7 @@ String formatStatus(String? rawStatus) {
   final s = rawStatus.trim().toLowerCase();
   if (s == 'en route' || s == 'en_route') return 'En Route';
   if (s == 'declined' || s == 'denied') return 'Declined';
+  if (s == 'invalid') return 'Invalid';
   return rawStatus;
 }
 

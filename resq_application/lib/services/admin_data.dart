@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../config.dart';
 import 'firebase_rest.dart';
+import '../shared/log_details.dart';
 import 'incident_data.dart';
 import 'live_socket.dart';
 import 'password_policy.dart';
@@ -49,6 +50,7 @@ class AdminData {
     'incident_updates': 1,
     'sound_alerts': 1,
     'map_display_style': 'Standard',
+    'map_theme': 'Match app',
     'auto_center_on_incident': 1,
     'show_unit_labels': 1,
     'mfa_enabled': 1,
@@ -242,59 +244,157 @@ class AdminData {
   }
 
   /// ZIP with a PDF of the whole day's audit log plus that day's evidence photos.
-  static Future<List<int>> auditZip(String targetDate) async {
+  /// [department]: an admin's agency (only its records, no Department column);
+  /// 'ALL' for the Super Admin (every record, with the department each report was for).
+  static Future<List<int>> auditZip(String targetDate, {String department = 'ALL'}) async {
     final day = DateTime.parse(targetDate);
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
-    final rows = await logs(from: start, to: end);
+    final allRows = await logs(from: start, to: end);
+    final incidents = {
+      for (final i in IncidentData.rows(await Rtdb.get('incidents'))) '${i['Req_ID']}': i,
+    };
+    final dept = IncidentData.normalizeDepartment(department);
+    final superAdmin = dept == 'ALL';
+
+    // The report a log entry is about, if any
+    String? reqOf(Map<String, dynamic> l) {
+      final d = LogDetails.detailsOf(l);
+      final report = d['report'];
+      final id = (report is Map ? report['reqId'] : null) ?? d['reqId'] ??
+          (l['entity_type'] == 'emergency_request' ? l['entity_id'] : null);
+      return id == null ? null : '$id';
+    }
+
+    // IP addresses come only from prank warnings, per report
+    final prankIp = <String, String>{};
+    for (final l in allRows) {
+      if (l['action'] != 'PRANK_WARNING_SEEN') continue;
+      final ip = LogDetails.detailsOf(l)['ipAddress'];
+      final r = reqOf(l);
+      if (r != null && ip != null) prankIp[r] = '$ip';
+    }
+
+    // An admin's PDF: their agency's reports, plus entries that aren't about another agency
+    final rows = superAdmin
+        ? allRows
+        : allRows.where((l) {
+            final r = reqOf(l);
+            final inc = r == null ? null : incidents[r];
+            if (inc != null) return IncidentData.agenciesOf(inc).map(IncidentData.normalizeDepartment).contains(dept);
+            final text = '${l['details'] ?? ''}'.toUpperCase();
+            return !['BFP', 'PNP', 'CDRRMO'].where((o) => o != dept).any(text.contains);
+          }).toList();
+
+    String incidentCell(Map? inc, String? r) =>
+        inc == null ? (r == null ? '-' : 'Report #$r') : 'Report #$r\n${inc['incType'] ?? 'Emergency'}';
+
+    String routeCell(Map? inc) {
+      if (inc == null) return '-';
+      final agencies = IncidentData.agenciesOf(inc).map(IncidentData.normalizeDepartment).toList();
+      if (agencies.isEmpty) return 'With the EOC (not yet assigned)';
+      if (!superAdmin) return agencies.contains(dept) ? IncidentData.routeFor(inc, dept) : '-';
+      return IncidentData.isGeneral(inc['incType']?.toString()) ? 'Reported to EOC' : 'Direct report';
+    }
+
+    String deptCell(Map? inc) {
+      if (inc == null) return '-';
+      final agencies = IncidentData.agenciesOf(inc).map(IncidentData.normalizeDepartment).toList();
+      if (agencies.isEmpty) return 'EOC';
+      return [for (final a in agencies) '$a: ${IncidentData.routeFor(inc, a)}'].join('\n');
+    }
+
+    String locationCell(Map? inc) {
+      if (inc == null) return '-';
+      final b = '${inc['barangay'] ?? ''}'.trim();
+      final lat = double.tryParse('${inc['latitude']}'), lng = double.tryParse('${inc['longitude']}');
+      final coords = lat == null || lng == null ? '' : '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+      final parts = [if (b.isNotEmpty) 'Brgy. $b', if (coords.isNotEmpty) coords];
+      return parts.isEmpty ? '-' : parts.join('\n');
+    }
+
+    // Prank cases show the IP; real reports never do
+    String prankCell(Map<String, dynamic> l, Map? inc, String? r) {
+      final prank = '${l['action']}'.startsWith('PRANK') || '${inc?['reqStatus']}'.toLowerCase() == 'invalid';
+      if (!prank) return r == null ? '-' : 'No';
+      final ip = LogDetails.detailsOf(l)['ipAddress'] ?? (r == null ? null : prankIp[r]);
+      return ip == null ? 'PRANK' : 'PRANK\nIP $ip';
+    }
 
     final doc = pw.Document();
     final orange = PdfColor.fromHex('#FF5200');
     final grey = PdfColor.fromHex('#64748B');
-    String short(String s, int n) => s.length > n ? s.substring(0, n) : s;
+    final red = PdfColor.fromHex('#DC2626');
+
+    final headers = [
+      '#',
+      'Time',
+      'Actor / Role',
+      'Event',
+      'Incident',
+      if (superAdmin) 'Department',
+      superAdmin ? 'Reported' : 'How received',
+      'Location',
+      'Prank / IP',
+    ];
+    final data = [
+      for (final l in rows)
+        () {
+          final r = reqOf(l);
+          final inc = r == null ? null : incidents[r];
+          return [
+            '${l['log_id']}',
+            l['timestamp'] == null ? 'N/A' : DateFormat('h:mm:ss a').format(DateTime.parse(l['timestamp']).toLocal()),
+            '${l['actor_display'] ?? 'System'}\n(${l['user_role'] ?? 'System'})',
+            LogDetails.describe(l),
+            incidentCell(inc, r),
+            if (superAdmin) deptCell(inc),
+            routeCell(inc),
+            locationCell(inc),
+            prankCell(l, inc, r),
+          ].map(_pdfSafe).toList();
+        }(),
+    ];
 
     doc.addPage(pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(36),
+      pageFormat: PdfPageFormat.a4.landscape,
+      margin: const pw.EdgeInsets.all(28),
       build: (_) => [
         pw.Text('ResQ Emergency Operations Center', style: pw.TextStyle(color: orange, fontSize: 18)),
-        pw.Text('OFFICIAL SYSTEM AUDIT LOG & COMPLIANCE REPORT', style: pw.TextStyle(color: grey, fontSize: 10)),
+        pw.Text(
+          superAdmin ? 'OFFICIAL SYSTEM AUDIT LOG - ALL DEPARTMENTS' : 'OFFICIAL SYSTEM AUDIT LOG - $dept',
+          style: pw.TextStyle(color: grey, fontSize: 10),
+        ),
         pw.Divider(color: PdfColor.fromHex('#E2E8F0')),
         pw.Text('Report Date: $targetDate', style: const pw.TextStyle(fontSize: 11)),
         pw.Text('Total Audit Records: ${rows.length} event(s) (Full-Day Scope)', style: pw.TextStyle(color: grey, fontSize: 10)),
         pw.Text('Report Generated: ${DateFormat('M/d/yyyy, h:mm:ss a').format(DateTime.now())}',
             style: pw.TextStyle(color: grey, fontSize: 10)),
-        pw.SizedBox(height: 12),
+        pw.SizedBox(height: 4),
+        pw.Text('IP addresses are recorded and shown only for prank reports.', style: pw.TextStyle(color: red, fontSize: 8)),
+        pw.SizedBox(height: 10),
         if (rows.isEmpty)
           pw.Center(child: pw.Text('No audit log records found for the selected date.', style: pw.TextStyle(color: grey)))
         else
           pw.TableHelper.fromTextArray(
-            headers: ['ID', 'Timestamp', 'Actor / Role', 'Action / Event', 'Status', 'Details Payload'],
-            headerStyle: pw.TextStyle(color: PdfColors.white, fontSize: 8, fontWeight: pw.FontWeight.bold),
+            headers: headers,
+            data: data,
+            headerStyle: pw.TextStyle(color: PdfColors.white, fontSize: 7.5, fontWeight: pw.FontWeight.bold),
             headerDecoration: pw.BoxDecoration(color: PdfColor.fromHex('#1E293B')),
-            cellStyle: const pw.TextStyle(fontSize: 7.5),
+            cellStyle: const pw.TextStyle(fontSize: 7),
+            cellAlignment: pw.Alignment.topLeft,
             oddRowDecoration: pw.BoxDecoration(color: PdfColor.fromHex('#F8FAFC')),
             columnWidths: {
-              0: const pw.FixedColumnWidth(30),
-              1: const pw.FixedColumnWidth(90),
-              2: const pw.FixedColumnWidth(95),
-              3: const pw.FixedColumnWidth(105),
-              4: const pw.FixedColumnWidth(50),
-              5: const pw.FlexColumnWidth(),
+              0: const pw.FixedColumnWidth(22),
+              1: const pw.FixedColumnWidth(52),
+              2: const pw.FixedColumnWidth(78),
+              3: const pw.FlexColumnWidth(2.2),
+              4: const pw.FlexColumnWidth(1.6),
+              if (superAdmin) 5: const pw.FlexColumnWidth(1.4),
+              (superAdmin ? 6 : 5): const pw.FixedColumnWidth(70),
+              (superAdmin ? 7 : 6): const pw.FixedColumnWidth(82),
+              (superAdmin ? 8 : 7): const pw.FixedColumnWidth(70),
             },
-            data: [
-              for (final l in rows)
-                [
-                  '${l['log_id']}',
-                  l['timestamp'] == null
-                      ? 'N/A'
-                      : DateFormat('M/d/yyyy, h:mm:ss a').format(DateTime.parse(l['timestamp']).toLocal()),
-                  '${l['actor_display'] ?? 'System'} (${l['user_role'] ?? 'Sys'})',
-                  short('${l['action'] ?? ''}', 28),
-                  '${l['status'] ?? 'INFO'}'.toUpperCase(),
-                  short('${l['entity_type'] ?? ''} #${l['entity_id'] ?? ''} ${l['details'] ?? ''}', 45),
-                ],
-            ],
           ),
       ],
     ));
@@ -302,9 +402,10 @@ class AdminData {
     final folder = 'AuditLogs($targetDate)';
     final archive = Archive()..addFile(_file('$folder/$folder.pdf', await doc.save()));
 
-    for (final inc in IncidentData.rows(await Rtdb.get('incidents'))) {
+    for (final inc in incidents.values) {
       final ts = DateTime.tryParse(inc['SOS_timeStamp']?.toString() ?? '')?.toLocal();
       if (ts == null || ts.isBefore(start) || ts.isAfter(end)) continue;
+      if (!superAdmin && !IncidentData.agenciesOf(inc).map(IncidentData.normalizeDepartment).contains(dept)) continue;
       final paths = (inc['image_path'] ?? '').toString().split(',').where((p) => p.trim().isNotEmpty).toList();
       for (var i = 0; i < paths.length; i++) {
         try {
@@ -318,6 +419,15 @@ class AdminData {
     }
     return ZipEncoder().encode(archive)!;
   }
+
+  /// The PDF's built-in font is Latin-1 only: plain punctuation, nothing else.
+  static String _pdfSafe(String text) => text
+      .replaceAll(RegExp('[–—−]'), '-')
+      .replaceAll(RegExp('[‘’]'), "'")
+      .replaceAll(RegExp('[“”]'), '"')
+      .replaceAll('…', '...')
+      .replaceAll('·', '-')
+      .replaceAll(RegExp('[^\u0000-ÿ]'), '');
 
   static ArchiveFile _file(String name, Uint8List bytes) => ArchiveFile(name, bytes.length, bytes);
 
@@ -347,8 +457,10 @@ class AdminData {
         'role': u['role'],
         'deptID': u['deptID'],
         'agency': deptName ?? 'Unassigned',
-        'status': 'Active',
-        'statusColor': '#10B981',
+        // Minors whose parent hasn't agreed to the Terms yet (their reports still go through)
+        'status': u['guardianPending'] == true ? 'Consent pending' : 'Active',
+        'statusColor': u['guardianPending'] == true ? '#F59E0B' : '#10B981',
+        'guardianPending': u['guardianPending'] == true,
         'agencyBg': _deptColors[deptName] ?? '#64748B',
         'avatarBg': colors.$1,
         'roleBg': colors.$2,
@@ -360,6 +472,15 @@ class AdminData {
     }).toList()
       ..sort((a, b) => a['name'].toString().toLowerCase().compareTo(b['name'].toString().toLowerCase()));
     return list;
+  }
+
+  /// A new email can't be set on someone else's login from here, so it waits as pendingEmail
+  /// until that user confirms it (see FirebaseService.login).
+  static Future<Map<String, dynamic>> _emailFields(String uid, dynamic email) async {
+    final next = '${email ?? ''}'.trim().toLowerCase();
+    if (next.isEmpty) return {};
+    final current = '${await Rtdb.get('users/$uid/email') ?? ''}'.toLowerCase();
+    return {'pendingEmail': next == current ? null : next};
   }
 
   static Future<Map<String, dynamic>> _deptFields(dynamic deptId) async {
@@ -444,6 +565,7 @@ class AdminData {
       if (phone != null) 'contactNo': '$phone',
       if (data['role'] != null) 'role': data['role'],
       ...await _deptFields(data['deptID']),
+      ...await _emailFields(uid, data['email']),
     });
     await IncidentData.log('ACCOUNT_UPDATED', 'USER', accountId, {'fields': data.keys.where((k) => k != 'password').toList()});
     LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});

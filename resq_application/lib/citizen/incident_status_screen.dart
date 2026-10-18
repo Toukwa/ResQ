@@ -324,6 +324,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
         final ts = ThemeService.instance;
         return Scaffold(
+          resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
           backgroundColor: ts.pageBackground,
           // Header stays on top; a shadow appears only once content scrolls under it
           appBar: AppBar(
@@ -376,7 +377,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.group_add_rounded, color: Color(0xFF16A34A), size: 22),
+                          Icon(Icons.group_add_rounded, color: themedInk(const Color(0xFF16A34A)), size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -444,7 +445,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFEF2F2),
+                                color: const Color(0xFFEF4444).withValues(alpha: ts.isDark ? 0.18 : 0.08),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
@@ -673,6 +674,14 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
       subtitle = "Response unit has resolved the emergency";
     }
 
+    // Dark mode: a deep tint of the status colour with a brighter border, and light text
+    if (ts.isDark) {
+      bg = Color.alphaBlend(badgeColor.withValues(alpha: 0.16), ts.cardBackground);
+      border = badgeColor.withValues(alpha: 0.6);
+      titleColor = Color.lerp(badgeColor, Colors.white, 0.6)!;
+      subtitleColor = Color.lerp(badgeColor, Colors.white, 0.4)!;
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
@@ -742,8 +751,8 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     required bool isLast,
   }) {
     const Color activeColor = Color(0xFF10B981);
-    const Color inactiveColor = Color(0xFFE2E8F0);
     final ts = ThemeService.instance;
+    final inactiveColor = ts.isDark ? const Color(0xFF4B5563) : const Color(0xFFE2E8F0);
 
     return Expanded(
       child: Column(
@@ -773,7 +782,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                                 height: 10,
                                 decoration: const BoxDecoration(color: activeColor, shape: BoxShape.circle),
                               )
-                            : const Icon(Icons.add_rounded, size: 14, color: Color(0xFFCBD5E1))),
+                            : Icon(Icons.add_rounded, size: 14, color: inactiveColor)),
                 ),
               ),
               Expanded(

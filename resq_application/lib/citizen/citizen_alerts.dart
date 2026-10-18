@@ -11,10 +11,13 @@ class CitizenAlertsBell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<List<CitizenAlert>>(
-      valueListenable: ReportStatusNotifier.alerts,
-      builder: (context, alerts, _) {
+    // Rebuilds on dark mode changes too (the header builds it as const)
+    return ListenableBuilder(
+      listenable: Listenable.merge([ReportStatusNotifier.alerts, ThemeService.instance]),
+      builder: (context, _) {
+        final alerts = ReportStatusNotifier.alerts.value;
         final unread = alerts.where((a) => !a.read).length;
+        final ts = ThemeService.instance;
         return InkWell(
           customBorder: const CircleBorder(),
           onTap: () => _openList(context),
@@ -22,7 +25,7 @@ class CitizenAlertsBell extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               CircleAvatar(
-                backgroundColor: Colors.white,
+                backgroundColor: ts.cardBackground,
                 child: Icon(
                   unread > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_outlined,
                   color: _orange,
@@ -38,7 +41,7 @@ class CitizenAlertsBell extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFEF4444),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: ts.cardBackground, width: 1.5),
                     ),
                     child: Text(
                       unread > 9 ? '9+' : '$unread',
@@ -72,11 +75,11 @@ class _AlertsSheet extends StatelessWidget {
   static const _orange = Color(0xFFFF6B00);
 
   static ({IconData icon, Color color}) _look(String sound) => switch (sound) {
-        'dispatch' => (icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB)),
-        'completed' => (icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
-        'declined' => (icon: Icons.cancel_rounded, color: const Color(0xFFEF4444)),
-        _ => (icon: Icons.info_rounded, color: _orange),
-      };
+    'dispatch' => (icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB)),
+    'completed' => (icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
+    'declined' => (icon: Icons.cancel_rounded, color: const Color(0xFFEF4444)),
+    _ => (icon: Icons.info_rounded, color: _orange),
+  };
 
   static String _ago(DateTime t) {
     final d = DateTime.now().difference(t);
@@ -140,14 +143,16 @@ class _AlertsSheet extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Notifications',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+                            Text(
+                              'Notifications',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
+                            ),
                             Text(
                               alerts.isEmpty
                                   ? 'Updates about your reports'
                                   : unread > 0
-                                      ? '$unread new'
-                                      : 'All caught up',
+                                  ? '$unread new'
+                                  : 'All caught up',
                               style: const TextStyle(fontSize: 12, color: textGrey),
                             ),
                           ],
@@ -156,8 +161,10 @@ class _AlertsSheet extends StatelessWidget {
                       if (alerts.isNotEmpty)
                         TextButton(
                           onPressed: ReportStatusNotifier.clearAll,
-                          child: const Text('Clear all',
-                              style: TextStyle(color: _orange, fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            'Clear all',
+                            style: TextStyle(color: _orange, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       Tooltip(
                         message: 'Close',
@@ -166,7 +173,10 @@ class _AlertsSheet extends StatelessWidget {
                           onTap: () => Navigator.pop(context),
                           child: Container(
                             padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: border)),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: border),
+                            ),
                             child: Icon(Icons.close_rounded, size: 18, color: textDark),
                           ),
                         ),
@@ -240,9 +250,14 @@ class _AlertsSheet extends StatelessWidget {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Expanded(
-                                              child: Text(a.title,
-                                                  style: TextStyle(
-                                                      fontWeight: FontWeight.bold, fontSize: 14, color: textDark)),
+                                              child: Text(
+                                                a.title,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                  color: textDark,
+                                                ),
+                                              ),
                                             ),
                                             const SizedBox(width: 8),
                                             Text(_ago(a.time), style: const TextStyle(fontSize: 11, color: textGrey)),

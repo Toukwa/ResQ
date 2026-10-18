@@ -169,7 +169,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
         ),
         content: Text(
           'You have been automatically logged out due to inactivity (${_formatDurationText(_sessionTimeoutDuration)}).\n\nPlease log in again to continue.',
-          style: const TextStyle(fontSize: 14, color: Color(0xFF475569)),
+          style: TextStyle(fontSize: 14, color: themedInk(const Color(0xFF475569))),
         ),
         actions: [
           ElevatedButton(
@@ -385,6 +385,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
           onPointerMove: (_) => _handleUserInteraction(),
           onPointerHover: (_) => _handleUserInteraction(),
           child: Scaffold(
+            resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
             backgroundColor: ts.pageBackground,
             body: Row(
               children: [

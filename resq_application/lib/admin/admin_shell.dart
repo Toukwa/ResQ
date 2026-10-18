@@ -393,6 +393,7 @@ class _AdminShellState extends State<AdminShell> {
     return SessionTimeoutGuard(
       userId: _effectiveUserId,
       child: Scaffold(
+      resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       body: Row(
         children: [
           AdminSidebar(

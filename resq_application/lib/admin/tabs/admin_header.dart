@@ -196,6 +196,11 @@ class _AdminHeaderState extends State<AdminHeader> {
           PopupMenuButton<String>(
             offset: const Offset(0, 44),
             tooltip: 'Notifications',
+            // Opening the list marks everything read, like the phone app: the list still shows
+            // what was new this time, and the badge clears
+            onOpened: () {
+              if (widget.unreadNotificationCount > 0) (widget.onMarkAllNotificationsRead ?? widget.onClearUnread)?.call();
+            },
             color: ThemeService.instance.cardBackground,
             surfaceTintColor: Colors.transparent,
             elevation: 8,

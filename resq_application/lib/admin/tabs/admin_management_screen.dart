@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/resq_dialog.dart';
 import '../../shared/resq_dropdown.dart';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
@@ -1309,6 +1310,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             .contains(v['status']?.toString())
         ? v['status'].toString()
         : 'Available';
+    bool busy = false;
 
     showDialog(
       context: context,
@@ -1317,145 +1319,101 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
 
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return AlertDialog(
-              backgroundColor: ts.cardBackground,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
+            return ResqDialog(
+              icon: Icons.edit_rounded,
+              color: const Color(0xFFFF5200),
+              title: 'Edit Vehicle',
+              subtitle: 'Unit #$vehicleId',
+              primaryLabel: 'Save Changes',
+              primaryIcon: Icons.save_rounded,
+              busy: busy,
+              onPrimary: () async {
+                final plate = plateController.text.trim();
+                final officer = officerController.text.trim();
+                final messenger = ScaffoldMessenger.of(context);
+                final targetDept = (widget.department.isNotEmpty && widget.department.toUpperCase() != 'ALL')
+                    ? widget.department.toUpperCase()
+                    : 'BFP';
+                setModalState(() => busy = true);
+                final success = await AdminService.updateVehicle(vehicleId, {
+                  'plate_no': plate.isEmpty ? null : plate,
+                  'vehicle_type': selectedType,
+                  'deptName': targetDept,
+                  'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
+                  'status': selectedStatus,
+                });
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                if (success) {
+                  _loadData(showLoading: false);
+                  messenger.showResqSnackBar(
+                    const SnackBar(content: Text("Vehicle updated successfully"), backgroundColor: Color(0xFF27AE60)),
+                  );
+                } else {
+                  messenger.showResqSnackBar(
+                    const SnackBar(content: Text("Failed to update vehicle"), backgroundColor: Colors.redAccent),
+                  );
+                }
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.edit_outlined, color: Color(0xFFFF5200)),
-                  const SizedBox(width: 8),
-                  Text("Edit Vehicle Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary)),
+                  ResqDialogField(
+                    label: 'Plate number / registration',
+                    controller: plateController,
+                    icon: Icons.pin_outlined,
+                  ),
+                  _label(ts, 'Vehicle type'),
+                  ResqSelect<String>(
+                    value: selectedType,
+                    hint: 'Select vehicle type',
+                    options: [
+                      for (final t in const ['Fire Truck', 'Ambulance', 'Police Vehicle'])
+                        ResqOption(t, t,
+                            icon: t == 'Fire Truck'
+                                ? Icons.fire_truck_rounded
+                                : t == 'Ambulance'
+                                    ? Icons.airport_shuttle_rounded
+                                    : Icons.local_police_rounded),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedType = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ResqDialogField(
+                    label: 'Officer in charge',
+                    controller: officerController,
+                    icon: Icons.person_outline_rounded,
+                  ),
+                  _label(ts, 'Operational status'),
+                  ResqSelect<String>(
+                    value: selectedStatus,
+                    hint: 'Select status',
+                    options: const [
+                      ResqOption('Available', 'Available', color: Color(0xFF16A34A)),
+                      ResqOption('Dispatched', 'Dispatched', color: Color(0xFF2563EB)),
+                      ResqOption('En Route', 'En Route', color: Color(0xFF2563EB)),
+                      ResqOption('Offline', 'Offline', color: Color(0xFF94A3B8)),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedStatus = val);
+                    },
+                  ),
                 ],
               ),
-              content: Container(
-                width: 440,
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Plate Number / Registration", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: plateController,
-                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: true,
-                          fillColor: ts.inputBackground,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      Text("Vehicle Type", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-                      const SizedBox(height: 6),
-                      ResqSelect<String>(
-                        value: selectedType,
-                        hint: 'Select vehicle type',
-                        options: [
-                          for (final t in const ['Fire Truck', 'Ambulance', 'Police Vehicle'])
-                            ResqOption(t, t,
-                                icon: t == 'Fire Truck'
-                                  ? Icons.fire_truck_rounded
-                                  : t == 'Ambulance'
-                                      ? Icons.airport_shuttle_rounded
-                                      : Icons.local_police_rounded),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setModalState(() => selectedType = val);
-                        },
-                      ),
-                      const SizedBox(height: 10),
-
-                      Text("Officer In Charge", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: officerController,
-                        style: TextStyle(fontSize: 12, color: ts.textPrimary),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: true,
-                          fillColor: ts.inputBackground,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: ts.borderColor)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      Text("Operational Status", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-                      const SizedBox(height: 6),
-                      ResqSelect<String>(
-                        value: selectedStatus,
-                        hint: 'Select status',
-                        options: const [
-                          ResqOption('Available', 'Available', color: Color(0xFF16A34A)),
-                          ResqOption('Dispatched', 'Dispatched', color: Color(0xFF2563EB)),
-                          ResqOption('En Route', 'En Route', color: Color(0xFF2563EB)),
-                          ResqOption('Offline', 'Offline', color: Color(0xFF94A3B8)),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setModalState(() => selectedStatus = val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: Text("Cancel", style: TextStyle(color: ts.textSecondary)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5200),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () async {
-                    final plate = plateController.text.trim();
-                    final officer = officerController.text.trim();
-                    final messenger = ScaffoldMessenger.of(context);
-                    final targetDept = (widget.department.isNotEmpty && widget.department.toUpperCase() != 'ALL')
-                        ? widget.department.toUpperCase()
-                        : 'BFP';
-
-                    final success = await AdminService.updateVehicle(vehicleId, {
-                      'plate_no': plate.isEmpty ? null : plate,
-                      'vehicle_type': selectedType,
-                      'deptName': targetDept,
-                      'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
-                      'status': selectedStatus,
-                    });
-
-                    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                    if (success) {
-                      _loadData(showLoading: false);
-                      messenger.showResqSnackBar(
-                        const SnackBar(content: Text("Vehicle updated successfully")),
-                      );
-                    } else {
-                      messenger.showResqSnackBar(
-                        const SnackBar(content: Text("Failed to update vehicle")),
-                      );
-                    }
-                  },
-                  child: const Text("Save Changes"),
-                ),
-              ],
             );
           },
         );
       },
     );
   }
+
+  /// Small caps label above a picker, matching ResqDialogField's.
+  Widget _label(ThemeService ts, String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text.toUpperCase(),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.6, color: ts.textSecondary)),
+      );
 
   // ==========================================
   // DELETE VEHICLE DIALOG
@@ -1468,53 +1426,39 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
       context: context,
       builder: (dialogCtx) {
         final ts = ThemeService.instance;
-
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return AlertDialog(
-              backgroundColor: ts.cardBackground,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
-                  const SizedBox(width: 8),
-                  Text("Delete Vehicle", style: TextStyle(color: ts.textPrimary)),
-                ],
-              ),
-              content: Text(
-                "Are you sure you want to delete vehicle $plate (ID: #$vehicleId)? This action cannot be undone.",
-                style: TextStyle(color: ts.textSecondary),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: Text("Cancel", style: TextStyle(color: ts.textSecondary)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final success = await AdminService.deleteVehicle(vehicleId);
-                    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                    if (success) {
-                      _loadData(showLoading: false);
-                      messenger.showResqSnackBar(
-                        const SnackBar(content: Text("Vehicle deleted successfully")),
-                      );
-                    } else {
-                      messenger.showResqSnackBar(
-                        const SnackBar(content: Text("Failed to delete vehicle")),
-                      );
-                    }
-                  },
-                  child: const Text("Delete"),
-                ),
-              ],
-            );
+        return ResqDialog(
+          icon: Icons.delete_forever_rounded,
+          color: const Color(0xFFDC2626),
+          title: 'Delete Vehicle',
+          subtitle: 'This cannot be undone',
+          maxWidth: 420,
+          primaryLabel: 'Delete',
+          primaryIcon: Icons.delete_rounded,
+          onPrimary: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            Navigator.pop(dialogCtx);
+            final success = await AdminService.deleteVehicle(vehicleId);
+            if (success) {
+              _loadData(showLoading: false);
+              messenger.showResqSnackBar(
+                const SnackBar(content: Text("Vehicle deleted successfully"), backgroundColor: Color(0xFF27AE60)),
+              );
+            } else {
+              messenger.showResqSnackBar(
+                const SnackBar(content: Text("Failed to delete vehicle"), backgroundColor: Colors.redAccent),
+              );
+            }
           },
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(fontSize: 13, height: 1.45, color: ts.textSecondary),
+              children: [
+                const TextSpan(text: 'Delete vehicle '),
+                TextSpan(text: plate, style: TextStyle(fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                TextSpan(text: ' (unit #$vehicleId)? It will be removed from your fleet.'),
+              ],
+            ),
+          ),
         );
       },
     );

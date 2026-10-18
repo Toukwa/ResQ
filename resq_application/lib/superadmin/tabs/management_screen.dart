@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
+import '../../shared/resq_dialog.dart';
 import '../../shared/resq_dropdown.dart';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
@@ -8,6 +9,7 @@ import '../../admin/admin_service.dart';
 import '../../config.dart';
 import '../../services/firebase_services.dart';
 import '../../services/live_socket.dart' as io;
+import '../../services/prank_warning.dart';
 import '../../services/theme_service.dart';
 import '../../shared/resq_toast.dart';
 
@@ -769,17 +771,19 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _parseColor(acc['roleBg']),
+                  color: ts.isDark ? _parseColor(acc['avatarBg']).withValues(alpha: 0.18) : _parseColor(acc['roleBg']),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: _parseColor(acc['roleText']).withValues(alpha: 0.2)),
+                      color: _parseColor(ts.isDark ? acc['avatarBg'] : acc['roleText']).withValues(alpha: ts.isDark ? 0.45 : 0.2)),
                 ),
                 child: Text(
                   acc['role'] ?? 'Unknown',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: _parseColor(acc['roleText']),
+                    color: ts.isDark
+                        ? Color.lerp(_parseColor(acc['avatarBg']), Colors.white, 0.45)
+                        : _parseColor(acc['roleText']),
                   ),
                 ),
               ),
@@ -800,12 +804,16 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  acc['status'] ?? 'Unknown',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _parseColor(acc['statusColor']),
+                Flexible(
+                  child: Text(
+                    acc['status'] ?? 'Unknown',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: _parseColor(acc['statusColor']),
+                    ),
                   ),
                 ),
               ],
@@ -870,8 +878,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // ==========================================
   // EDIT AGENCY MODAL
   // ==========================================
-  void _showEditAgencyModal() {
-    final ts = ThemeService.instance;
+  Future<void> _showEditAgencyModal() async {
     if (_departments.isEmpty) {
       ScaffoldMessenger.of(context).showResqSnackBar(
         const SnackBar(content: Text('No departments available to edit.')),
@@ -880,224 +887,154 @@ class _ManagementScreenState extends State<ManagementScreen> {
     }
 
     Map<String, dynamic> selectedDept = _departments.first;
+    final agencyTypeController = TextEditingController();
+    final contactPersonController = TextEditingController();
+    final contactNoController = TextEditingController();
+    final unlockController = TextEditingController();
+    String? savedUnlock; // the agency's current unlock password, to tell if it changed
+    bool unlockLoading = false;
+    bool unlockHidden = true;
+    bool busy = false;
 
-    final agencyTypeController = TextEditingController(text: selectedDept['agencyType'] ?? '');
-    final contactPersonController = TextEditingController(text: selectedDept['contactPerson'] ?? '');
-    final contactNoController = TextEditingController(text: selectedDept['contactNo']?.toString() ?? '');
+    Future<String?> loadUnlock(Map<String, dynamic> dept) =>
+        PrankWarning.unlockCodeOf('${dept['deptName'] ?? ''}').catchError((_) => null);
+
+    void fill(Map<String, dynamic> dept, String? unlock) {
+      selectedDept = dept;
+      agencyTypeController.text = dept['agencyType']?.toString() ?? '';
+      contactPersonController.text = dept['contactPerson']?.toString() ?? '';
+      contactNoController.text = dept['contactNo']?.toString() ?? '';
+      savedUnlock = unlock;
+      unlockController.text = unlock ?? '';
+    }
+
+    fill(selectedDept, await loadUnlock(selectedDept));
+    if (!mounted) return;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
-          void updateFields(Map<String, dynamic> dept) {
-            agencyTypeController.text = dept['agencyType']?.toString() ?? '';
-            contactPersonController.text = dept['contactPerson']?.toString() ?? '';
-            contactNoController.text = dept['contactNo']?.toString() ?? '';
+          Future<void> selectDept(Map<String, dynamic> dept) async {
+            setModalState(() {
+              fill(dept, null);
+              unlockLoading = true;
+            });
+            final code = await loadUnlock(dept);
+            if (!context.mounted || selectedDept != dept) return;
+            setModalState(() {
+              fill(dept, code);
+              unlockLoading = false;
+            });
           }
 
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Container(
-              width: 480,
-              decoration: BoxDecoration(
-                color: ts.cardBackground,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(28),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- HEADER ---
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF5200),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(Icons.business_outlined, color: Colors.white, size: 24),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Edit Agency",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: ts.textPrimary,
-                                  height: 1.2,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                "Update department details and contact info",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: ts.textMuted,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: Icon(Icons.close, color: ts.textMuted, size: 20),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+          final agency = PrankWarning.agencyKey('${selectedDept['deptName'] ?? ''}');
 
-                    // --- SELECT DEPARTMENT DROPDOWN ---
-                    _buildInputLabel("Select Department"),
-                    const SizedBox(height: 6),
-                    ResqSelect<Map<String, dynamic>>(
-                      value: selectedDept,
-                      hint: 'Select department',
-                      icon: Icons.apartment_rounded,
-                      options: [
-                        for (final dept in _departments)
-                          ResqOption(dept, '${dept['deptName'] ?? 'Unknown Agency'}',
-                              icon: agencySymbol(normalizeAgency(dept['deptName'])).icon, color: agencySymbol(normalizeAgency(dept['deptName'])).color),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            selectedDept = val;
-                            updateFields(val);
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- AGENCY TYPE ---
-                    _buildInputLabel("Agency Type"),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: agencyTypeController,
-                      style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                      decoration: _buildInputDecoration("e.g. Accident, Fire, Medical"),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- CONTACT PERSON ---
-                    _buildInputLabel("Contact Person"),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: contactPersonController,
-                      style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                      decoration: _buildInputDecoration("e.g. Juan dela Cruz"),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- CONTACT NUMBER ---
-                    _buildInputLabel("Hotline Number (dialled by the phone app's Call Agencies)"),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: contactNoController,
-                      keyboardType: TextInputType.phone,
-                      style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                      decoration: _buildInputDecoration("e.g. 0917123456"),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // --- ACTIONS ---
-                    Row(
-                      children: [
-                        // Cancel Button
-                        Expanded(
-                          child: SizedBox(
-                            height: 44,
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: ts.borderColor),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                "Cancel",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: ts.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Save Button
-                        Expanded(
-                          child: SizedBox(
-                            height: 44,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final updatedData = {
-                                  'dept_ID': selectedDept['dept_ID'] ?? selectedDept['id'],
-                                  'deptName': selectedDept['deptName'],
-                                  'agencyType': agencyTypeController.text,
-                                  'contactPerson': contactPersonController.text,
-                                  'contactNo': contactNoController.text.trim(),
-                                };
-
-                                final success = await AdminService.updateDepartment(updatedData);
-                                if (!context.mounted) return;
-                                if (success) {
-                                  Navigator.pop(context);
-                                  _loadDepartments();
-                                  ScaffoldMessenger.of(context).showResqSnackBar(
-                                    const SnackBar(content: Text('Agency details updated successfully')),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showResqSnackBar(
-                                    const SnackBar(content: Text('Failed to update agency details')),
-                                  );
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF5200),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                "Save",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          return ResqDialog(
+            icon: Icons.business_rounded,
+            color: const Color(0xFFFF5200),
+            title: 'Edit Agency',
+            subtitle: 'Update department details, contact info and unlock password',
+            primaryLabel: 'Save Changes',
+            primaryIcon: Icons.save_rounded,
+            busy: busy,
+            onPrimary: () async {
+              final newUnlock = unlockController.text.trim();
+              final unlockChanged = agency != null && !unlockLoading && newUnlock != (savedUnlock ?? '');
+              if (unlockChanged) {
+                final problem = PrankWarning.checkUnlockCode(newUnlock);
+                if (problem != null) {
+                  ScaffoldMessenger.of(context).showResqSnackBar(
+                    SnackBar(content: Text('Unlock password: $problem'), backgroundColor: Colors.redAccent),
+                  );
+                  return;
+                }
+              }
+              setModalState(() => busy = true);
+              final success = await AdminService.updateDepartment({
+                'dept_ID': selectedDept['dept_ID'] ?? selectedDept['id'],
+                'deptName': selectedDept['deptName'],
+                'agencyType': agencyTypeController.text.trim(),
+                'contactPerson': contactPersonController.text.trim(),
+                'contactNo': contactNoController.text.trim(),
+              });
+              String? unlockError;
+              if (success && unlockChanged) {
+                try {
+                  await PrankWarning.setUnlockCode(agency, newUnlock);
+                } catch (e) {
+                  unlockError = '$e';
+                }
+              }
+              if (!context.mounted) return;
+              if (success && unlockError == null) {
+                Navigator.pop(context);
+                _loadDepartments();
+                ScaffoldMessenger.of(context).showResqSnackBar(
+                  const SnackBar(content: Text('Agency details updated successfully'), backgroundColor: Color(0xFF27AE60)),
+                );
+              } else {
+                setModalState(() => busy = false);
+                ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(
+                  content: Text(success ? "Details saved, but the unlock password couldn't be saved: $unlockError" : 'Failed to update agency details'),
+                  backgroundColor: Colors.redAccent,
+                ));
+              }
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildInputLabel('Department'),
+                const SizedBox(height: 6),
+                ResqSelect<Map<String, dynamic>>(
+                  value: selectedDept,
+                  hint: 'Select department',
+                  icon: Icons.apartment_rounded,
+                  options: [
+                    for (final dept in _departments)
+                      ResqOption(dept, '${dept['deptName'] ?? 'Unknown Agency'}',
+                          icon: agencySymbol(normalizeAgency(dept['deptName'])).icon,
+                          color: agencySymbol(normalizeAgency(dept['deptName'])).color),
                   ],
+                  onChanged: (val) {
+                    if (!busy && val != null && val != selectedDept) selectDept(val);
+                  },
                 ),
-              ),
+                const SizedBox(height: 12),
+                ResqDialogField(
+                  label: 'Agency type',
+                  controller: agencyTypeController,
+                  icon: Icons.category_outlined,
+                  hint: 'e.g. Fire, Police, Disaster Response',
+                ),
+                ResqDialogField(
+                  label: 'Contact person',
+                  controller: contactPersonController,
+                  icon: Icons.person_outline_rounded,
+                  hint: 'e.g. Juan dela Cruz',
+                ),
+                ResqDialogField(
+                  label: "Hotline number (dialled by the phone app's Call Agencies)",
+                  controller: contactNoController,
+                  icon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                  hint: 'e.g. 0917123456',
+                ),
+                if (agency != null)
+                  ResqDialogField(
+                    label: 'Prank warning unlock password ($agency admins can view it)',
+                    controller: unlockController,
+                    icon: Icons.key_rounded,
+                    obscure: unlockHidden,
+                    accent: const Color(0xFFDC2626),
+                    hint: unlockLoading ? 'Loading…' : '6 to 32 characters',
+                    suffix: IconButton(
+                      tooltip: unlockHidden ? 'Show' : 'Hide',
+                      icon: Icon(unlockHidden ? Icons.visibility_rounded : Icons.visibility_off_rounded, size: 18),
+                      onPressed: () => setModalState(() => unlockHidden = !unlockHidden),
+                    ),
+                  ),
+              ],
             ),
           );
         },
@@ -1479,249 +1416,184 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final ts = ThemeService.instance;
     showDialog(
       context: context,
-      builder: (context) => ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Dialog(
-          backgroundColor: ts.cardBackground,
-          child: Container(
-            width: 400,
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context) => ResqDialog(
+        icon: Icons.badge_rounded,
+        color: const Color(0xFF2563EB),
+        title: 'Account Details',
+        subtitle: '${account['role'] ?? 'Account'} · ${account['agency'] ?? 'Unassigned'}',
+        leading: OutlinedButton.icon(
+          onPressed: () {
+            Navigator.pop(context);
+            _showEditAccountModal(account);
+          },
+          icon: const Icon(Icons.edit_rounded, size: 16),
+          label: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w700)),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFFF5200),
+            side: const BorderSide(color: Color(0xFFFF5200)),
+            minimumSize: const Size(0, 44),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Who: avatar, name, email
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: ts.subtleBackground,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: ts.borderColor),
+              ),
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Account Details",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: ts.textPrimary,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close, color: ts.textSecondary),
-                      ),
-                    ],
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: _parseColor(account['avatarBg']),
+                    child: Text(
+                      account['initials'] ?? 'NA',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: _parseColor(account['avatarBg']),
-                        child: Text(
-                          account['initials'] ?? 'NA',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              account['name'] ?? 'Unknown',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: ts.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              account['email'] ?? 'N/A',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: ts.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(account['name'] ?? 'Unknown',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                        const SizedBox(height: 2),
+                        Text(account['email'] ?? 'N/A', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  _buildDetailRow("Role", account['role'] ?? 'Unknown'),
-                  _buildDetailRow("Agency", account['agency'] ?? 'Unassigned'),
-                  _buildDetailRow("Phone", account['phone'] ?? 'N/A'),
-                  _buildDetailRow("Status", account['status'] ?? 'Unknown'),
-                  _buildDetailRow("Created", account['created'] ?? 'Unknown'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _parseColor(account['statusColor']).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      account['status'] ?? 'Unknown',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _parseColor(account['statusColor'])),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: 14),
+            _buildDetailRow("Role", account['role'] ?? 'Unknown'),
+            _buildDetailRow("Agency", account['agency'] ?? 'Unassigned'),
+            _buildDetailRow("Phone", account['phone'] ?? 'N/A'),
+            _buildDetailRow("Created", account['created'] ?? 'Unknown'),
+          ],
         ),
       ),
     );
   }
 
   void _showEditAccountModal(Map<String, dynamic> account) {
-    final ts = ThemeService.instance;
     final nameController = TextEditingController(text: account['name']);
     final emailController = TextEditingController(text: account['email']);
     final phoneController = TextEditingController(text: account['phone']);
-    
+
     // Responder is no longer offered; an old Responder account still shows its role so saving doesn't change it
     final roles = ['Citizen', if (account['role'] == 'Responder' || account['role'] == 'Dispatcher') 'Responder', 'Admin', 'Superadmin'];
     String selectedRole = account['role'] == 'Dispatcher' ? 'Responder' : (account['role'] ?? 'Citizen');
     if (!roles.contains(selectedRole)) selectedRole = 'Citizen';
     int? selectedDeptId = account['deptID'];
+    bool busy = false;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Dialog(
-            backgroundColor: ts.cardBackground,
-            child: Container(
-              width: 400,
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Edit Account",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: ts.textPrimary,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.close, color: ts.textSecondary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: nameController,
-                      style: TextStyle(color: ts.textPrimary),
-                      decoration: _themedField("Full Name"),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailController,
-                      style: TextStyle(color: ts.textPrimary),
-                      decoration: _themedField("Email"),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: phoneController,
-                      style: TextStyle(color: ts.textPrimary),
-                      decoration: _themedField("Phone Number"),
-                    ),
-                    const SizedBox(height: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInputLabel("Role"),
-                        const SizedBox(height: 6),
-                        ResqSelect<String>(
-                          value: selectedRole,
-                          hint: 'Role',
-                          options: [
-                            for (final r in roles)
-                              ResqOption(r, r, icon: switch (r) {
-                                    'Superadmin' => Icons.shield_rounded,
-                                    'Admin' => Icons.admin_panel_settings_rounded,
-                                    _ => Icons.badge_rounded,
-                                  }),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) setModalState(() => selectedRole = value);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInputLabel("Department"),
-                        const SizedBox(height: 6),
-                        ResqSelect<int>(
-                          value: selectedDeptId,
-                          hint: 'Department',
-                          options: [
-                            for (final dept in _departments)
-                              if (dept['dept_ID'] is int)
-                                ResqOption(dept['dept_ID'] as int, '${dept['deptName'] ?? 'Unknown'}',
-                                    icon: agencySymbol(normalizeAgency(dept['deptName'])).icon, color: agencySymbol(normalizeAgency(dept['deptName'])).color),
-                          ],
-                          onChanged: (value) => setModalState(() => selectedDeptId = value),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text("Cancel"),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (nameController.text.isEmpty ||
-                                emailController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showResqSnackBar(
-                                const SnackBar(content: Text('Please fill all required fields')),
-                              );
-                              return;
-                            }
-
-                            final accountData = {
-                              'userName': nameController.text,
-                              'email': emailController.text,
-                              'contactNo': phoneController.text,
-                              'role': selectedRole,
-                              'deptID': selectedDeptId,
-                            };
-
-                            final success = await AdminService.updateAccount(
-                              account['id'] as int,
-                              accountData,
-                            );
-                            if (!context.mounted) return;
-                            if (success) {
-                              Navigator.pop(context);
-                              _loadAccounts();
-                              ScaffoldMessenger.of(context).showResqSnackBar(
-                                const SnackBar(content: Text('Account updated successfully')),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showResqSnackBar(
-                                const SnackBar(content: Text('Failed to update account')),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF5200),
-                          ),
-                          child: Text("Update Account"),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+        builder: (context, setModalState) => ResqDialog(
+          icon: Icons.manage_accounts_rounded,
+          color: const Color(0xFFFF5200),
+          title: 'Edit Account',
+          subtitle: account['name'] ?? '',
+          primaryLabel: 'Save Changes',
+          primaryIcon: Icons.save_rounded,
+          busy: busy,
+          onPrimary: () async {
+            if (nameController.text.trim().isEmpty || emailController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showResqSnackBar(
+                const SnackBar(content: Text('Please fill all required fields')),
+              );
+              return;
+            }
+            setModalState(() => busy = true);
+            final success = await AdminService.updateAccount(account['id'] as int, {
+              'userName': nameController.text.trim(),
+              'email': emailController.text.trim(),
+              'contactNo': phoneController.text.trim(),
+              'role': selectedRole,
+              'deptID': selectedDeptId,
+            });
+            if (!context.mounted) return;
+            if (success) {
+              Navigator.pop(context);
+              _loadAccounts();
+              ScaffoldMessenger.of(context).showResqSnackBar(
+                const SnackBar(content: Text('Account updated successfully'), backgroundColor: Color(0xFF27AE60)),
+              );
+            } else {
+              setModalState(() => busy = false);
+              ScaffoldMessenger.of(context).showResqSnackBar(
+                const SnackBar(content: Text('Failed to update account'), backgroundColor: Colors.redAccent),
+              );
+            }
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ResqDialogField(label: 'Full name', controller: nameController, icon: Icons.person_outline_rounded),
+              ResqDialogField(
+                label: 'Email',
+                controller: emailController,
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
               ),
-            ),
+              ResqDialogField(
+                label: 'Phone number',
+                controller: phoneController,
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              _buildInputLabel("Role"),
+              const SizedBox(height: 6),
+              ResqSelect<String>(
+                value: selectedRole,
+                hint: 'Role',
+                options: [
+                  for (final r in roles)
+                    ResqOption(r, r, icon: switch (r) {
+                      'Superadmin' => Icons.shield_rounded,
+                      'Admin' => Icons.admin_panel_settings_rounded,
+                      _ => Icons.badge_rounded,
+                    }),
+                ],
+                onChanged: (value) {
+                  if (value != null) setModalState(() => selectedRole = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildInputLabel("Department"),
+              const SizedBox(height: 6),
+              ResqSelect<int>(
+                value: selectedDeptId,
+                hint: 'Department',
+                options: [
+                  for (final dept in _departments)
+                    if (dept['dept_ID'] is int)
+                      ResqOption(dept['dept_ID'] as int, '${dept['deptName'] ?? 'Unknown'}',
+                          icon: agencySymbol(normalizeAgency(dept['deptName'])).icon,
+                          color: agencySymbol(normalizeAgency(dept['deptName'])).color),
+                ],
+                onChanged: (value) => setModalState(() => selectedDeptId = value),
+              ),
+            ],
           ),
         ),
       ),
@@ -1732,49 +1604,46 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final ts = ThemeService.instance;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: ts.cardBackground,
-        title: Text("Delete Account", style: TextStyle(color: ts.textPrimary)),
-        content: Text("Are you sure you want to delete ${account['name']}'s account?", style: TextStyle(color: ts.textSecondary)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
+      builder: (context) => ResqDialog(
+        icon: Icons.person_remove_rounded,
+        color: const Color(0xFFDC2626),
+        title: 'Delete Account',
+        subtitle: 'This cannot be undone',
+        maxWidth: 420,
+        primaryLabel: 'Delete',
+        primaryIcon: Icons.delete_rounded,
+        onPrimary: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          Navigator.pop(context);
+          final success = await AdminService.deleteAccount(account['id'] as int);
+          if (success) {
+            _loadAccounts();
+            messenger.showResqSnackBar(
+              const SnackBar(content: Text('Account deleted successfully'), backgroundColor: Color(0xFF27AE60)),
+            );
+          } else {
+            messenger.showResqSnackBar(
+              const SnackBar(content: Text('Failed to delete account'), backgroundColor: Colors.redAccent),
+            );
+          }
+        },
+        child: Text.rich(
+          TextSpan(
+            style: TextStyle(fontSize: 13, height: 1.45, color: ts.textSecondary),
+            children: [
+              const TextSpan(text: 'Delete the account of '),
+              TextSpan(
+                text: account['name'] ?? 'this user',
+                style: TextStyle(fontWeight: FontWeight.w800, color: ts.textPrimary),
+              ),
+              TextSpan(text: ' (${account['email'] ?? 'no email'})? They will no longer be able to log in.'),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              Navigator.pop(context);
-              final success = await AdminService.deleteAccount(account['id'] as int);
-              if (success) {
-                _loadAccounts();
-                messenger.showResqSnackBar(
-                  const SnackBar(content: Text('Account deleted successfully')),
-                );
-              } else {
-                messenger.showResqSnackBar(
-                  const SnackBar(content: Text('Failed to delete account')),
-                );
-              }
-            },
-            child: Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  InputDecoration _themedField(String label) {
-    final ts = ThemeService.instance;
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: ts.textSecondary),
-      filled: true,
-      fillColor: ts.inputBackground,
-      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: ts.borderColor)),
-      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF5200), width: 1.5)),
-    );
-  }
   Widget _buildDetailRow(String label, String value) {
     final ts = ThemeService.instance;
     return Padding(

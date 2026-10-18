@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'display_settings.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../services/incident_data.dart';
+import 'prank_warning_dialog.dart';
 import '../services/theme_service.dart';
 import 'image_gallery_widget.dart';
 import 'incident_format.dart';
@@ -127,6 +129,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
         'en route' || 'en_route' || 'dispatched' => const Color(0xFF2563EB),
         'accepted' => const Color(0xFF0EA5E9),
         'declined' || 'cancelled' => const Color(0xFFEF4444),
+        'invalid' => const Color(0xFF7C3AED), // prank report
         _ => const Color(0xFFF59E0B), // pending
       };
 
@@ -136,12 +139,12 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
         'arrived' => 3,
         'en route' || 'en_route' || 'dispatched' => 2,
         'accepted' => 1,
-        'declined' || 'cancelled' => -1,
+        'declined' || 'cancelled' || 'invalid' => -1,
         _ => 0,
       };
 
   static bool _closed(Map inc) =>
-      const ['completed', 'declined', 'cancelled'].contains('${inc['reqStatus'] ?? ''}'.toLowerCase());
+      const ['completed', 'declined', 'cancelled', 'invalid'].contains('${inc['reqStatus'] ?? ''}'.toLowerCase());
 
   // ─── layout ─────────────────────────────────────────────────────────────
 
@@ -326,7 +329,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
                 Row(children: [
                   Text(agency, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ts.textPrimary)),
                   const Spacer(),
-                  if (widget.eoc && !const ['completed', 'declined', 'cancelled'].contains(status.toLowerCase())) ...[
+                  if (widget.eoc && !const ['completed', 'declined', 'cancelled', 'invalid'].contains(status.toLowerCase())) ...[
                     _notifyButton(agency, look.color),
                     const SizedBox(width: 6),
                   ],
@@ -409,6 +412,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.example.resq',
+                  tileBuilder: DisplaySettings.mapTileBuilder,
                 ),
                 MarkerLayer(markers: [
                   Marker(
@@ -463,6 +467,19 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
           else
             const Spacer(),
           const SizedBox(width: 12),
+          if (_canWarn(inc)) ...[
+            OutlinedButton.icon(
+              onPressed: _saving ? null : () => _warnPrankCaller(ts, inc),
+              icon: const Icon(Icons.report_rounded, size: 18, color: Color(0xFFDC2626)),
+              label: const Text('Warn prank caller', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(100, 44),
+                side: const BorderSide(color: Color(0xFFDC2626)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
           OutlinedButton(
             onPressed: () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
@@ -482,6 +499,19 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
         ],
       ),
     );
+  }
+
+  bool _canWarn(Map<String, dynamic> inc) =>
+      inc['citizenUid'] != null && _me?['role'] == 'Admin'; // the warning locks with the sending admin's password
+
+  /// Admin: sends the citizen a prank-caller warning (they see it as a pop-up).
+  Future<void> _warnPrankCaller(ThemeService ts, Map<String, dynamic> inc) async {
+    setState(() => _saving = true);
+    try {
+      await showPrankWarningDialog(context, inc);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   /// EOC: pick agencies to assign (or ask for help).

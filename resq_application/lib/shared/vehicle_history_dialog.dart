@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'display_settings.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import '../services/road_route.dart';
 import '../services/theme_service.dart';
 import '../services/vehicle_data.dart';
 import 'incident_format.dart';
@@ -10,6 +12,25 @@ import 'map_pin.dart';
 import 'resq_date_picker.dart';
 
 const _orange = Color(0xFFFF6B00);
+
+/// Two recorded points further apart than this are joined along the road, not straight.
+const _routeGapMeters = 250.0;
+
+/// No point for this long means the tracker lost its signal (it records at least every 30 s).
+const _noSignalGap = Duration(seconds: 90);
+
+/// At most this many gaps are routed per day shown (the routing server is rate limited).
+const _maxRoutedGaps = 60;
+
+/// One stretch of the drawn route: recorded GPS (solid), or a gap between two points (dashed).
+class _Stretch {
+  final List<LatLng> points;
+  final bool gap;
+  final bool noSignal; // the tracker was silent across this gap
+  final bool onRoad; // the gap follows the road (false: a straight guess)
+  final Duration silent;
+  const _Stretch(this.points, {this.gap = false, this.noSignal = false, this.onRoad = false, this.silent = Duration.zero});
+}
 
 /// Shows the route a vehicle's tracker recorded on one day (tracker_history).
 Future<void> showVehicleHistoryDialog(BuildContext context, Map<String, dynamic> vehicle) =>
@@ -29,6 +50,9 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
   List<Map<String, dynamic>> _points = [];
   bool _loading = true;
   String? _error;
+  List<_Stretch> _stretches = [];
+  bool _routing = false;
+  int _loadId = 0; // ignores routing results for a day no longer shown
 
   @override
   void initState() {
@@ -48,7 +72,9 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
       setState(() {
         _points = points;
         _loading = false;
+        _stretches = _split(points, routed: const {});
       });
+      _routeGaps(points);
       if (points.length > 1) {
         _mapController.fitCamera(CameraFit.coordinates(
             coordinates: _route, padding: const EdgeInsets.all(48), maxZoom: 17));
@@ -64,18 +90,79 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
     }
   }
 
+  static LatLng _at(Map<String, dynamic> p) =>
+      LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble());
+
+  static bool _isGap(Map<String, dynamic> a, Map<String, dynamic> b) =>
+      const Distance()(_at(a), _at(b)) > _routeGapMeters;
+
+  static Duration _between(Map<String, dynamic> a, Map<String, dynamic> b) =>
+      Duration(milliseconds: (b['ts'] as num).toInt() - (a['ts'] as num).toInt());
+
+  /// Splits the day into recorded stretches and gaps; [routed] holds the road path of
+  /// each gap found so far (by the index of the point before it).
+  static List<_Stretch> _split(List<Map<String, dynamic>> points, {required Map<int, List<LatLng>?> routed}) {
+    final out = <_Stretch>[];
+    var run = <LatLng>[];
+    for (var i = 0; i < points.length; i++) {
+      if (i > 0 && _isGap(points[i - 1], points[i])) {
+        if (run.length > 1) out.add(_Stretch(run));
+        final silent = _between(points[i - 1], points[i]);
+        final road = routed[i - 1];
+        out.add(_Stretch(
+          road ?? [_at(points[i - 1]), _at(points[i])],
+          gap: true,
+          noSignal: silent >= _noSignalGap,
+          onRoad: road != null,
+          silent: silent,
+        ));
+        run = [];
+      }
+      run.add(_at(points[i]));
+    }
+    if (run.length > 1) out.add(_Stretch(run));
+    return out;
+  }
+
+  /// Fills each gap with the road route, one at a time (saved ones come back at once).
+  Future<void> _routeGaps(List<Map<String, dynamic>> points) async {
+    final uid = widget.vehicle['trackerUid']?.toString();
+    if (uid == null) return;
+    final id = ++_loadId;
+    final routed = <int, List<LatLng>?>{};
+    var asked = 0;
+    for (var i = 1; i < points.length && asked < _maxRoutedGaps; i++) {
+      if (!_isGap(points[i - 1], points[i])) continue;
+      asked++;
+      if (mounted && !_routing) setState(() => _routing = true);
+      routed[i - 1] = await RoadRoute.between(
+        uid,
+        (points[i - 1]['ts'] as num).toInt(),
+        _at(points[i - 1]),
+        (points[i]['ts'] as num).toInt(),
+        _at(points[i]),
+      );
+      if (!mounted || id != _loadId) return;
+      setState(() => _stretches = _split(points, routed: routed));
+    }
+    if (mounted && id == _loadId) setState(() => _routing = false);
+  }
+
   List<LatLng> get _route =>
       _points.map((p) => LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble())).toList();
 
   double get _distanceKm {
     const d = Distance();
-    final r = _route;
     var m = 0.0;
-    for (var i = 1; i < r.length; i++) {
-      m += d(r[i - 1], r[i]);
+    for (final s in _stretches) {
+      for (var i = 1; i < s.points.length; i++) {
+        m += d(s.points[i - 1], s.points[i]);
+      }
     }
     return m / 1000;
   }
+
+  int get _signalLosses => _stretches.where((s) => s.noSignal).length;
 
   String _time(Map<String, dynamic> p) =>
       DateFormat('h:mm a').format(DateTime.fromMillisecondsSinceEpoch((p['ts'] as num).toInt()));
@@ -221,17 +308,49 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
                           TileLayer(
                             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                             userAgentPackageName: 'com.resq.admin.dashboard',
+                            tileBuilder: DisplaySettings.mapTileBuilder,
                             tileProvider: CancellableNetworkTileProvider(),
                           ),
                           if (route.length > 1)
                             PolylineLayer(polylines: [
-                              Polyline(
-                                points: route,
-                                strokeWidth: 5,
-                                color: color,
-                                borderStrokeWidth: 2,
-                                borderColor: Colors.white,
-                              ),
+                              for (final s in _stretches)
+                                if (!s.gap)
+                                  Polyline(
+                                    points: s.points,
+                                    strokeWidth: 5,
+                                    color: color,
+                                    borderStrokeWidth: 2,
+                                    borderColor: Colors.white,
+                                  )
+                                else
+                                  // Not recorded: dashed, along the road when it could be routed
+                                  Polyline(
+                                    points: s.points,
+                                    strokeWidth: 4,
+                                    color: s.onRoad ? color.withValues(alpha: 0.75) : const Color(0xFF94A3B8),
+                                    pattern: StrokePattern.dashed(segments: const [10, 8]),
+                                  ),
+                            ]),
+                          if (_stretches.any((s) => s.noSignal))
+                            MarkerLayer(markers: [
+                              for (final s in _stretches.where((s) => s.noSignal))
+                                Marker(
+                                  point: s.points[s.points.length ~/ 2],
+                                  width: 26,
+                                  height: 26,
+                                  child: Tooltip(
+                                    message: 'No signal for ${_silentText(s.silent)}'
+                                        '${s.onRoad ? ' · dashed line is the likely road path' : ' · straight guess (no road route found)'}',
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: ts.cardBackground,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: const Color(0xFF94A3B8), width: 2),
+                                      ),
+                                      child: const Icon(Icons.signal_cellular_off_rounded, size: 13, color: Color(0xFF64748B)),
+                                    ),
+                                  ),
+                                ),
                             ]),
                           if (route.isNotEmpty)
                             MarkerLayer(markers: [
@@ -265,6 +384,36 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
                             ]),
                         ],
                       ),
+                      if (!_loading && _stretches.any((s) => s.gap))
+                        Positioned(
+                          left: 12,
+                          bottom: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: ts.cardBackground.withValues(alpha: 0.94),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: ts.borderColor),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              if (_routing) ...[
+                                const SizedBox(
+                                    width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: _orange)),
+                                const SizedBox(width: 8),
+                              ] else ...[
+                                Icon(Icons.more_horiz_rounded, size: 16, color: ts.textSecondary),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                _routing
+                                    ? 'Filling gaps along the road…'
+                                    : 'Dashed: not recorded, likely road path'
+                                        '${_signalLosses > 0 ? '  ·  $_signalLosses signal loss${_signalLosses == 1 ? '' : 'es'}' : ''}',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textSecondary),
+                              ),
+                            ]),
+                          ),
+                        ),
                       if (_loading)
                         Positioned.fill(
                           child: Container(
@@ -314,6 +463,9 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
       ),
     );
   }
+
+  static String _silentText(Duration d) =>
+      d.inHours > 0 ? '${d.inHours}h ${d.inMinutes % 60}m' : d.inMinutes > 0 ? '${d.inMinutes}m ${d.inSeconds % 60}s' : '${d.inSeconds}s';
 
   Widget _dayButton(ThemeService ts, IconData icon, String tip, VoidCallback? onPressed) => IconButton(
         tooltip: tip,

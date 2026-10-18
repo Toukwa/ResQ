@@ -17,12 +17,14 @@ Color mapStatusColor(String status) {
     if (s == 'arrived') return const Color(0xFFC084FC);
     if (s == 'completed') return const Color(0xFF34D399);
     if (s == 'declined' || s == 'denied') return const Color(0xFFF87171);
+    if (s == 'invalid') return const Color(0xFFA78BFA);
     return const Color(0xFF94A3B8);
   }
   if (s == 'en route' || s == 'en_route') return const Color(0xFFFF5200);
   if (s == 'arrived') return const Color(0xFF8B5CF6);
   if (s == 'completed') return const Color(0xFF10B981);
   if (s == 'declined' || s == 'denied') return const Color(0xFFEF4444);
+  if (s == 'invalid') return const Color(0xFF7C3AED);
   return const Color(0xFF64748B);
 }
 
@@ -34,12 +36,14 @@ Color mapStatusBgColor(String status) {
     if (s == 'arrived') return const Color(0xFF2E1065);
     if (s == 'completed') return const Color(0xFF064E3B);
     if (s == 'declined' || s == 'denied') return const Color(0xFF450A0A);
+    if (s == 'invalid') return const Color(0xFF2E1065);
     return const Color(0xFF1E293B);
   }
   if (s == 'en route' || s == 'en_route') return const Color(0xFFFFEDD5);
   if (s == 'arrived') return const Color(0xFFF3E8FF);
   if (s == 'completed') return const Color(0xFFECFDF5);
   if (s == 'declined' || s == 'denied') return const Color(0xFFFEF2F2);
+  if (s == 'invalid') return const Color(0xFFF5F3FF);
   return const Color(0xFFF1F5F9);
 }
 
