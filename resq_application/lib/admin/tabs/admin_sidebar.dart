@@ -77,9 +77,9 @@ class AdminSidebar extends StatelessWidget {
                         inactiveIconColor,
                       ),
                       _buildSidebarIcon(
-                        Icons.receipt_long_rounded,
-                        4,
-                        "Activity Logs",
+                        Icons.manage_accounts_outlined,
+                        6,
+                        "Department Fleet Management",
                         inactiveIconColor,
                       ),
                       _buildSidebarIcon(
@@ -89,9 +89,9 @@ class AdminSidebar extends StatelessWidget {
                         inactiveIconColor,
                       ),
                       _buildSidebarIcon(
-                        Icons.manage_accounts_outlined,
-                        6,
-                        "Department Fleet Management",
+                        Icons.receipt_long_rounded,
+                        4,
+                        "Activity Logs",
                         inactiveIconColor,
                       ),
                       _buildSidebarIcon(

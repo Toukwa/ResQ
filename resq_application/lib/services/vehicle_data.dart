@@ -105,6 +105,9 @@ class VehicleData {
         'satellites': t['satellites'],
         'fix_timestamp': t['fix_timestamp'],
         'source': t['source'],
+        'sim_data': t['sim_data'],
+        'sim_balance_at': t['sim_balance_at'],
+        'sim_number': t['sim_number'] ?? v['sim_number_manual'],
         'computed_status': offline ? 'Offline' : v['status'],
       };
     }).toList()
@@ -177,6 +180,8 @@ class VehicleData {
       'vehicle_type': data['vehicle_type'],
       'dept_ID': await _resolveDeptId(data),
       'status': data['status'] ?? 'Available',
+      // Typed in by an admin when the tracker can't read the number off the SIM
+      if (data.containsKey('sim_number_manual')) 'sim_number_manual': data['sim_number_manual'],
     });
     await IncidentData.log('VEHICLE_UPDATED', 'vehicle', vehicleId, {
       'plate_no': data['plate_no'],

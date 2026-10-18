@@ -18,6 +18,7 @@ import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../services/theme_service.dart';
+import '../../shared/sim_balance_indicator.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
@@ -1929,6 +1930,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 ),
                 const SizedBox(height: 2),
                 Text(dept.isNotEmpty ? dept : 'Unassigned', style: TextStyle(fontSize: 11, color: ts.textPrimary)),
+                const SizedBox(height: 2),
+                SimBalanceIndicator(v, compact: true),
               ],
             ),
           ),

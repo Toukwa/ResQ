@@ -14,6 +14,7 @@ import '../../admin/admin_service.dart';
 import '../../services/firebase_services.dart';
 import '../../config.dart';
 import '../../services/theme_service.dart';
+import '../../shared/sim_balance_indicator.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../shared/display_settings.dart';
@@ -1122,6 +1123,8 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 11, color: ts.textSecondary),
                 ),
+                const SizedBox(height: 2),
+                SimBalanceIndicator(vehicle, compact: true),
               ],
             ),
           ),

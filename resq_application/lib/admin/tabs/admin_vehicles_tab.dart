@@ -21,6 +21,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../services/theme_service.dart';
+import '../../shared/sim_balance_indicator.dart';
 import '../../shared/resq_toast.dart';
 
 class AdminVehiclesTab extends StatefulWidget {
@@ -2036,6 +2037,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       '$type · $deptName',
                       style: TextStyle(fontSize: 10, color: ts.textSecondary),
                     ),
+                    SimBalanceIndicator(v, compact: true),
                   ],
                 ),
                 const Spacer(),

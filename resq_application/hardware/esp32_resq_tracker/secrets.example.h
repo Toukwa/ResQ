@@ -14,3 +14,10 @@ const char* GSM_APN = "internet.globe.com.ph";
 const char* GSM_USER = "";
 const char* GSM_PASS = "";
 const char* SIM_PIN = ""; // leave empty if the SIM has no PIN lock
+// Code dialed every 6 h to read the SIM's remaining load/data (shown in Fleet Management).
+// Defaults to *123# (TNT / Smart). Uncomment to use a different one.
+// #define SIM_BALANCE_USSD "*123#"
+// Menu options pressed after SIM_BALANCE_USSD to reach the data balance (TNT: 10 then 1).
+// #define SIM_DATA_MENU "10,1"
+// Or a code that replies with the remaining mobile DATA directly (skips the menu).
+// #define SIM_DATA_USSD "*123#"

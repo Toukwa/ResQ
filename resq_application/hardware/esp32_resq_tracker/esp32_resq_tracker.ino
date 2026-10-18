@@ -14,7 +14,7 @@
 // Set to false to use mobile data only (Wi-Fi stays off).
 #define ENABLE_WIFI false
 // Shown at boot so you can confirm the right file was uploaded.
-#define SKETCH_VERSION "v8-buffered"
+#define SKETCH_VERSION "v10-sim-data"
 
 #if ENABLE_CELLULAR
 #define TINY_GSM_MODEM_SIM7600
@@ -32,6 +32,21 @@
 // Wi-Fi name/password, DEVICE_API_KEY and the SIM's APN live in secrets.h (not committed to git).
 // Copy secrets.example.h to secrets.h and fill it in.
 #include "secrets.h"
+// Balance code dialed to read the SIM's remaining load/data. TNT and Smart use *123#.
+// Set SIM_BALANCE_USSD in secrets.h if your SIM uses a different code.
+#ifndef SIM_BALANCE_USSD
+#define SIM_BALANCE_USSD "*123#"
+#endif
+// Code that answers directly with the remaining mobile DATA (shown in the app).
+// Left empty, the tracker presses SIM_DATA_MENU in the SIM_BALANCE_USSD menu instead.
+#ifndef SIM_DATA_USSD
+#define SIM_DATA_USSD ""
+#endif
+// Options pressed in the SIM_BALANCE_USSD menu to reach the data balance, in order.
+// TNT: *123# > 10) Waishacks > 1) Balance.
+#ifndef SIM_DATA_MENU
+#define SIM_DATA_MENU "10,1"
+#endif
 
 // ---------- Firebase ----------
 // Each tracker signs in with its own Firebase account, created automatically on first boot:
@@ -77,6 +92,8 @@ constexpr unsigned long HISTORY_FLUSH_MS = 10000;               // Upload buffer
 constexpr int HISTORY_BATCH = 25;                               // Points per upload
 constexpr int HISTORY_BUFFER = 720;                             // ~6 h of driving offline (17 KB of RAM)
 constexpr unsigned long GPS_STATUS_INTERVAL_MS = 2000;           // Serial monitor print interval
+constexpr unsigned long BALANCE_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL; // SIM balance check every 6 h
+constexpr unsigned long BALANCE_FIRST_DELAY_MS = 60000;             // First check 1 min after boot
 constexpr unsigned long TOKEN_LIFETIME_MS = 50UL * 60UL * 1000UL; // Firebase ID tokens last 60 min
 
 TinyGPSPlus gps;
@@ -95,6 +112,8 @@ SSLClient gsmRtdb(&gsmRtdbBase);
 SSLClient gsmAuth(&gsmAuthBase);
 bool cellularReady = false;
 unsigned long lastCellularAttempt = 0;
+unsigned long lastBalanceCheck = 0;
+bool balanceChecked = false;
 #endif
 
 unsigned long lastLocationAttempt = 0;
@@ -494,6 +513,91 @@ bool sendLocation() {
   return false;
 }
 
+#if ENABLE_CELLULAR
+// Puts text inside a JSON string: escapes quotes and backslashes, turns line breaks into spaces.
+String jsonEscape(const String& in) {
+  String out;
+  for (unsigned i = 0; i < in.length() && out.length() < 300; i++) {
+    const char c = in[i];
+    if (c == '"' || c == '\\') { out += '\\'; out += c; }
+    else if (c == '\n' || c == '\r' || c == '\t') out += ' ';
+    else if ((uint8_t)c >= 0x20) out += c;
+  }
+  out.trim();
+  return out;
+}
+
+// The SIM's own phone number (AT+CNUM), or "" when the network didn't store it on the SIM.
+String readSimNumber() {
+  String reply;
+  modem.sendAT("+CNUM");
+  if (modem.waitResponse(3000L, reply) != 1) return "";
+  // +CNUM: "","+639171234567",145
+  const int k = reply.indexOf("+CNUM:");
+  if (k < 0) return "";
+  const int start = reply.indexOf("\",\"", k);
+  const int end = start < 0 ? -1 : reply.indexOf('"', start + 3);
+  return end < 0 ? "" : jsonEscape(reply.substring(start + 3, end));
+}
+
+// Presses the SIM_DATA_MENU options one by one in the open USSD menu and returns
+// the last screen (the data balance), or "" if the network stopped answering.
+String followDataMenu() {
+  String path = SIM_DATA_MENU;
+  String reply;
+  while (path.length() > 0) {
+    const int comma = path.indexOf(',');
+    String option = comma < 0 ? path : path.substring(0, comma);
+    path = comma < 0 ? "" : path.substring(comma + 1);
+    option.trim();
+    Serial.printf("[SIM] Menu: pressing %s\n", option.c_str());
+    reply = modem.sendUSSD(option);
+    if (reply.length() == 0) return "";
+  }
+  return reply;
+}
+
+// Dials the balance code and saves the network's reply to trackers/<uid>/sim_balance,
+// so the app's Fleet Management can show how much load/data the SIM has left.
+void checkSimBalance() {
+  Serial.printf("[SIM] Checking balance with %s...\n", SIM_BALANCE_USSD);
+  const String reply = modem.sendUSSD(SIM_BALANCE_USSD);
+  if (reply.length() == 0) {
+    Serial.println("[SIM] No balance reply from the network. Will try again later.");
+    return;
+  }
+  Serial.printf("[SIM] Balance: %s\n", reply.c_str());
+  String data;
+  if (strlen(SIM_DATA_USSD) > 0) {
+    // A separate data code: close the balance menu first, then dial it.
+    modem.sendAT("+CUSD=2");
+    modem.waitResponse(2000L);
+    data = modem.sendUSSD(SIM_DATA_USSD);
+  } else {
+    // TNT/Smart: the data balance sits inside the *123# menu.
+    data = followDataMenu();
+  }
+  modem.sendAT("+CUSD=2"); // end the USSD session
+  modem.waitResponse(2000L);
+  Serial.printf("[SIM] Data: %s\n", data.length() ? data.c_str() : "(not found)");
+  const String number = readSimNumber();
+  Serial.printf("[SIM] Number: %s\n", number.length() ? number.c_str() : "(not stored on the SIM)");
+  if (!online() || !ensureSignedIn()) return;
+
+  String body = String("{\"hardwareId\":\"") + getHardwareId() + "\",\"sim_balance\":\"" + jsonEscape(reply) +
+                "\",\"sim_balance_at\":{\".sv\":\"timestamp\"}";
+  if (number.length()) body += ",\"sim_number\":\"" + number + "\"";
+  if (data.length()) body += ",\"sim_data\":\"" + jsonEscape(data) + "\"";
+  body += "}";
+  String response;
+  const int code = httpsRequest(rtdbClient(), RTDB_HOST, "PATCH",
+                                "/trackers/" + trackerUid + ".json?auth=" + idToken + "&print=silent",
+                                "application/json", body, response, true);
+  if (code == 401) idToken = "";
+  if (code != 200 && code != 204) Serial.printf("[FIREBASE ERROR %d] Could not save SIM balance\n", code);
+}
+#endif
+
 // Function to print continuous status indicators to Serial Monitor
 void printGpsIndicator() {
   if (gps.location.isValid()) {
@@ -564,6 +668,13 @@ void loop() {
   if (!wifiUp() && !cellularUp() && now - lastCellularAttempt >= CELLULAR_RETRY_INTERVAL_MS) {
     lastCellularAttempt = now;
     connectCellular();
+  }
+
+  // SIM balance: once a minute after boot, then every 6 hours. Only on mobile data.
+  if (cellularUp() && (balanceChecked ? now - lastBalanceCheck >= BALANCE_INTERVAL_MS : now >= BALANCE_FIRST_DELAY_MS)) {
+    lastBalanceCheck = now;
+    balanceChecked = true;
+    checkSimBalance();
   }
 #endif
 

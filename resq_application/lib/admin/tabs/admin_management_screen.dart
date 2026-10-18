@@ -7,6 +7,7 @@ import '../admin_service.dart';
 import '../../config.dart';
 import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
+import '../../shared/sim_balance_indicator.dart';
 import '../../shared/resq_toast.dart';
 
 class AdminManagementScreen extends StatefulWidget {
@@ -794,6 +795,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               Expanded(flex: 2, child: Text("DEPARTMENT", style: tableHeaderStyle)),
               Expanded(flex: 3, child: Text("OFFICER IN CHARGE", style: tableHeaderStyle)),
               Expanded(flex: 2, child: Text("STATUS", style: tableHeaderStyle)),
+              Expanded(flex: 3, child: Text("SIM NUMBER / DATA LEFT", style: tableHeaderStyle)),
               SizedBox(width: 90, child: Align(alignment: Alignment.centerRight, child: Text("ACTIONS", style: tableHeaderStyle))),
             ],
           ),
@@ -990,7 +992,13 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             ),
           ),
 
-          // 6. ACTIONS
+          // 6. SIM LOAD / DATA LEFT (balance reply the tracker reads from the network)
+          Expanded(
+            flex: 3,
+            child: SimBalanceIndicator(v),
+          ),
+
+          // 7. ACTIONS
           SizedBox(
             width: 90,
             child: Row(
@@ -1300,7 +1308,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     final vehicleId = v['vehicle_ID'] ?? v['id'];
     final plateController = TextEditingController(text: v['plate_no']?.toString() == 'Unassigned' ? '' : v['plate_no']?.toString());
     final officerController = TextEditingController(text: v['officer_in_charge']?.toString() ?? 'Officer On Duty');
-    
+    final simNumberController = TextEditingController(text: v['sim_number_manual']?.toString() ?? '');
+
     String selectedType = ['Fire Truck', 'Ambulance', 'Police Vehicle']
             .contains(v['vehicle_type']?.toString())
         ? v['vehicle_type'].toString()
@@ -1341,6 +1350,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   'deptName': targetDept,
                   'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
                   'status': selectedStatus,
+                  'sim_number_manual': simNumberController.text.trim().isEmpty ? null : simNumberController.text.trim(),
                 });
                 if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                 if (success) {
@@ -1384,6 +1394,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     label: 'Officer in charge',
                     controller: officerController,
                     icon: Icons.person_outline_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  ResqDialogField(
+                    label: 'Tracker SIM number',
+                    controller: simNumberController,
+                    icon: Icons.sim_card_outlined,
+                    keyboardType: TextInputType.phone,
+                    hint: 'e.g. 09171234567 (used if the tracker can\'t read it)',
                   ),
                   _label(ts, 'Operational status'),
                   ResqSelect<String>(
