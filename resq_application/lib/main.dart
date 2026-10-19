@@ -55,51 +55,23 @@ bool _desktopShortcuts(KeyEvent event) {
   return false; // Esc still closes dialogs as usual
 }
 
-/// Full screen on Windows. window_manager's own setFullScreen keeps the title bar and
-/// sizes the window past the screen edges, so this hides the title bar and covers exactly
-/// the monitor the window is on, then puts the window back as it was.
+/// Full screen on Windows, done by the runner (windows/runner/flutter_window.cpp):
+/// a borderless window covering exactly the monitor it is on, over the taskbar.
+/// window_manager's setFullScreen and a hidden title bar both left the window
+/// off by its invisible resize borders, with the taskbar still on top.
 class _DesktopFullScreen {
+  static const _channel = MethodChannel('resq/fullscreen');
   static bool on = false;
-  static Rect? _saved;
-  static bool _wasMaximized = false;
   static bool _busy = false;
 
   static Future<void> toggle() async {
     if (_busy) return;
     _busy = true;
     try {
-      if (!on) {
-        _wasMaximized = await windowManager.isMaximized();
-        if (_wasMaximized) await windowManager.unmaximize();
-        _saved = await windowManager.getBounds();
-        final screen = _screenOf(_saved!);
-        await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
-        await windowManager.setBounds(screen);
-        on = true;
-      } else {
-        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-        if (_saved != null) await windowManager.setBounds(_saved!);
-        if (_wasMaximized) await windowManager.maximize();
-        on = false;
-      }
+      on = await _channel.invokeMethod<bool>('set', !on) ?? on;
     } finally {
       _busy = false;
     }
-  }
-
-  /// The monitor (in logical pixels, like window bounds) holding the window's centre.
-  static Rect _screenOf(Rect window) {
-    final displays = WidgetsBinding.instance.platformDispatcher.displays.toList();
-    Rect? best;
-    var x = 0.0;
-    for (final d in displays) {
-      // Displays don't report their position; laid out left to right is the common setup
-      final r = Rect.fromLTWH(x, 0, d.size.width / d.devicePixelRatio, d.size.height / d.devicePixelRatio);
-      best ??= r;
-      if (r.contains(window.center)) best = r;
-      x += r.width;
-    }
-    return best ?? Rect.fromLTWH(0, 0, window.width, window.height);
   }
 }
 

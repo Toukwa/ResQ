@@ -3,6 +3,7 @@
 
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
 
 #include <memory>
 
@@ -28,6 +29,14 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // F11 full screen ("resq/fullscreen" channel): a borderless window covering
+  // exactly the monitor it is on, then the old style and placement restored.
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> fullscreen_channel_;
+  bool fullscreen_ = false;
+  LONG_PTR saved_style_ = 0;
+  WINDOWPLACEMENT saved_placement_ = {sizeof(WINDOWPLACEMENT)};
+  void SetFullScreen(bool on);
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

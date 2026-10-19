@@ -2,6 +2,8 @@
 
 #include <optional>
 
+#include <flutter/standard_method_codec.h>
+
 #include "flutter/generated_plugin_registrant.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -27,6 +29,19 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  fullscreen_channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      flutter_controller_->engine()->messenger(), "resq/fullscreen",
+      &flutter::StandardMethodCodec::GetInstance());
+  fullscreen_channel_->SetMethodCallHandler([this](const auto& call, auto result) {
+    if (call.method_name() == "set") {
+      const auto* on = std::get_if<bool>(call.arguments());
+      SetFullScreen(on && *on);
+      result->Success(flutter::EncodableValue(fullscreen_));
+    } else {
+      result->NotImplemented();
+    }
+  });
+
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
@@ -39,7 +54,31 @@ bool FlutterWindow::OnCreate() {
   return true;
 }
 
+void FlutterWindow::SetFullScreen(bool on) {
+  HWND hwnd = GetHandle();
+  if (!hwnd || on == fullscreen_) return;
+  if (on) {
+    MONITORINFO monitor = {sizeof(MONITORINFO)};
+    if (!GetWindowPlacement(hwnd, &saved_placement_) ||
+        !GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
+      return;
+    }
+    saved_style_ = GetWindowLongPtr(hwnd, GWL_STYLE);
+    SetWindowLongPtr(hwnd, GWL_STYLE, saved_style_ & ~WS_OVERLAPPEDWINDOW);
+    const RECT& r = monitor.rcMonitor;  // whole monitor, taskbar included
+    SetWindowPos(hwnd, HWND_TOP, r.left, r.top, r.right - r.left, r.bottom - r.top,
+                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  } else {
+    SetWindowLongPtr(hwnd, GWL_STYLE, saved_style_);
+    SetWindowPlacement(hwnd, &saved_placement_);
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  }
+  fullscreen_ = on;
+}
+
 void FlutterWindow::OnDestroy() {
+  fullscreen_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
