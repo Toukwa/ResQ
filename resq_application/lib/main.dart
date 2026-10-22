@@ -38,6 +38,7 @@ void main() async {
     HardwareKeyboard.instance.addHandler(_desktopShortcuts);
   }
 
+  await ThemeService.instance.load();
   runApp(const MyApp());
 }
 
@@ -209,7 +210,10 @@ class _SessionInitializerState extends State<SessionInitializer> {
         );
       }
     } else {
-      _next = const LoginScreen();
+      // Check for a remembered device here, so the login form is ready on its
+      // first frame and the siren can glide into its logo
+      final trusted = await LoginScreen.findTrustedUser();
+      _next = LoginScreen(trustedChecked: true, trustedUser: trusted);
     }
     _progress.value = 1;
   }
@@ -223,7 +227,7 @@ class _SessionInitializerState extends State<SessionInitializer> {
         child: SplashSiren(
           progress: _progress,
           onDone: _go,
-          glideOnExit: () => _next is LoginScreen,
+          glideOnExit: () => _next is LoginScreen && (_next as LoginScreen).trustedUser == null,
           caption: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

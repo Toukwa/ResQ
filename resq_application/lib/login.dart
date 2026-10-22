@@ -19,7 +19,16 @@ import 'shared/resq_text.dart';
 import 'shared/splash_siren.dart' show resqLogoHeroTag, resqNameHeroTag;
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.trustedChecked = false, this.trustedUser});
+
+  /// The startup screen already checked for a remembered device, so the form
+  /// shows on the first frame (needed for the logo to glide into place).
+  final bool trustedChecked;
+
+  /// The remembered user found during startup, logged in straight away.
+  final Map<String, dynamic>? trustedUser;
+
+  static Future<Map<String, dynamic>?> findTrustedUser() => _LoginScreenState.findTrustedUser();
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -27,14 +36,33 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
-  bool _checkingTrustedDevice = true;
+  late bool _checkingTrustedDevice = !widget.trustedChecked;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _checkRememberedDevice();
+    final user = widget.trustedUser;
+    if (user != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navigateToRoleScreen(user);
+      });
+    } else if (!widget.trustedChecked) {
+      _checkRememberedDevice();
+    }
+  }
+
+  /// Startup's version of [_checkRememberedDevice]: the remembered user, or null.
+  static Future<Map<String, dynamic>?> findTrustedUser() async {
+    try {
+      final userId = await SessionService.getTrustedUserId();
+      if (userId == null) return null;
+      final token = await SessionService.getOrCreateDeviceToken(userId);
+      return await FirebaseService.checkTrustedDevice(userId: userId, deviceToken: token);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// On cold start, try to log in automatically if this device is remembered.

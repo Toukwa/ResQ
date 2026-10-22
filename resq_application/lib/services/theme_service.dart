@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app_icon_service.dart';
 
 class ThemeService extends ChangeNotifier {
   static final ThemeService instance = ThemeService._internal();
@@ -10,9 +13,22 @@ class ThemeService extends ChangeNotifier {
   String get themeMode => _themeMode;
   bool get isDark => _isDark;
 
+  static const _prefsKey = 'last_theme_mode';
+
+  /// Restores the last mode used on this device, so startup and the login
+  /// screen open in it even after logging out or closing the app.
+  Future<void> load() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getString(_prefsKey);
+      if (saved != null) setThemeMode(saved);
+    } catch (_) {}
+    AppIconService.match(_isDark);
+  }
+
   void setThemeMode(String mode) {
     if (_themeMode == mode) return;
     _themeMode = mode;
+    SharedPreferences.getInstance().then((p) => p.setString(_prefsKey, mode)).catchError((_) => false);
     if (mode == 'Dark') {
       _isDark = true;
     } else if (mode == 'Light') {
@@ -22,6 +38,7 @@ class ThemeService extends ChangeNotifier {
       final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
       _isDark = brightness == Brightness.dark;
     }
+    AppIconService.match(_isDark);
     notifyListeners();
   }
 
