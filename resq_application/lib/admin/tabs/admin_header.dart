@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/staff_notifications_panel.dart';
+import '../../shared/resq_text.dart';
 
 class AdminHeader extends StatefulWidget {
   final String title;
@@ -115,7 +116,7 @@ class _AdminHeaderState extends State<AdminHeader> {
                   color: textPrimary,
                   letterSpacing: -0.5,
                 ),
-                child: Text(widget.title),
+                child: ResqText(widget.title),
               ),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),

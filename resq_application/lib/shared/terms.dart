@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/firebase_rest.dart';
 import '../services/theme_service.dart';
+import 'resq_text.dart';
 
 /// ResQ Terms and Conditions: the text, the "I agree" checkbox (with a parent or
 /// guardian's consent for users under 18), and where acceptance is saved.
@@ -462,7 +463,7 @@ class TermsScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: ts.textPrimary),
                   ),
                   const SizedBox(height: 6),
-                  Text(body, style: TextStyle(fontSize: 13.5, height: 1.5, color: ts.textSecondary)),
+                  ResqText(body, style: TextStyle(fontSize: 13.5, height: 1.5, color: ts.textSecondary)),
                 ],
               ),
             ),

@@ -15,6 +15,8 @@ import 'shared/role_home.dart';
 import 'shared/resq_toast.dart';
 import 'shared/terms.dart';
 import 'services/firebase_rest.dart';
+import 'shared/resq_text.dart';
+import 'shared/splash_siren.dart' show resqLogoHeroTag, resqNameHeroTag;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -657,11 +659,19 @@ class _LoginScreenState extends State<LoginScreen> {
           Center(
             child: Column(
               children: [
-                const ResqLogo(size: 60, radius: 16),
-                const SizedBox(height: 16),
-                Text(
-                  "ResQ",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: textDark),
+                const Hero(tag: resqLogoHeroTag, child: ResqLogo(size: 76, radius: 0)),
+                const SizedBox(height: 4),
+                Hero(
+                  tag: resqNameHeroTag,
+                  // Scale the text with the flight so 56pt shrinks smoothly to 36pt
+                  flightShuttleBuilder: (_, _, _, _, to) => FittedBox(child: to.widget),
+                  child: const Material(
+                    type: MaterialType.transparency,
+                    child: Text(
+                      "ResQ",
+                      style: TextStyle(fontFamily: 'Bangers', fontSize: 36, height: 1.0, letterSpacing: 1.5, color: resqOrange),
+                    ),
+                  ),
                 ),
                 const Text('Emergency Response Portal', style: TextStyle(fontSize: 12, color: textGrey)),
               ],

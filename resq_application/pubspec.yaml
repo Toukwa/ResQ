@@ -2,7 +2,7 @@ name: resq_application
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.3.4+23
+version: 1.3.5+24
 
 environment:
   sdk: ^3.11.1
@@ -51,20 +51,27 @@ dependency_overrides:
 flutter:
   uses-material-design: true
   assets:
-    - assets/logo.png
+    - assets/logos/logo.png
+    - assets/logos/splash/
     - assets/sounds/
+  fonts:
+    # Bold, hand-cut comic lettering to match the siren logo (SIL Open Font License)
+    - family: Bangers
+      fonts:
+        - asset: assets/fonts/Bangers-Regular.ttf
 
 # App icons: dart run flutter_launcher_icons
 flutter_launcher_icons:
-  image_path: assets/logo.png
+  image_path: assets/logos/logo_icon.png
   android: true
   ios: false
   min_sdk_android: 21
   # Adaptive icon: the launcher crops it to its own shape (rounded square, circle...).
-  # The logo is the background; the foreground is left empty.
-  adaptive_icon_background: assets/logo.png
-  adaptive_icon_foreground: assets/icon_foreground_empty.png
+  # White background, siren foreground sized to Android's safe zone (66 of 108dp)
+  # so it is never clipped by the launcher's mask and never looks tiny.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/logos/logo_icon_foreground.png
   windows:
-    generate: true
-    image_path: assets/logo.png
+    generate: false # app_icon.ico is hand-built (white square, bolder small sizes); regenerating would replace it
+    image_path: assets/logos/logo_icon.png
     icon_size: 256

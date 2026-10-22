@@ -11,7 +11,8 @@ import 'admin/admin_shell.dart';
 import 'services/firebase_rest.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
-import 'shared/resq_logo.dart';
+import 'shared/resq_text.dart';
+import 'shared/splash_siren.dart';
 import 'shared/role_home.dart';
 import 'shared/search_shortcut.dart';
 
@@ -127,15 +128,12 @@ class SessionInitializer extends StatefulWidget {
   State<SessionInitializer> createState() => _SessionInitializerState();
 }
 
-/// Intro screen: shows the logo and name while the saved login is checked,
-/// for at least [_minimumDisplay], then fades into the right screen.
-class _SessionInitializerState extends State<SessionInitializer> with SingleTickerProviderStateMixin {
-  static const _minimumDisplay = Duration(milliseconds: 2200);
-
-  late final AnimationController _intro = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..forward();
+/// Intro screen: plays the siren animation while the saved login is checked,
+/// then fades into the right screen as the siren drives off the top.
+class _SessionInitializerState extends State<SessionInitializer> {
+  /// Loading progress shown by the rays: 0..1, 1 once the next screen is known.
+  final _progress = ValueNotifier(0.0);
+  Widget? _next;
 
   @override
   void initState() {
@@ -144,32 +142,48 @@ class _SessionInitializerState extends State<SessionInitializer> with SingleTick
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Decode the layers up front so no ray pops in late on the first cycle
+    precacheImage(const AssetImage('assets/logos/splash/siren.png'), context);
+    for (var i = 1; i <= 10; i++) {
+      precacheImage(AssetImage('assets/logos/splash/ray_$i.png'), context);
+    }
+  }
+
+  @override
   void dispose() {
-    _intro.dispose();
+    _progress.dispose();
     super.dispose();
   }
 
-  /// Replaces the intro with [screen] using a fade.
-  void _go(Widget screen) {
+  /// Replaces the intro with the chosen screen using a fade.
+  void _go() {
+    final screen = _next;
+    if (screen == null || !mounted) return;
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
+        // Going to login, the siren and name glide into place (Hero), so take it slow
+        transitionDuration: Duration(milliseconds: screen is LoginScreen ? 1100 : 450),
         pageBuilder: (_, _, _) => screen,
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          child: child,
+        ),
       ),
     );
   }
 
   Future<void> _checkSession() async {
-    final shownLongEnough = Future.delayed(_minimumDisplay);
     var session = await SessionService.getSession();
+    _progress.value = 0.4;
     // A saved session is only usable if the Firebase login can be restored too
     if (session != null && await FirebaseAuthRest.restore() == null) {
       await SessionService.clearSession();
       session = null;
     }
-    await shownLongEnough;
+    _progress.value = 0.85;
 
     if (!mounted) return;
 
@@ -180,58 +194,60 @@ class _SessionInitializerState extends State<SessionInitializer> with SingleTick
 
       final home = homeForRole(role);
       if (home == RoleHome.superAdmin) {
-        _go(SuperAdminShell(
-              isSuperAdmin: true,
-              userId: userId,
-            ));
+        _next = SuperAdminShell(
+          isSuperAdmin: true,
+          userId: userId,
+        );
       } else if (home == RoleHome.admin) {
-        _go(AdminShell(
-              userId: userId,
-            ));
+        _next = AdminShell(
+          userId: userId,
+        );
       } else {
-        _go(HomeScreen(
-              citizenId: userId.toString(),
-              userName: fullName,
-            ));
+        _next = HomeScreen(
+          citizenId: userId.toString(),
+          userName: fullName,
+        );
       }
     } else {
-      _go(const LoginScreen());
+      _next = const LoginScreen();
     }
+    _progress.value = 1;
   }
 
   @override
   Widget build(BuildContext context) {
-    final ts = ThemeService.instance;
-    final fade = CurvedAnimation(parent: _intro, curve: Curves.easeOut);
     return Scaffold(
       resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
-      backgroundColor: ts.pageBackground,
+      backgroundColor: ThemeService.instance.pageBackground,
       body: Center(
-        child: FadeTransition(
-          opacity: fade,
-          child: ScaleTransition(
-            scale: Tween(begin: 0.85, end: 1.0).animate(fade),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const ResqLogo(size: 140, radius: 32),
-                const SizedBox(height: 20),
-                Text(
-                  'ResQ',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                    color: ts.textPrimary,
+        child: SplashSiren(
+          progress: _progress,
+          onDone: _go,
+          glideOnExit: () => _next is LoginScreen,
+          caption: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Hero(
+                tag: resqNameHeroTag,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Text(
+                    'ResQ',
+                    style: TextStyle(
+                      fontFamily: 'Bangers',
+                      fontSize: 56,
+                      height: 1.0, // the font's tall line box left a big gap under the siren
+                      letterSpacing: 2.5,
+                      color: resqOrange,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Emergency Response Portal',
-                  style: TextStyle(fontSize: 14, color: ts.textSecondary),
-                ),
-              ],
-            ),
+              ),
+              Text(
+                'Emergency Response Portal',
+                style: TextStyle(fontSize: 14, color: ThemeService.instance.textSecondary),
+              ),
+            ],
           ),
         ),
       ),

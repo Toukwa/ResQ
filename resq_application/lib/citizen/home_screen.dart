@@ -29,6 +29,7 @@ import '../shared/iriga_address.dart';
 import '../shared/resq_logo.dart';
 import 'incident_status_screen.dart';
 import '../shared/resq_toast.dart';
+import '../shared/resq_text.dart';
 
 class HelpIsOnTheWayBanner extends StatelessWidget {
   final String vehicleCode;
@@ -1278,7 +1279,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             const ResqLogo(size: 64, radius: 18),
             const SizedBox(height: 16),
-            Text(
+            ResqText(
               'Welcome to ResQ, $first!',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ts.textPrimary),

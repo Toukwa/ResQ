@@ -14,6 +14,7 @@ import '../shared/display_settings.dart';
 import '../shared/resq_toast.dart';
 import '../shared/terms.dart';
 import 'guest_registration_screen.dart';
+import '../shared/resq_text.dart';
 
 /// Citizen account & app settings: profile summary, edit profile, dark mode,
 /// sound, password and log out. Guests only see a prompt to register.
@@ -568,7 +569,7 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
                   ]),
                   const SizedBox(height: 16),
                   Center(
-                    child: Text('ResQ · Iriga City', style: TextStyle(fontSize: 12, color: ts.textMuted)),
+                    child: ResqText('ResQ · Iriga City', style: TextStyle(fontSize: 12, color: ts.textMuted)),
                   ),
                 ],
               ),
