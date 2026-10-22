@@ -29,7 +29,7 @@ body::before {
   border-radius: 16px; padding: 14px 24px; margin-bottom: 28px;
   box-shadow: 0 0 40px rgba(255,107,0,.35);
 }
-.logo-badge img { height: 36px; width: auto; display: block; }
+.logo-badge img { height: 44px; width: auto; display: block; }
 .logo-badge span { font-size: 22px; font-weight: 700; color: #fff; }
 h1 { font-size: clamp(28px,5vw,48px); font-weight: 700; margin-bottom: 14px; }
 h1 span { background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
