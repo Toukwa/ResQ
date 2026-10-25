@@ -103,10 +103,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, size: 14, color: Color(0xFFFF5200)),
+            const Icon(Icons.calendar_today_rounded, size: 14, color: Color(0xFFFF6B00)),
             const SizedBox(width: 8),
             Text(
-              DateFormat('MM/dd/yyyy').format(isStart ? _range.start : _range.end),
+              DateFormat('MMM d, yyyy').format(isStart ? _range.start : _range.end),
               style: TextStyle(fontSize: 11, color: ts.textPrimary),
             ),
           ],
@@ -202,7 +202,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  static const _accent = Color(0xFFFF5200);
+  static const _accent = Color(0xFFFF6B00);
 
   BoxDecoration _card(ThemeService ts) => BoxDecoration(
     color: ts.cardBackground,

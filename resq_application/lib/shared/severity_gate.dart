@@ -135,7 +135,7 @@ class _SeverityPickerState extends State<_SeverityPicker> {
                   child: ElevatedButton(
                     onPressed: _picked == null ? null : () => Navigator.pop(context, _picked),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5C00),
+                      backgroundColor: const Color(0xFFFF6B00),
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: ts.borderColor,
                       disabledForegroundColor: ts.textMuted,

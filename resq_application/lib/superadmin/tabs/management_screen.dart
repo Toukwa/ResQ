@@ -55,7 +55,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     _loadData(showLoading: true);
     _initWebSocket();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 30),
+      const Duration(seconds: 60), // live events refresh it sooner
       (_) => _loadData(showLoading: false),
     );
   }
@@ -286,7 +286,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5200),
+                          backgroundColor: const Color(0xFFFF6B00),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -389,7 +389,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final ts = ThemeService.instance;
 
     if (_isLoadingAccounts) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5200)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
     }
 
     final tableHeaderStyle = TextStyle(
@@ -461,7 +461,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text("Create First Account"),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF5200),
+                            backgroundColor: const Color(0xFFFF6B00),
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -525,7 +525,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFFF5200)
+                            ? const Color(0xFFFF6B00)
                             : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -635,7 +635,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 ? FontWeight.bold
                                 : FontWeight.w500,
                             color: isSelected
-                                ? const Color(0xFFFF5200)
+                                ? const Color(0xFFFF6B00)
                                 : ts.textSecondary,
                           ),
                         ),
@@ -644,7 +644,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFFFF5200)
+                                ? const Color(0xFFFF6B00)
                                 : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -932,7 +932,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
           return ResqDialog(
             icon: Icons.business_rounded,
-            color: const Color(0xFFFF5200),
+            color: const Color(0xFFFF6B00),
             title: 'Edit Agency',
             subtitle: 'Update department details, contact info and unlock password',
             primaryLabel: 'Save Changes',
@@ -1093,7 +1093,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF5200),
+                          color: const Color(0xFFFF6B00),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(Icons.add, color: Colors.white, size: 24),
@@ -1348,7 +1348,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF5200),
+                              backgroundColor: const Color(0xFFFF6B00),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1404,7 +1404,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Color(0xFFFF5200), width: 1.5),
+        borderSide: BorderSide(color: Color(0xFFFF6B00), width: 1.5),
       ),
     );
   }
@@ -1429,8 +1429,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
           icon: const Icon(Icons.edit_rounded, size: 16),
           label: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w700)),
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFFF5200),
-            side: const BorderSide(color: Color(0xFFFF5200)),
+            foregroundColor: const Color(0xFFFF6B00),
+            side: const BorderSide(color: Color(0xFFFF6B00)),
             minimumSize: const Size(0, 44),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -1510,7 +1510,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => ResqDialog(
           icon: Icons.manage_accounts_rounded,
-          color: const Color(0xFFFF5200),
+          color: const Color(0xFFFF6B00),
           title: 'Edit Account',
           subtitle: account['name'] ?? '',
           primaryLabel: 'Save Changes',

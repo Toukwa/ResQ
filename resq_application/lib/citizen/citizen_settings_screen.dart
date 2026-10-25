@@ -463,7 +463,6 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: ts.cardBackground,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
         content: Column(
           mainAxisSize: MainAxisSize.min,

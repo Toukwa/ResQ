@@ -1,3 +1,4 @@
+import '../shared/status_style.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -228,7 +229,8 @@ class ReportStatusNotifier {
           add('Help is on the way', '$unit is heading to your $type report. Open ResQ to track it.', 'dispatch');
         } else if (s == 'arrived') {
           add('Responders have arrived', '$unit has arrived at the location of your $type report.', 'dispatch');
-        } else if (s == 'cancelled' && was != null) {
+        } else if (s == 'cancelled' && was != null && !isClosedStatus(r['status'])) {
+          // (units freed because the report closed get no "recalled" alert)
           add('Unit recalled', '$unit was called back from your $type report.', 'status_update');
         }
       }

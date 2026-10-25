@@ -218,7 +218,7 @@ class DailyColumns extends StatelessWidget {
                     for (var i = 0; i < days.length; i++)
                       Expanded(
                         child: Text(
-                          i % every == 0 ? DateFormat('M/d').format(days[i]) : '',
+                          i % every == 0 ? DateFormat('MMM d').format(days[i]) : '',
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.clip,

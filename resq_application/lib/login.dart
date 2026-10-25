@@ -91,7 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  bool _loggingIn = false;
+
   Future<void> _handleLogin() async {
+    if (_loggingIn) return;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -100,7 +103,9 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    setState(() => _loggingIn = true);
     final result = await AuthService.loginCitizen(email: email, password: password);
+    if (mounted) setState(() => _loggingIn = false);
     _handleLoginResult(result);
   }
 
@@ -169,7 +174,6 @@ class _LoginScreenState extends State<LoginScreen> {
           return AlertDialog(
             backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
             surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
             actionsPadding: const EdgeInsets.all(24),
@@ -326,7 +330,6 @@ class _LoginScreenState extends State<LoginScreen> {
           userId: userData['userId'],
           targetEmail: userData['targetEmail'] ?? '',
           maskedEmail: userData['maskedEmail'],
-          testOtpCode: userData['otpCode'] as String?,
         );
       } else {
         // MFA disabled -> proceed directly
@@ -346,10 +349,10 @@ class _LoginScreenState extends State<LoginScreen> {
     required int userId,
     required String targetEmail,
     String? maskedEmail,
-    String? testOtpCode,
   }) async {
     final otpController = TextEditingController();
     bool isVerifying = false;
+    var verified = false;
     String? errorMessage;
 
     final displayEmail = maskedEmail ?? targetEmail;
@@ -364,7 +367,6 @@ class _LoginScreenState extends State<LoginScreen> {
           return AlertDialog(
             backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
             surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
                 Container(
@@ -399,35 +401,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (testOtpCode != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ts.isDark ? const Color(0xFF92400E) : const Color(0xFFFCD34D)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 14,
-                          color: ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Test OTP Code: $testOtpCode',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -523,6 +496,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           final result = await FirebaseService.verifyMfa(userId: userId, otpCode: code);
 
                           if (result != null && result['success'] == true) {
+                            verified = true;
                             // Trust this device so the OTP isn't asked again here for 7 days
                             final token = await SessionService.getOrCreateDeviceToken(userId);
                             await FirebaseService.trustDevice(userId: userId, deviceToken: token);
@@ -557,6 +531,8 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       ),
     );
+    // Closed without the code: don't leave the password sign-in active in the background
+    if (!verified) await FirebaseService.signOut();
   }
 
   Future<void> _navigateToRoleScreen(Map<String, dynamic> userData) async {
@@ -610,6 +586,16 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         department = 'ALL';
       }
+    }
+    // An agency admin needs an agency; without one they would see every agency's reports
+    if (homeForRole(userRole) == RoleHome.admin && department == 'ALL') {
+      await FirebaseService.signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(
+        content: Text('This admin account has no agency yet. Ask the EOC to set one.'),
+        backgroundColor: Colors.redAccent,
+      ));
+      return;
     }
 
     // Persist session to local storage for seamless continuous session
@@ -749,16 +735,23 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 30),
           ElevatedButton(
-            onPressed: _handleLogin,
+            onPressed: _loggingIn ? null : _handleLogin,
             style: ElevatedButton.styleFrom(
               backgroundColor: brandOrange,
+              disabledBackgroundColor: brandOrange.withValues(alpha: 0.6),
               minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            child: const Text(
-              'Log In',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            child: _loggingIn
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text(
+                    'Log In',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
           ),
           // Phones only: sign-up is for citizens; the desktop app is for staff
           if (!isDesktop) ...[

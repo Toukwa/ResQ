@@ -8,6 +8,7 @@ import 'admin_service.dart';
 import '../../config.dart';
 import '../../services/session_service.dart';
 import '../../services/theme_service.dart';
+import '../shared/resq_dialog.dart';
 import '../shared/session_timeout_guard.dart';
 
 // Dedicated Admin Submodules in lib/admin/tabs/
@@ -153,7 +154,7 @@ class _AdminShellState extends State<AdminShell> {
   void _updateClock() {
     if (mounted) {
       setState(() {
-        _currentTimeString = DateFormat('hh:mm:ss a').format(DateTime.now());
+        _currentTimeString = DateFormat('h:mm:ss a').format(DateTime.now());
       });
     }
   }
@@ -257,30 +258,21 @@ class _AdminShellState extends State<AdminShell> {
   void _showNotificationModal() {
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.notifications, color: Color(0xFFFF5C00)),
-                SizedBox(width: 8),
-                Text('Admin Notifications'),
-              ],
-            ),
-            if (_unreadNotificationCount > 0)
-              TextButton(
+      builder: (dialogCtx) => ResqDialog(
+        icon: Icons.notifications,
+        color: const Color(0xFFFF6B00),
+        title: 'Admin Notifications',
+        leading: _unreadNotificationCount > 0
+            ? TextButton(
                 onPressed: () {
                   _markAllNotificationsRead();
                   Navigator.pop(dialogCtx);
                 },
                 child: const Text('Mark all read', style: TextStyle(fontSize: 12)),
-              ),
-          ],
-        ),
-        content: SizedBox(
-          width: 420,
+              )
+            : null,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 400),
           child: _notifications.isEmpty
               ? const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -309,7 +301,7 @@ class _AdminShellState extends State<AdminShell> {
                         isRead
                             ? Icons.notifications_none
                             : Icons.notifications_active,
-                        color: isRead ? Colors.grey : const Color(0xFFFF5C00),
+                        color: isRead ? Colors.grey : const Color(0xFFFF6B00),
                       ),
                       title: Text(
                         message,
@@ -326,12 +318,6 @@ class _AdminShellState extends State<AdminShell> {
                   },
                 ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }

@@ -43,7 +43,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
   bool _isIncidentSelected = true;
 
   // Bottom tab for Cancelled / Completed history
-  String _bottomTabFilter = 'Cancelled'; // 'Cancelled' | 'Completed'
+  String _bottomTabFilter = 'Declined'; // 'Declined' | 'Completed' | 'Invalid'
 
   // Hover States
   int? _hoveredIncidentIndex;
@@ -62,7 +62,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
   void initState() {
     super.initState();
     DisplaySettings.changes.addListener(_onDisplaySettings);
-    _pollingSubscription = _refreshSubject.startWith(null).delay(const Duration(seconds: 5)).listen((_) {
+    _pollingSubscription = _refreshSubject.startWith(null).delay(const Duration(seconds: 60)).listen((_) {
       _loadData(showLoading: false).then((_) {
         if (mounted) _refreshSubject.add(null);
       });
@@ -312,7 +312,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryOrange = Color(0xFFFF5200);
+    const Color primaryOrange = Color(0xFFFF6B00);
 
     return ListenableBuilder(
       listenable: ThemeService.instance,
@@ -1143,7 +1143,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
 
   Widget _buildCancelledRequestsColumn() {
     final tab = _bottomTabFilter;
-    final list = tab == 'Invalid' ? _invalidIncidents : tab == 'Cancelled' ? _cancelledIncidents : _completedIncidents;
+    final list = tab == 'Invalid' ? _invalidIncidents : tab == 'Declined' ? _cancelledIncidents : _completedIncidents;
     final ts = ThemeService.instance;
     final containerBg = ClosedReportsTabs.panel(tab).bg;
     final containerBorder = ClosedReportsTabs.panel(tab).border;

@@ -17,6 +17,7 @@ import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
+import '../../shared/status_style.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
 import '../../shared/display_settings.dart';
@@ -68,6 +69,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   List<dynamic> _incidents = [];
   List<dynamic> _vehicles = [];
+  Timer? _offlineRecheck;
   List<dynamic> _activityLogs = [];
 
   AdminIncidentFilter _selectedQueueFilter = AdminIncidentFilter.all;
@@ -98,6 +100,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   void dispose() {
     DisplaySettings.changes.removeListener(_onDisplaySettings);
     _refreshSubscription?.cancel();
+    _offlineRecheck?.cancel();
     _refreshStream.close();
     _socket?.disconnect();
     _socket?.dispose();
@@ -115,6 +118,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   /// RxDart stream: buffers rapid socket events (500 ms window) and
   /// debounces the result (300 ms silence) before triggering a data refresh.
   void _setupRefreshStream() {
+    // A tracker that goes quiet sends nothing, so look again every minute to show it Offline
+    _offlineRecheck = Timer.periodic(const Duration(minutes: 1), (_) => _refreshStream.add('offlineCheck'));
     _refreshSubscription = _refreshStream.stream
         .bufferTime(const Duration(milliseconds: 500))
         .where((batch) => batch.isNotEmpty)
@@ -186,6 +191,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   metricsData['availableUnits'] ?? metricsData['availableCount'] ?? metricsData['activeVehicles'] ?? 0,
               'enRouteUnits': metricsData['enRouteUnits'] ?? metricsData['enRouteCount'] ?? 0,
               'dispatchedToday': metricsData['dispatchedToday'] ?? metricsData['dispatchedCount'] ?? 0,
+              'dispatchedTodayByDept': metricsData['dispatchedTodayByDept'],
             };
           }
           _incidents = incidentsData ?? [];
@@ -202,21 +208,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   List<dynamic> get _filteredIncidents {
     final query = widget.searchFilter.toLowerCase().trim();
 
-    List<dynamic> filtered = _incidents.where((i) {
-      final status = (i['status'] ?? i['reqStatus'] ?? i['Status'] ?? '').toString().toLowerCase();
-      switch (_selectedQueueFilter) {
-        case AdminIncidentFilter.pending:
-          return status == 'pending';
-        case AdminIncidentFilter.enRoute:
-          return status.contains('route') || status.contains('dispatch');
-        case AdminIncidentFilter.declined:
-          return status.contains('declin') || status.contains('cancel') || status.contains('deny');
-        case AdminIncidentFilter.active:
-          return status == 'active' || status == 'in_progress' || status == 'in progress';
-        case AdminIncidentFilter.all:
-          return true;
-      }
-    }).toList();
+    List<dynamic> filtered = _incidents
+        .where((i) => queueFilterMatches(_selectedQueueFilter.name, _myStatus(i)))
+        .toList();
 
     if (query.isEmpty) return filtered;
 
@@ -234,20 +228,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   /// FIFO-sorted list for the Requests tab — oldest first, filtered by department.
   List<dynamic> get _pendingIncidents {
     var list = _incidents.where((i) {
-      final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-      // Status filter
-      final statusOk = switch (_selectedQueueFilter) {
-        AdminIncidentFilter.pending => st == 'pending',
-        AdminIncidentFilter.enRoute => st.contains('route') || st.contains('dispatch'),
-        AdminIncidentFilter.declined => st.contains('declin') || st.contains('cancel') || st.contains('deny'),
-        AdminIncidentFilter.active => st == 'active' || st == 'in_progress' || st == 'in progress',
-        AdminIncidentFilter.all =>
-          st == 'pending' ||
-              st == 'in_progress' ||
-              st == 'in progress' ||
-              st.contains('route') ||
-              st.contains('dispatch'),
-      };
+      final statusOk = queueFilterMatches(_selectedQueueFilter.name, _myStatus(i), openOnly: true);
       // Department filter — admins only see their jurisdiction's incidents
       return statusOk && _matchesDepartment(i);
     }).toList();
@@ -262,11 +243,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return list;
   }
 
-  int get _pendingCount => _incidents.where((i) {
-    final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-    // Only count incidents relevant to this admin's department
-    return st == 'pending' && _matchesDepartment(i);
-  }).length;
+  // Only incidents routed to this admin's department, by its own status
+  int get _pendingCount =>
+      _incidents.where((i) => reportStatusLabel(_myStatus(i)) == 'Pending' && _matchesDepartment(i)).length;
 
   // ── DEPARTMENT-BASED FILTERING ──────────────────────────────────────────────
 
@@ -315,41 +294,30 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   List<dynamic> get _filteredVehicles => _vehicles.where((v) => _isVehicleForDepartment(v)).toList();
 
+  /// This agency's own status on [i] (the overall status for 'ALL').
+  String _myStatus(dynamic i) => i is Map ? IncidentData.statusFor(i, widget.department) : 'Pending';
+
   int get _activeIncidentsCount {
     if (_dept == 'ALL') return _metrics['activeIncidents'] ?? 0;
-    return _incidents.where((i) {
-      final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-      return (st == 'pending' ||
-              st == 'in_progress' ||
-              st == 'in progress' ||
-              st.contains('route') ||
-              st.contains('dispatch') ||
-              st == 'active') &&
-          _matchesDepartment(i);
-    }).length;
+    return _incidents.where((i) => isOpenStatus(_myStatus(i)) && _matchesDepartment(i)).length;
   }
 
   int get _availableUnitsCount {
     if (_dept == 'ALL') return _metrics['availableUnits'] ?? 0;
-    return _filteredVehicles.where((v) {
-      return vehicleStatus(v).toLowerCase() == 'available';
-    }).length;
+    return _filteredVehicles.where((v) => vehicleStatus(v) == 'Available').length;
   }
 
+  /// Units on their way to a report (vehicles, not reports).
   int get _enRouteUnitsCount {
     if (_dept == 'ALL') return _metrics['enRouteUnits'] ?? 0;
-    return _incidents.where((i) {
-      final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-      return (st.contains('route') || st.contains('dispatch') || st == 'arrived') && _matchesDepartment(i);
-    }).length;
+    return _filteredVehicles.where((v) => vehicleStatus(v) == 'En Route').length;
   }
 
+  /// Units sent today by this agency (by everyone for 'ALL').
   int get _dispatchedTodayCount {
-    if (_dept == 'ALL') return _metrics['dispatchedToday'] ?? 0;
-    return _incidents.where((i) {
-      final st = (i['Status'] ?? i['status'] ?? i['reqStatus'] ?? '').toString().toLowerCase();
-      return st != 'pending' && st != 'cancelled' && st != 'declined' && st != 'invalid' && _matchesDepartment(i);
-    }).length;
+    final byDept = _metrics['dispatchedTodayByDept'];
+    if (_dept == 'ALL' || byDept is! Map) return _metrics['dispatchedToday'] ?? 0;
+    return (byDept[_dept] as int?) ?? 0;
   }
 
   List<dynamic> get _filteredActivityLogs => _activityLogs;
@@ -422,72 +390,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return 'Iriga City Area';
   }
 
-  Map<String, dynamic> _getStatusConfig(dynamic rawStatus) {
-    final ts = ThemeService.instance;
-    final s = (rawStatus ?? 'pending').toString().trim().toLowerCase();
-    if (s == 'invalid') {
-      return {
-        'label': 'Invalid',
-        'textColor': const Color(0xFF7C3AED),
-        'bgColor': ts.isDark ? const Color(0xFF3B1F6B) : const Color(0xFFF3E8FF),
-        'borderColor': const Color(0xFFDDD6FE),
-        'dotColor': const Color(0xFF7C3AED),
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    }
-    if (s == 'en route' || s == 'en_route') {
-      return {
-        'label': 'En Route',
-        'textColor': const Color(0xFF2563EB),
-        'bgColor': ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
-        'borderColor': const Color(0xFFBFDBFE),
-        'dotColor': const Color(0xFF2563EB),
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    } else if (s == 'declined' || s == 'denied' || s == 'cancelled') {
-      return {
-        'label': 'Declined',
-        'textColor': const Color(0xFFDC2626),
-        'bgColor': ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2),
-        'borderColor': const Color(0xFFFECACA),
-        'dotColor': const Color(0xFFEF4444),
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    } else if (s == 'active' || s == 'in_progress' || s == 'in progress') {
-      return {
-        'label': 'Active',
-        'textColor': const Color(0xFF059669),
-        'bgColor': ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
-        'borderColor': const Color(0xFFA7F3D0),
-        'dotColor': const Color(0xFF10B981),
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    } else if (s == 'completed' || s == 'done' || s == 'resolved') {
-      return {
-        'label': 'Completed',
-        'textColor': ts.textSecondary,
-        'bgColor': ts.inputBackground,
-        'borderColor': ts.borderColor,
-        'dotColor': ts.textSecondary,
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    } else {
-      return {
-        'label': 'Pending',
-        'textColor': const Color(0xFFD97706),
-        'bgColor': ts.isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
-        'borderColor': const Color(0xFFFDE68A),
-        'dotColor': const Color(0xFFFF6B00),
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    }
-  }
+  Map<String, dynamic> _getStatusConfig(dynamic rawStatus) => statusBadgeConfig(rawStatus);
 
   List<String> _getInvolvedDepartments(dynamic incident) {
     if (incident == null) return ['CDRRMO'];
@@ -617,6 +520,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             final messenger = ScaffoldMessenger.of(context);
             Navigator.pop(dialogCtx);
             var failed = 0;
+            String? reason;
             for (final vehicleId in selectedVehicleIds) {
               final res = await AdminService.dispatchVehicle(
                 reqId: reqId,
@@ -625,13 +529,16 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 department: widget.department,
                 help: help,
               );
-              if (res == 'Failed to dispatch vehicle') failed++;
+              if (res != null && res.startsWith(AdminService.dispatchFailed)) {
+                failed++;
+                reason = res.contains(': ') ? res.split(': ').last : reason;
+              }
             }
             final result = failed == 0
                 ? (selectedVehicleIds.length == 1
                       ? 'Unit dispatched!'
                       : '${selectedVehicleIds.length} units dispatched!')
-                : '$failed of ${selectedVehicleIds.length} units failed to dispatch';
+                : '$failed of ${selectedVehicleIds.length} units failed to dispatch${reason == null ? '' : ' ($reason)'}';
             if (!mounted) return;
             messenger.showResqSnackBar(SnackBar(content: Text(result), backgroundColor: const Color(0xFF27AE60)));
             _loadDashboardData();
@@ -659,10 +566,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF5C00).withValues(alpha: 0.14),
+                            color: const Color(0xFFFF6B00).withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.local_shipping_rounded, color: Color(0xFFFF5C00), size: 22),
+                          child: const Icon(Icons.local_shipping_rounded, color: Color(0xFFFF6B00), size: 22),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -823,11 +730,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                             padding: const EdgeInsets.all(10),
                                             decoration: BoxDecoration(
                                               color: picked
-                                                  ? const Color(0xFFFF5C00).withValues(alpha: 0.1)
+                                                  ? const Color(0xFFFF6B00).withValues(alpha: 0.1)
                                                   : ts.cardBackground,
                                               borderRadius: BorderRadius.circular(12),
                                               border: Border.all(
-                                                color: picked ? const Color(0xFFFF5C00) : ts.borderColor,
+                                                color: picked ? const Color(0xFFFF6B00) : ts.borderColor,
                                                 width: picked ? 1.5 : 1,
                                               ),
                                             ),
@@ -865,7 +772,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                                   picked
                                                       ? Icons.check_circle_rounded
                                                       : Icons.radio_button_unchecked_rounded,
-                                                  color: picked ? const Color(0xFFFF5C00) : ts.textMuted,
+                                                  color: picked ? const Color(0xFFFF6B00) : ts.textMuted,
                                                   size: 22,
                                                 ),
                                               ],
@@ -901,7 +808,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           flex: 2,
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF5C00),
+                              backgroundColor: const Color(0xFFFF6B00),
                               foregroundColor: Colors.white,
                               disabledBackgroundColor: ts.borderColor,
                               disabledForegroundColor: ts.textMuted,
@@ -1524,7 +1431,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final location = _getLocationLabel(incident);
     final desc = (incident['description'] ?? '').toString();
     final descSnippet = desc.length > 100 ? '${desc.substring(0, 100)}...' : desc;
-    final rawStatus = (incident['reqStatus'] ?? incident['status'] ?? incident['Status'] ?? 'pending').toString();
+    final rawStatus = _myStatus(incident);
     final statusConfig = _getStatusConfig(rawStatus);
     final typeStyle = emergencyTypeStyle(rawType);
     final timeReported = (incident['time'] ?? incident['created_at'] ?? '').toString();
@@ -1861,8 +1768,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final plateNo = (v['Call_Sign'] ?? v['call_sign'] ?? v['plate_no'] ?? 'Unknown').toString();
     final vehicleType = (v['Vehicle_Type'] ?? v['vehicle_type'] ?? 'Vehicle').toString();
     final status = vehicleStatus(v);
-    final isAvailable = status.toLowerCase() == 'available';
-    final isEnRoute = status.toLowerCase().contains('route') || status.toLowerCase().contains('dispatch');
 
     final Color iconBg;
     final Color iconColor;
@@ -1881,16 +1786,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       deptIcon = Icons.health_and_safety_outlined;
     }
 
-    final Color statusColor = isAvailable
-        ? const Color(0xFF10B981)
-        : isEnRoute
-        ? const Color(0xFF2563EB)
-        : ts.textSecondary;
-    final Color statusBg = isAvailable
-        ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5))
-        : isEnRoute
-        ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF))
-        : ts.inputBackground;
+    final Color badgeColor = statusColor(status);
+    final Color badgeBg = statusBgColor(status);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -1935,7 +1832,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               ],
             ),
           ),
-          _buildSmallBadge(status, statusColor, statusBg),
+          _buildSmallBadge(status, badgeColor, badgeBg),
         ],
       ),
     );
@@ -2162,39 +2059,21 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   Widget _buildAgencyStatusSection() {
-    final ts = ThemeService.instance;
-    final pnpAvail = _vehicles
-        .where(
-          (v) =>
-              (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('PNP') &&
-              vehicleStatus(v) == 'Available',
-        )
-        .length;
-    final bfpAvail = _vehicles
-        .where(
-          (v) =>
-              (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('BFP') &&
-              vehicleStatus(v) == 'Available',
-        )
-        .length;
-    final cdrrmoAvail = _vehicles
-        .where(
-          (v) =>
-              (v['Department_Name'] ?? v['deptName'] ?? '').toString().contains('CDRRMO') &&
-              vehicleStatus(v) == 'Available',
-        )
-        .length;
+    String count(String agency, String status) => '${_vehicles.where((v) {
+          final dept = (v['Department_Name'] ?? v['deptName'] ?? '').toString().toUpperCase();
+          return dept.contains(agency) && vehicleStatus(v) == status;
+        }).length}';
 
-    final List<Widget> items = [];
-    if (_dept == 'ALL' || _dept == 'PNP') {
-      items.add(_buildAgencyStatusItem('PNP Philippine', const Color(0xFF2F80ED), '$pnpAvail', '0', '0'));
-    }
-    if (_dept == 'ALL' || _dept == 'BFP') {
-      items.add(_buildAgencyStatusItem('BFP Bureau', const Color(0xFFFF5C00), '$bfpAvail', '0', '0'));
-    }
-    if (_dept == 'ALL' || _dept == 'CDRRMO') {
-      items.add(_buildAgencyStatusItem('CDRRMO City', const Color(0xFF27AE60), '$cdrrmoAvail', '0', '0'));
-    }
+    final List<Widget> items = [
+      for (final (code, name, color) in const [
+        ('PNP', 'PNP', Color(0xFF2F80ED)),
+        ('BFP', 'BFP', Color(0xFFFF6B00)),
+        ('CDRRMO', 'CDRRMO', Color(0xFF27AE60)),
+      ])
+        if (_dept == 'ALL' || _dept == code)
+          _buildAgencyStatusItem(name, color, count(code, 'Available'), count(code, 'En Route'), count(code, 'Arrived')),
+    ];
+    final ts = ThemeService.instance;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -2223,11 +2102,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
         ),
         const SizedBox(width: 12),
-        _statusBadge(avail, 'avail', const Color(0xFF27AE60)),
+        _statusBadge(avail, 'available', statusColor('Available')),
         const SizedBox(width: 6),
-        _statusBadge(route, 'route', const Color(0xFFFF5C00)),
+        _statusBadge(route, 'en route', statusColor('En Route')),
         const SizedBox(width: 6),
-        _statusBadge(busy, 'busy', const Color(0xFFEB5757)),
+        _statusBadge(busy, 'arrived', statusColor('Arrived')),
       ],
     );
   }

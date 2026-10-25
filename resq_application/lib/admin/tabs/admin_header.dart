@@ -222,7 +222,7 @@ class _AdminHeaderState extends State<AdminHeader> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFF5200),
+                        color: Color(0xFFFF6B00),
                         shape: BoxShape.circle,
                       ),
                       constraints: const BoxConstraints(

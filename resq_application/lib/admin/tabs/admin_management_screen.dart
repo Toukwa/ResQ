@@ -9,6 +9,8 @@ import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
 import '../../shared/resq_toast.dart';
+import '../../shared/status_style.dart';
+import '../../shared/vehicle_markers.dart';
 
 class AdminManagementScreen extends StatefulWidget {
   final String searchFilter;
@@ -60,7 +62,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     _loadData(showLoading: true);
     _initWebSocket();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 20),
+      const Duration(seconds: 60), // live events refresh it sooner
       (_) => _loadData(showLoading: false),
     );
   }
@@ -146,7 +148,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
         final dept = map['deptName'] ?? map['department'] ?? 'Unassigned';
         final deptId = map['dept_ID'] ?? map['deptId'];
         final officer = map['officer_in_charge'] ?? map['officerInCharge'] ?? 'Officer On Duty';
-        final status = map['status'] ?? 'Available';
+        final status = map['status'] ?? 'Available'; // saved status; screens show vehicleStatus() (live)
 
         final vehicleMap = {
           ...map,
@@ -159,7 +161,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
           'dept_ID': deptId,
           'officer_in_charge': officer,
           'status': status,
-          'statusColor': _getStatusColor(status.toString()),
+          'statusColor': _getStatusColor(vehicleStatus(map)),
         };
 
         if (deptId == null || dept == 'Unassigned' || dept.toString().trim().isEmpty) {
@@ -204,21 +206,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'available':
-        return const Color(0xFF10B981);
-      case 'dispatched':
-      case 'en route':
-      case 'responding':
-        return const Color(0xFF3B82F6);
-      case 'offline':
-      case 'inactive':
-        return const Color(0xFFEF4444);
-      default:
-        return const Color(0xFF64748B);
-    }
-  }
+  Color _getStatusColor(String status) => statusColor(vehicleStatusLabel(status));
+
 
   Color _getDeptColor(String dept) {
     final clean = dept.toUpperCase().trim();
@@ -260,7 +249,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
           (v['agency']?.toString().toLowerCase() == _selectedAgency.toLowerCase());
 
       final matchesStatus = _selectedStatus == 'All Statuses' ||
-          (v['status']?.toString().toLowerCase() == _selectedStatus.toLowerCase());
+          vehicleStatus(v) == _selectedStatus;
 
       final matchesQuery = query.isEmpty ||
           v['plate_no']?.toString().toLowerCase().contains(query) == true ||
@@ -282,7 +271,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   int _getStatusCount(String statusName) {
     if (statusName == 'All Statuses') return _vehicles.length;
     return _vehicles
-        .where((v) => v['status']?.toString().toLowerCase() == statusName.toLowerCase())
+        .where((v) => vehicleStatus(v) == statusName)
         .length;
   }
 
@@ -338,7 +327,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5200),
+                          backgroundColor: const Color(0xFFFF6B00),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -456,14 +445,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
                       : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(10),
-                  border: unassignedCount > 0 ? Border.all(color: const Color(0xFFFF5200).withValues(alpha: 0.3)) : null,
+                  border: unassignedCount > 0 ? Border.all(color: const Color(0xFFFF6B00).withValues(alpha: 0.3)) : null,
                 ),
                 child: Text(
                   "$unassignedCount",
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: unassignedCount > 0 ? const Color(0xFFFF5200) : ts.textSecondary,
+                    color: unassignedCount > 0 ? const Color(0xFFFF6B00) : ts.textSecondary,
                   ),
                 ),
               ),
@@ -506,7 +495,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     ? rawPlate
                     : 'VHE-$defaultCode';
                 final idNum = plate.startsWith('VHE-') ? plate.replaceAll('VHE-', '') : id.toString();
-                final status = uv['status']?.toString() ?? 'Available';
+                final status = vehicleStatus(uv);
                 final statusColor = _getStatusColor(status);
 
                 return Container(
@@ -524,7 +513,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFFFF5200)),
+                        child: const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFFFF6B00)),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -557,7 +546,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF5200),
+                            color: const Color(0xFFFF6B00),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
@@ -619,7 +608,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFFF5200)
+                            ? const Color(0xFFFF6B00)
                             : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -672,7 +661,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   // ==========================================
   Widget _buildFilterByStatusCard() {
     final ts = ThemeService.instance;
-    final statuses = ['All Statuses', 'Available', 'Dispatched', 'Offline'];
+    final statuses = ['All Statuses', 'Available', 'En Route', 'Arrived', 'Offline'];
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -733,7 +722,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? const Color(0xFFFF5200) : ts.textSecondary,
+                                color: isSelected ? const Color(0xFFFF6B00) : ts.textSecondary,
                               ),
                             ),
                           ],
@@ -741,7 +730,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFF5200) : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
+                            color: isSelected ? const Color(0xFFFF6B00) : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -772,7 +761,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     final ts = ThemeService.instance;
 
     if (_isLoadingVehicles) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5200)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
     }
 
     final tableHeaderStyle = TextStyle(
@@ -833,7 +822,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text("Add New Vehicle"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5200),
+                          backgroundColor: const Color(0xFFFF6B00),
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -866,7 +855,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     final type = v['vehicle_type']?.toString() ?? 'Emergency Unit';
     final dept = v['agency']?.toString() ?? 'Unassigned';
     final officer = v['officer_in_charge']?.toString() ?? 'Officer On Duty';
-    final status = v['status']?.toString() ?? 'Available';
+    final status = vehicleStatus(v);
     final statusColor = _getStatusColor(status);
     final deptColor = _getDeptColor(dept);
 
@@ -888,7 +877,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   child: Icon(
                     _getVehicleIcon(type),
                     size: 18,
-                    color: const Color(0xFFFF5200),
+                    color: const Color(0xFFFF6B00),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1078,10 +1067,9 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
 
             return AlertDialog(
               backgroundColor: ts.cardBackground,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Row(
                 children: [
-                  const Icon(Icons.directions_car_filled_outlined, color: Color(0xFFFF5200)),
+                  const Icon(Icons.directions_car_filled_outlined, color: Color(0xFFFF6B00)),
                   const SizedBox(width: 8),
                   Text("Add New Department Vehicle", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary)),
                 ],
@@ -1247,7 +1235,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5200),
+                    backgroundColor: const Color(0xFFFF6B00),
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () async {
@@ -1315,10 +1303,9 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
         ? v['vehicle_type'].toString()
         : 'Fire Truck';
 
-    String selectedStatus = ['Available', 'Dispatched', 'En Route', 'Offline']
-            .contains(v['status']?.toString())
-        ? v['status'].toString()
-        : 'Available';
+    // A unit on a report keeps its status until the report closes; otherwise Available or Offline (e.g. repairs)
+    final onCall = const ['En Route', 'Arrived'].contains(vehicleStatusLabel(v['status']));
+    String selectedStatus = onCall ? vehicleStatusLabel(v['status']) : (vehicleStatusLabel(v['status']) == 'Offline' ? 'Offline' : 'Available');
     bool busy = false;
 
     showDialog(
@@ -1330,7 +1317,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
           builder: (context, setModalState) {
             return ResqDialog(
               icon: Icons.edit_rounded,
-              color: const Color(0xFFFF5200),
+              color: const Color(0xFFFF6B00),
               title: 'Edit Vehicle',
               subtitle: 'Unit #$vehicleId',
               primaryLabel: 'Save Changes',
@@ -1407,15 +1394,19 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   ResqSelect<String>(
                     value: selectedStatus,
                     hint: 'Select status',
-                    options: const [
-                      ResqOption('Available', 'Available', color: Color(0xFF16A34A)),
-                      ResqOption('Dispatched', 'Dispatched', color: Color(0xFF2563EB)),
-                      ResqOption('En Route', 'En Route', color: Color(0xFF2563EB)),
-                      ResqOption('Offline', 'Offline', color: Color(0xFF94A3B8)),
+                    options: [
+                      if (onCall)
+                        ResqOption(selectedStatus, '$selectedStatus (on a report)', color: statusColor(selectedStatus))
+                      else ...[
+                        ResqOption('Available', 'Available', color: statusColor('Available')),
+                        ResqOption('Offline', 'Offline', color: statusColor('Offline')),
+                      ],
                     ],
-                    onChanged: (val) {
-                      if (val != null) setModalState(() => selectedStatus = val);
-                    },
+                    onChanged: onCall
+                        ? (_) {}
+                        : (val) {
+                            if (val != null) setModalState(() => selectedStatus = val);
+                          },
                   ),
                 ],
               ),
@@ -1463,7 +1454,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               );
             } else {
               messenger.showResqSnackBar(
-                const SnackBar(content: Text("Failed to delete vehicle"), backgroundColor: Colors.redAccent),
+                const SnackBar(content: Text("Failed to delete vehicle. A unit on a report can't be deleted until the report is closed."), backgroundColor: Colors.redAccent),
               );
             }
           },

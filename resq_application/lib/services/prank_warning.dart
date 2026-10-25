@@ -88,7 +88,11 @@ class PrankWarning {
     });
     // A prank report is Invalid from now on, whatever progress it had (every screen shows it so)
     await Rtdb.update('incidents/${incident['Req_ID']}', {'reqStatus': 'Invalid'});
+    // Invalid for every agency, so every unit on it is free again
+    final reqId = int.tryParse('${incident['Req_ID']}');
+    if (reqId != null) await IncidentData.releaseUnits(reqId, 'ALL', completed: false);
     LiveEvents.emit('refreshIncidentQueueEvent', {});
+    LiveEvents.emit('refreshManagementData');
     await IncidentData.log('PRANK_WARNING_SENT', 'USER', incident['Citizen_ID'], {
       'citizenUid': citizenUid,
       'reqId': incident['Req_ID'],

@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'display_settings.dart';
 import 'incident_format.dart';
+import 'status_style.dart';
 
 /// Live fleet pins shared by the admin and super admin dashboard maps.
 /// Every admin sees every vehicle; controlling a vehicle stays department-scoped elsewhere.
@@ -15,7 +16,7 @@ import 'incident_format.dart';
 }
 
 /// The status to show for a vehicle: 'Offline' when its tracker has gone quiet, else its stored status.
-String vehicleStatus(Map v) => (v['computed_status'] ?? v['status'] ?? v['Status'] ?? 'Available').toString();
+String vehicleStatus(Map v) => vehicleStatusLabel(v['computed_status'] ?? v['status'] ?? v['Status']);
 
 /// Whether vehicle [v] belongs to [dept] (PNP, BFP, CDRRMO); 'ALL' or empty matches every vehicle.
 bool isVehicleForDepartment(dynamic v, String dept) {

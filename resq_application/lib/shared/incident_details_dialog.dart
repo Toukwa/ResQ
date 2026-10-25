@@ -13,6 +13,7 @@ import 'not_sure_card.dart';
 import 'severity_gate.dart';
 import 'voice_note.dart';
 import 'resq_toast.dart';
+import 'status_style.dart';
 
 /// A button shown at the bottom of the details, e.g. "Dispatch Units".
 typedef IncidentAction = ({String label, IconData icon, VoidCallback onPressed});
@@ -120,18 +121,10 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
   static DateTime? _time(dynamic raw) => DateTime.tryParse('${raw ?? ''}')?.toLocal();
   static String _when(dynamic raw) {
     final t = _time(raw);
-    return t == null ? '—' : DateFormat('MMM d, yyyy · h:mm a').format(t);
+    return t == null ? '—' : DateFormat('MMM d, yyyy h:mm a').format(t);
   }
 
-  static Color _statusColor(String s) => switch (s.toLowerCase()) {
-        'completed' => const Color(0xFF16A34A),
-        'arrived' => const Color(0xFF8B5CF6),
-        'en route' || 'en_route' || 'dispatched' => const Color(0xFF2563EB),
-        'accepted' => const Color(0xFF0EA5E9),
-        'declined' || 'cancelled' => const Color(0xFFEF4444),
-        'invalid' => const Color(0xFF7C3AED), // prank report
-        _ => const Color(0xFFF59E0B), // pending
-      };
+  static Color _statusColor(String s) => statusColor(s);
 
   /// 0 Sent · 1 Acknowledged · 2 En route · 3 Arrived · 4 Completed (-1 declined)
   static int _step(String s) => switch (s.toLowerCase()) {

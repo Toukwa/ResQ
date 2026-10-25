@@ -6,12 +6,12 @@
 
     "users": {
       // Admins list all accounts (management screen, dashboard, log names)
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       "$uid": {
         // Yourself, admins and superadmins can see a profile
-        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".read": "auth != null && (auth.uid === $uid || (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         // Sign-up creates your own profile as a Citizen; only a Superadmin can write anyone's profile
-        ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.child('role').val() === 'Citizen') || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.child('role').val() === 'Citizen') || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         ".validate": "newData.hasChildren(['id', 'fullName', 'email', 'role'])",
         "role": { ".validate": "newData.val() === 'Citizen' || newData.val() === 'Responder' || newData.val() === 'Admin' || newData.val() === 'Superadmin'" },
         "id": { ".validate": "newData.isNumber()" },
@@ -37,7 +37,7 @@
         // The report this citizen has open (one at a time). Set together with the report itself;
         // removed by staff when it ends, or by the citizen once it has ended.
         "activeReq": {
-          ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.exists() && newData.parent().parent().parent().child('incidents/' + newData.val() + '/citizenUid').val() === auth.uid) || (auth.uid === $uid && !newData.exists() && data.exists() && (root.child('incidents/' + data.val() + '/reqStatus').val() === 'Completed' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Declined' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Cancelled' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Invalid' || !root.child('incidents/' + data.val()).exists())) || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+          ".write": "auth != null && ((auth.uid === $uid && !data.exists() && newData.exists() && newData.parent().parent().parent().child('incidents/' + newData.val() + '/citizenUid').val() === auth.uid) || (auth.uid === $uid && !newData.exists() && data.exists() && (root.child('incidents/' + data.val() + '/reqStatus').val() === 'Completed' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Declined' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Cancelled' || root.child('incidents/' + data.val() + '/reqStatus').val() === 'Invalid' || !root.child('incidents/' + data.val()).exists())) || (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
           ".validate": "newData.isString()"
         }
       },
@@ -47,7 +47,7 @@
     "user_ids": {
       ".read": "auth != null",
       "$id": {
-        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))"
       }
     },
 
@@ -61,8 +61,8 @@
 
     "user_settings": {
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
-        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+        ".read": "auth != null && (auth.uid === $uid || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
+        ".write": "auth != null && (auth.uid === $uid || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))"
       }
     },
 
@@ -82,20 +82,20 @@
 
     // Prank warning unlock passwords, one per agency: the Superadmin sets them; that agency's admins can view theirs
     "unlock_codes": {
-      ".read": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'",
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)",
       "$agency": {
-        ".read": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/department').val() === $agency",
-        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'",
+        ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && root.child('users/' + auth.uid + '/department').val() === $agency",
+        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)",
         ".validate": "($agency === 'BFP' || $agency === 'PNP' || $agency === 'CDRRMO') && newData.hasChildren(['code']) && newData.child('code').isString() && newData.child('code').val().length >= 6 && newData.child('code').val().length <= 32"
       }
     },
 
     // Prank-caller warnings: admins send one; the citizen reads theirs and records seeing it (with their IP)
     "prank_warnings": {
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         "ipAddress": { ".write": "auth != null && auth.uid === $uid && data.parent().exists()", ".validate": "newData.isString() && newData.val().length <= 64" },
         "seenAt": { ".write": "auth != null && auth.uid === $uid && data.parent().exists()", ".validate": "newData.val() === now" },
         "acknowledgedAt": { ".write": "auth != null && auth.uid === $uid && data.parent().exists()", ".validate": "newData.val() === now" }
@@ -103,7 +103,7 @@
     },
 
     "system_logs": {
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       ".indexOn": ["timestamp", "user_ID", "action"],
       "$logId": {
         // Anyone signed in can add a log entry about themselves; nobody can edit or delete logs
@@ -116,20 +116,20 @@
 
     "incidents": {
       // Staff see everything; a citizen may only run the "my incidents" query
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin' || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
       ".indexOn": ["citizenUid", "Req_ID", "reqStatus", "linkGroup"],
       "$reqId": {
-        ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         // Citizens can only file a new Pending report as themselves, one at a time: the same write
         // must mark their account as having this active report, and it must not already have one.
         // The EOC (Superadmin) may change anything. Agency admins may only change their own part
         // of a report: see the fields below.
-        ".write": "auth != null && ((!data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('reqStatus').val() === 'Pending' && !root.child('users/' + auth.uid + '/activeReq').exists() && newData.parent().parent().child('users/' + auth.uid + '/activeReq').val() === $reqId) || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".write": "auth != null && ((!data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('reqStatus').val() === 'Pending' && !root.child('users/' + auth.uid + '/activeReq').exists() && newData.parent().parent().child('users/' + auth.uid + '/activeReq').val() === $reqId) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         ".validate": "newData.hasChildren(['Req_ID', 'citizenUid', 'incType', 'latitude', 'longitude', 'reqStatus'])",
         "Req_ID": { ".validate": "newData.isNumber()" },
         // An agency may choose the incident for its own "Not sure" part (after the voice message)
         "incType": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && data.val().contains(root.child('users/' + auth.uid + '/department').val() + ': Not sure') && !newData.val().contains(root.child('users/' + auth.uid + '/department').val() + ': Not sure') && newData.val().contains(root.child('users/' + auth.uid + '/department').val() + ': ')",
+          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && data.val().contains(root.child('users/' + auth.uid + '/department').val() + ': Not sure') && !newData.val().contains(root.child('users/' + auth.uid + '/department').val() + ': Not sure') && newData.val().contains(root.child('users/' + auth.uid + '/department').val() + ': ')",
           ".validate": "newData.isString() && newData.val().length <= 1500"
         },
         "description": { ".validate": "newData.isString() && newData.val().length <= 2000" },
@@ -141,7 +141,7 @@
         // An agency rates severity only on reports sent straight to it (its name in the type),
         // never on a General Emergency; those are the EOC's call
         "severity": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && !data.parent().child('incType').val().beginsWith('General Emergency') && data.parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')",
+          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && !data.parent().child('incType').val().beginsWith('General Emergency') && data.parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')",
           // ...and the EOC rates only General Emergencies (direct reports are their agency's call)
           // Once rated it is locked for everyone (agencies and the EOC)
           ".validate": "(!data.exists() || newData.val() === data.val()) && (newData.val() === 'Immediate' || newData.val() === 'Emergent' || newData.val() === 'Urgent' || newData.val() === 'Semi-urgent' || newData.val() === 'Non-urgent') && (root.child('users/' + auth.uid + '/role').val() !== 'Superadmin' || newData.parent().child('incType').val().beginsWith('General Emergency'))"
@@ -152,62 +152,67 @@
         "dept_status": {
           "$agency": {
             // ...or joins to help: its own entry, created En Route, on a rated, open report another agency has
-            ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && ((root.child('users/' + auth.uid + '/department').val() === $agency && !data.exists() && newData.val() === 'En Route' && data.parent().parent().child('severity').exists() && data.parent().hasChildren() && data.parent().parent().child('reqStatus').val() !== 'Completed' && data.parent().parent().child('reqStatus').val() !== 'Declined' && data.parent().parent().child('reqStatus').val() !== 'Cancelled') || (root.child('users/' + auth.uid + '/department').val() === $agency && (data.exists() || (!data.parent().parent().child('incType').val().beginsWith('General Emergency') && data.parent().parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')))) || (!data.exists() && newData.val() === 'Pending' && ((!data.parent().parent().child('incType').val().beginsWith('General Emergency') && data.parent().parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')) || data.parent().child(root.child('users/' + auth.uid + '/department').val()).exists())))",
+            ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && ((root.child('users/' + auth.uid + '/department').val() === $agency && !data.exists() && newData.val() === 'En Route' && data.parent().parent().child('severity').exists() && data.parent().hasChildren() && data.parent().parent().child('reqStatus').val() !== 'Completed' && data.parent().parent().child('reqStatus').val() !== 'Declined' && data.parent().parent().child('reqStatus').val() !== 'Cancelled') || (root.child('users/' + auth.uid + '/department').val() === $agency && (data.exists() || (!data.parent().parent().child('incType').val().beginsWith('General Emergency') && data.parent().parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')))) || (!data.exists() && newData.val() === 'Pending' && ((!data.parent().parent().child('incType').val().beginsWith('General Emergency') && data.parent().parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')) || data.parent().child(root.child('users/' + auth.uid + '/department').val()).exists())))",
             ".validate": "newData.val() === 'Pending' || newData.val() === 'Accepted' || newData.val() === 'En Route' || newData.val() === 'Dispatched' || newData.val() === 'Arrived' || newData.val() === 'Completed' || newData.val() === 'Declined' || newData.val() === 'Cancelled'"
           }
         },
         // Reports linked as the same emergency (Fleet & Vehicles): only agencies on the report
         // The report this one duplicates (set when an agency links it as a duplicate)
         "duplicateOf": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
+          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
           ".validate": "newData.isNumber()"
         },
         "linkGroup": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
+          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()",
           ".validate": "newData.isNumber()"
         },
         // Agencies that joined to help (not assigned): each marks only itself, once, as it joins
         "helpers": {
           "$agency": {
-            ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/department').val() === $agency && !data.exists() && newData.parent().parent().child('dept_status').child($agency).exists()",
+            ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && root.child('users/' + auth.uid + '/department').val() === $agency && !data.exists() && newData.parent().parent().child('dept_status').child($agency).exists()",
             ".validate": "newData.isString()"
           }
         },
         // Overall status and completion time: only agencies on the report
         "reqStatus": {
           // Staff of an agency on the report; or the reporting citizen marking it Invalid when their prank warning for it is unlocked
-          ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()) || (newData.val() === 'Invalid' && data.parent().child('citizenUid').val() === auth.uid && root.child('prank_warnings/' + auth.uid + '/reqId').val() + '' === $reqId))",
+          ".write": "auth != null && (((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()) || (newData.val() === 'Invalid' && data.parent().child('citizenUid').val() === auth.uid && root.child('prank_warnings/' + auth.uid + '/reqId').val() + '' === $reqId))",
           ".validate": "newData.val() === 'Pending' || newData.val() === 'Accepted' || newData.val() === 'En Route' || newData.val() === 'Dispatched' || newData.val() === 'Arrived' || newData.val() === 'Completed' || newData.val() === 'Declined' || newData.val() === 'Cancelled' || newData.val() === 'Invalid'"
         },
-        "completedAt": { ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Admin' && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()", ".validate": "newData.isString()" },
+        "completedAt": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && newData.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()", ".validate": "newData.isString()" },
         "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
         "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" }
       }
     },
 
     "dispatches": {
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin' || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
       ".indexOn": ["Req_ID", "citizenUid", "Vehicle_ID", "status"],
       "$dispId": {
-        ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
-        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+        ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
+        // An agency writes its own dispatches (older ones without an agency saved stay open to all);
+        // any agency may cancel one when a report is closed as Invalid. The EOC any.
+        ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && ((!data.exists() && newData.child('dept').val() === root.child('users/' + auth.uid + '/department').val()) || (data.exists() && (!data.child('dept').exists() || data.child('dept').val() === root.child('users/' + auth.uid + '/department').val() || (newData.child('status').val() === 'Cancelled' && newData.child('Vehicle_ID').val() === data.child('Vehicle_ID').val()))))))"
       }
     },
 
     "vehicles": {
       // Admins see the whole fleet; a citizen only the vehicle sent to their incident
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       ".indexOn": ["dept_ID", "status", "plate_no", "HardwareID_mapping"],
       "$vehicleId": {
         ".read": "auth != null && root.child('citizen_access/' + auth.uid + '/vehicles/' + $vehicleId).exists()",
-        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+        // Each agency changes only its own vehicles (and claims unassigned ones); the EOC any.
+        ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && (!data.exists() || !data.child('dept_ID').exists() || root.child('departments/' + data.child('dept_ID').val() + '/deptName').val() === root.child('users/' + auth.uid + '/department').val())))",
+        // Any agency may free a unit (set it Available) when a report it is on is closed as Invalid
+        "status": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && newData.val() === 'Available'" }
       }
     },
 
     "trackers": {
       // Written by the ESP32 trackers. Only staff may see positions: a citizen never
       // gets a responder's live location, for the responders' safety.
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       "$uid": {
         ".write": "auth != null && auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app')",
         ".validate": "newData.hasChild('hardwareId')",
@@ -220,10 +225,10 @@
     // Road routes filling a tracker's signal gaps: worked out by the first staff screen that
     // shows the gap, then reused by everyone (so the routing server is asked once per gap)
     "gap_routes": {
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       "$uid": {
         "$gap": {
-          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin') && (!data.exists() || !newData.exists())",
+          ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)) && (!data.exists() || !newData.exists())",
           ".validate": "$gap.matches(/^[0-9]+_[0-9]+$/) && newData.hasChildren(['ok', 'polyline'])",
           "ok": { ".validate": "newData.isBoolean()" },
           "polyline": { ".validate": "newData.isString() && newData.val().length <= 20000" },
@@ -237,11 +242,11 @@
       // Route points uploaded by each tracker (buffered on the board, so points recorded without
       // signal arrive later). Only staff can view them; a point is never changed (re-sending the
       // same point after a lost reply is allowed), and only a Superadmin may delete them (old-history cleanup).
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       "$uid": {
         ".indexOn": ["ts"],
         "$pointId": {
-          ".write": "auth != null && ((auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app') && (!data.exists() || (newData.exists() && data.child('ts').val() === newData.child('ts').val()))) || (!newData.exists() && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'))",
+          ".write": "auth != null && ((auth.uid === $uid && auth.token.email.endsWith('@resq-tracker.app') && (!data.exists() || (newData.exists() && data.child('ts').val() === newData.child('ts').val()))) || (!newData.exists() && (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)))",
           ".validate": "newData.hasChildren(['latitude', 'longitude', 'ts'])",
           "latitude": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
           "longitude": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
@@ -256,15 +261,15 @@
       // Which vehicle each citizen may see (name and plate only, never its position);
       // maintained by admins on dispatch and completion
       "$citizenUid": {
-        ".read": "auth != null && (auth.uid === $citizenUid || root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
-        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')"
+        ".read": "auth != null && (auth.uid === $citizenUid || (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
+        ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))"
       }
     },
 
     "tracker_links": {
       // One entry per GPS tracker; the first admin app to claim it creates its vehicle
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
-      "$uid": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
+      "$uid": { ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))" }
     },
 
     "hotlines": {
@@ -272,26 +277,26 @@
       // logging in (they are public hotlines); only the EOC changes them (Edit Agency).
       ".read": true,
       "$agency": {
-        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'",
+        ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)",
         ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 20 && newData.val().matches(/^[0-9+() -]+$/)"
       }
     },
 
     "departments": {
       ".read": "auth != null",
-      "$deptId": { ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'Superadmin'" }
+      "$deptId": { ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)" }
     },
 
     "staff_notifications": {
-      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+      ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
       ".indexOn": ["timestamp", "recipient_ID"],
       "$notifId": {
         // Anyone signed in can raise a notification (e.g. a citizen's new report); nobody edits it afterwards
-        ".write": "auth != null && !data.exists() && newData.child('createdBy').val() === auth.uid && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin') || (newData.child('notification_type').val() === 'EMERGENCY' && root.child('incidents/' + newData.child('req_ID').val() + '/citizenUid').val() === auth.uid))",
+        ".write": "auth != null && !data.exists() && newData.child('createdBy').val() === auth.uid && (((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)) || (newData.child('notification_type').val() === 'EMERGENCY' && root.child('incidents/' + newData.child('req_ID').val() + '/citizenUid').val() === auth.uid))",
         // Only the EOC sends an agency alert ("Notify" on an incident)
-        ".validate": "newData.child('message').isString() && newData.child('message').val().length <= 500 && newData.child('title').val().length <= 120 && (newData.child('notification_type').val() !== 'EOC_ALERT' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')",
+        ".validate": "newData.child('message').isString() && newData.child('message').val().length <= 500 && newData.child('title').val().length <= 120 && (newData.child('notification_type').val() !== 'EOC_ALERT' || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         "readBy": {
-          "$uid": { ".write": "auth != null && auth.uid === $uid && (root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin')" }
+          "$uid": { ".write": "auth != null && auth.uid === $uid && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))" }
         }
       }
     },
@@ -300,7 +305,7 @@
       ".read": "auth != null",
       "$event": {
         // Staff may announce anything; citizens only that they filed a report
-        ".write": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' || root.child('users/' + auth.uid + '/role').val() === 'Superadmin') || $event === 'refreshIncidentQueueEvent' || $event === 'newNotification' || $event === 'refreshActivityLogsEvent')",
+        ".write": "auth != null && (((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true)) || $event === 'refreshIncidentQueueEvent' || $event === 'newNotification' || $event === 'refreshActivityLogsEvent')",
         ".validate": "$event.length <= 64 && newData.hasChild('ts')"
       }
     }

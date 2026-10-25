@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:intl/intl.dart';
 
 import 'firebase_rest.dart';
@@ -175,24 +176,31 @@ class VehicleData {
   }
 
   static Future<void> updateVehicle(int vehicleId, Map<String, dynamic> data) async {
+    // A unit on a report keeps its status: it is freed when the report closes
+    final onCall = await IncidentData.isVehicleOnCall(vehicleId);
+    final current = await Rtdb.get('vehicles/$vehicleId/status');
+    final status = onCall ? (current ?? 'En Route') : (data['status'] ?? current ?? 'Available');
     await Rtdb.update('vehicles/$vehicleId', {
       'plate_no': data['plate_no'],
       'vehicle_type': data['vehicle_type'],
       'dept_ID': await _resolveDeptId(data),
-      'status': data['status'] ?? 'Available',
+      'status': status,
       // Typed in by an admin when the tracker can't read the number off the SIM
       if (data.containsKey('sim_number_manual')) 'sim_number_manual': data['sim_number_manual'],
     });
     await IncidentData.log('VEHICLE_UPDATED', 'vehicle', vehicleId, {
       'plate_no': data['plate_no'],
       'vehicle_type': data['vehicle_type'],
-      'status': data['status'] ?? 'Available',
+      'status': status,
     });
     _announce('vehicle_updated');
   }
 
   /// Returns the vehicle to the unassigned fleet; its tracker stays linked.
   static Future<void> deleteVehicle(int vehicleId) async {
+    if (await IncidentData.isVehicleOnCall(vehicleId)) {
+      throw const HttpException('This unit is still on a report. Close the report first.');
+    }
     final old = await Rtdb.get('vehicles/$vehicleId');
     await Rtdb.update('vehicles/$vehicleId', {
       'dept_ID': null,

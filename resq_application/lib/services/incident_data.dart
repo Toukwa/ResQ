@@ -56,15 +56,29 @@ class IncidentData {
     return role == 'Admin' || role == 'Superadmin';
   }
 
+  /// One spelling per kind of log entry ('vehicle', 'VEHICLE' -> 'response_vehicle'; others lower case).
+  static String logKind(dynamic entityType) {
+    final t = '${entityType ?? 'system'}'.toLowerCase();
+    return switch (t) {
+      'vehicle' || 'response_vehicle' => 'response_vehicle',
+      'incident' || 'emergency_request' => 'emergency_request',
+      'dispatch' || 'dispatch_event' => 'dispatch_event',
+      _ => t,
+    };
+  }
+
   static Future<void> log(String action, String entityType, dynamic entityId, Map<String, dynamic> details) async {
     try {
       final user = await me();
+      final dept = user['role'] == 'Admin' ? normalizeDepartment(user['department']?.toString()) : null;
       await Rtdb.push('system_logs', {
         'uid': FirebaseAuthRest.uid,
         'user_ID': user['id'],
         'role': user['role'],
+        // The acting agency, so each agency's Activity Log shows only its own entries
+        if (dept != null && dept != 'ALL') 'dept': dept,
         'action': action,
-        'entity_type': entityType,
+        'entity_type': logKind(entityType),
         'entity_id': entityId,
         'status': 'SUCCESS',
         'details': details,
@@ -179,6 +193,10 @@ class IncidentData {
     };
     final out = <Map<String, dynamic>>[];
     for (final d in dispatches) {
+      if (d['dept'] != null) {
+        if (d['dept'] == acting) out.add(d);
+        continue;
+      }
       final v = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
       if (deptNames[_int(v?['dept_ID'])] == acting) out.add(d);
     }
@@ -510,7 +528,7 @@ class IncidentData {
         'id': id,
         'type': e['incType'],
         'status': e['reqStatus'],
-        'timeString': ts == null ? '' : DateFormat('HH:mm').format(ts),
+        'timeString': ts == null ? '' : DateFormat('HH:mm').format(ts), // data field; screens show it as h:mm a
         'userName': e['residentName'],
         'dispatchId': d?['Disp_ID'],
         'dispatchTimestamp': d?['Dispatch_timeStamp'],
@@ -565,41 +583,46 @@ class IncidentData {
   static Future<void> _applyStatus(int reqId, String status, String? department) async {
     await _syncDepartmentStatus(reqId, department ?? 'ALL', status);
 
-    if (status.toLowerCase() == 'arrived') {
+    final s = status.toLowerCase();
+    if (s == 'arrived') {
       for (final d in await _departmentDispatches(reqId, department)) {
-        final s = '${d['status']}'.toLowerCase();
-        if (s == 'completed' || s == 'cancelled' || s == 'arrived') continue;
+        final ds = '${d['status']}'.toLowerCase();
+        if (ds == 'completed' || ds == 'cancelled' || ds == 'arrived') continue;
         await Rtdb.update('dispatches/${d['Disp_ID']}', {'status': 'Arrived', 'Arrived_timeStamp': _nowIso()});
+        await Rtdb.update('vehicles/${d['Vehicle_ID']}', {'status': 'Arrived'});
       }
     }
 
-    if (status.toLowerCase() == 'completed') {
-      final dispatches = rows(await Rtdb.get('dispatches', query: {'orderBy': '"Req_ID"', 'equalTo': '$reqId'}));
-      // A department completing only releases its own units; other departments
-      // on the same incident may still be working. The Super Admin ('ALL') releases all.
-      final acting = normalizeDepartment(department);
-      final deptNames = acting == 'ALL'
-          ? const <int?, String>{}
-          : {for (final dep in rows(await Rtdb.get('departments'))) _int(dep['dept_ID']): normalizeDepartment(dep['deptName']?.toString())};
-      for (final d in dispatches) {
-        if ('${d['status']}'.toLowerCase() == 'completed') continue;
-        if (acting != 'ALL') {
-          final v = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
-          if (deptNames[_int(v?['dept_ID'])] != acting) continue;
-        }
-        await Rtdb.update('dispatches/${d['Disp_ID']}', {
-          'status': 'Completed',
-          if (d['Completed_timeStamp'] == null) 'Completed_timeStamp': _nowIso(),
-        });
-        await Rtdb.update('vehicles/${d['Vehicle_ID']}', {'status': 'Available'});
-        final vehicle = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
-        await _setCitizenAccess(d['citizenUid'], vehicle, d['Vehicle_ID'], false);
-      }
+    if (s == 'completed' || s == 'declined' || s == 'cancelled') {
+      await releaseUnits(reqId, department, completed: s == 'completed');
     }
 
     await log('STATUS_CHANGE', 'emergency_request', reqId, {'newStatus': status});
     LiveEvents.emit('refreshIncidentQueueEvent', {'cue': SoundCue.forStatus(status).id});
     LiveEvents.emit('refreshManagementData');
+  }
+
+  /// Frees the units still on [reqId]: their dispatches close (Completed when the work
+  /// was done, else Cancelled), the vehicles are Available again and the citizen loses
+  /// access to them. A department only frees its own units; 'ALL' frees every one.
+  static Future<void> releaseUnits(int reqId, String? department, {required bool completed}) async {
+    for (final d in await _departmentDispatches(reqId, department)) {
+      final ds = '${d['status']}'.toLowerCase();
+      if (ds == 'completed' || ds == 'cancelled') continue;
+      await Rtdb.update('dispatches/${d['Disp_ID']}', {
+        'status': completed ? 'Completed' : 'Cancelled',
+        if (d['Completed_timeStamp'] == null) 'Completed_timeStamp': _nowIso(),
+      });
+      await Rtdb.update('vehicles/${d['Vehicle_ID']}', {'status': 'Available'});
+      final vehicle = await Rtdb.get('vehicles/${d['Vehicle_ID']}');
+      await _setCitizenAccess(d['citizenUid'], vehicle, d['Vehicle_ID'], false);
+    }
+  }
+
+  /// Whether [vehicleId] is still on a report (a dispatch not yet completed or cancelled).
+  static Future<bool> isVehicleOnCall(int vehicleId) async {
+    final found = rows(await Rtdb.get('dispatches', query: {'orderBy': '"Vehicle_ID"', 'equalTo': '$vehicleId'}));
+    return found.any((d) => !const ['completed', 'cancelled'].contains('${d['status']}'.toLowerCase()));
   }
 
   // ─── "not sure" reports ──────────────────────────────────────────────────
@@ -863,6 +886,11 @@ class IncidentData {
       );
     }
     final id = await Rtdb.nextId('counters/dispatches');
+    // Kept on the dispatch so the analytics still know the agency if the vehicle moves later
+    // (an agency admin only sends its own units, so it is that admin's agency)
+    final unitDept = user['role'] == 'Admin'
+        ? normalizeDepartment(user['department']?.toString())
+        : normalizeDepartment('${await Rtdb.get('departments/${vehicle['dept_ID']}/deptName') ?? ''}');
 
     await Rtdb.set('dispatches/$id', {
       'Disp_ID': id,
@@ -872,6 +900,7 @@ class IncidentData {
       'citizenUid': incident['citizenUid'],
       'status': 'En Route',
       'Dispatch_timeStamp': _nowIso(),
+      'dept': unitDept,
     });
     await Rtdb.update('vehicles/$vehicleId', {'status': 'En Route'});
     await _setCitizenAccess(incident['citizenUid'], vehicle, vehicleId, true);
@@ -896,6 +925,7 @@ class IncidentData {
         'citizenUid': o?['citizenUid'],
         'status': 'En Route',
         'Dispatch_timeStamp': _nowIso(),
+        'dept': unitDept,
         'linkedFrom': reqId,
       });
       await _setCitizenAccess(o?['citizenUid'], vehicle, vehicleId, true);

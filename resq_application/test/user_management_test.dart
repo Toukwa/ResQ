@@ -49,13 +49,13 @@ void main() {
   }
 
   test('User Registration – Valid Input', () async {
-    late ({bool success, String? error}) result;
+    late ({Map<String, dynamic>? data, String? error}) result;
     final sent = await fakeFirebase(() async {
       result = await AuthService.registerCitizen(
           fullName: 'Juan Dela Cruz', contactNo: '09171234567', email: 'Juan@Mail.com', password: 'secret123',
           birthdate: '2000-05-14', barangay: 'San Roque (Poblacion)');
     });
-    expect(result.success, isTrue);
+    expect(result.data, isNotNull);
     final saved = sent.firstWhere((r) => r.url.path.endsWith('/users/u1.json') && r.method == 'PUT');
     final user = jsonDecode(saved.body);
     expect(user['id'], 6);
@@ -67,13 +67,13 @@ void main() {
   });
 
   test('User Registration – Duplicate Email', () async {
-    late ({bool success, String? error}) result;
+    late ({Map<String, dynamic>? data, String? error}) result;
     final sent = await fakeFirebase(() async {
       result = await AuthService.registerCitizen(
           fullName: 'Juan', contactNo: '0917', email: 'taken@mail.com', password: 'secret123',
           birthdate: '2000-05-14', barangay: 'Santiago');
     }, authError: 'EMAIL_EXISTS');
-    expect(result.success, isFalse);
+    expect(result.data, isNull);
     expect(result.error, contains('Email is already registered.'));
     expect(sent.where((r) => r.url.path.contains('/users/')), isEmpty);
   });

@@ -17,6 +17,7 @@ import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
+import '../../shared/status_style.dart';
 import '../../shared/display_settings.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
@@ -77,7 +78,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     _setupBufferedLogStream();
     _fetchDatabaseData(showLoading: true);
     _initWebSocket();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchDatabaseData(showLoading: false));
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _fetchDatabaseData(showLoading: false));
   }
 
   void _setupBufferedLogStream() {
@@ -306,7 +307,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         'description': "Action '$action' recorded on entity [$entityType] #${log['entity_id'] ?? 'N/A'}",
         'status': status,
         'requestId': log['entity_id']?.toString() ?? 'N/A',
-        'time': DateFormat('hh:mm a').format(parsedTime),
+        'time': DateFormat('h:mm a').format(parsedTime),
         'date': DateFormat('yyyy-MM-dd').format(parsedTime),
         'timestamp': parsedTime.toIso8601String(),
         'source': 'Audit Database Engine',
@@ -369,27 +370,9 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final query = widget.searchFilter.trim().toLowerCase();
     List<dynamic> sortedList = List.from(_unfilteredIncidentQueueList);
 
-    if (_selectedQueueFilter == IncidentQueueFilter.pending) {
-      sortedList = sortedList
-          .where(
-            (incident) => (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase() == 'pending',
-          )
-          .toList();
-    } else if (_selectedQueueFilter == IncidentQueueFilter.enRoute) {
-      sortedList = sortedList.where((incident) {
-        final s = (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase();
-        return s == 'en route' || s == 'en_route';
-      }).toList();
-    } else if (_selectedQueueFilter == IncidentQueueFilter.declined) {
-      sortedList = sortedList.where((incident) {
-        final s = (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase();
-        return s == 'declined' || s == 'denied';
-      }).toList();
-    } else if (_selectedQueueFilter == IncidentQueueFilter.active) {
-      sortedList = sortedList
-          .where((incident) => (incident['status'] ?? incident['reqStatus'] ?? '').toString().toLowerCase() == 'active')
-          .toList();
-    }
+    sortedList = sortedList
+        .where((incident) => queueFilterMatches(_selectedQueueFilter.name, incident['status'] ?? incident['reqStatus']))
+        .toList();
 
     sortedList.sort((a, b) => (b['id'] ?? 0).compareTo(a['id'] ?? 0));
 
@@ -411,73 +394,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     });
   }
 
-  Map<String, dynamic> _getStatusConfig(String? rawStatus) {
-    final ts = ThemeService.instance;
-    final isDark = ts.isDark;
-    final s = (rawStatus ?? 'pending').trim().toLowerCase();
-    if (s == 'invalid') {
-      return {
-        'label': 'Invalid',
-        'textColor': isDark ? const Color(0xFFC4B5FD) : const Color(0xFF7C3AED),
-        'bgColor': isDark ? const Color(0xFF3B1F6B) : const Color(0xFFF3E8FF),
-        'borderColor': isDark ? const Color(0xFF6D28D9) : const Color(0xFFDDD6FE),
-        'dotColor': const Color(0xFF7C3AED),
-        'cardBg': ts.cardBackground,
-        'cardBorder': ts.borderColor,
-      };
-    }
-    if (s == 'en route' || s == 'en_route') {
-      return {
-        'label': 'En Route',
-        'textColor': isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-        'bgColor': isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF),
-        'borderColor': isDark ? const Color(0xFF1D4ED8) : const Color(0xFFBFDBFE),
-        'dotColor': const Color(0xFF2563EB),
-        'cardBg': isDark ? const Color(0xFF1E293B) : Colors.white,
-        'cardBorder': isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE),
-      };
-    } else if (s == 'declined' || s == 'denied') {
-      return {
-        'label': 'Declined',
-        'textColor': isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
-        'bgColor': isDark ? const Color(0xFF451212) : const Color(0xFFFEF2F2),
-        'borderColor': isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA),
-        'dotColor': const Color(0xFFEF4444),
-        'cardBg': isDark ? const Color(0xFF2A1515) : const Color(0xFFFFF5F5),
-        'cardBorder': isDark ? const Color(0xFF451212) : const Color(0xFFFECACA),
-      };
-    } else if (s == 'active') {
-      return {
-        'label': 'Active',
-        'textColor': isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
-        'bgColor': isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
-        'borderColor': isDark ? const Color(0xFF047857) : const Color(0xFFA7F3D0),
-        'dotColor': const Color(0xFF10B981),
-        'cardBg': isDark ? const Color(0xFF1E293B) : Colors.white,
-        'cardBorder': isDark ? const Color(0xFF334155) : const Color(0xFFA7F3D0),
-      };
-    } else if (s == 'completed' || s == 'done') {
-      return {
-        'label': 'Completed',
-        'textColor': isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-        'bgColor': isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-        'borderColor': isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
-        'dotColor': const Color(0xFF64748B),
-        'cardBg': isDark ? const Color(0xFF1E293B) : Colors.white,
-        'cardBorder': isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-      };
-    } else {
-      return {
-        'label': 'Pending',
-        'textColor': isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-        'bgColor': isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
-        'borderColor': isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A),
-        'dotColor': const Color(0xFFFF6B00),
-        'cardBg': isDark ? const Color(0xFF2A1C08) : const Color(0xFFFFFBEB),
-        'cardBorder': isDark ? const Color(0xFF451A03) : const Color(0xFFFDE68A),
-      };
-    }
-  }
+  Map<String, dynamic> _getStatusConfig(String? rawStatus) => statusBadgeConfig(rawStatus);
 
   void _locateIncidentOnMap(Map<String, dynamic> item) {
     final lat = double.tryParse('${item['latitude']}');
@@ -746,26 +663,26 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                   'Available',
                                   'Units',
                                   Icons.check_circle_outline_rounded,
-                                  const Color(0xFF10B981),
-                                  const Color(0xFFECFDF5),
+                                  statusColor('Available'),
+                                  statusBgColor('Available'),
                                 ),
                                 const SizedBox(width: 8),
                                 _buildMetricCard(
                                   _enRouteUnits.toString(),
                                   'En Route',
-                                  '',
+                                  'Units',
                                   Icons.navigation_outlined,
-                                  const Color(0xFFF59E0B),
-                                  const Color(0xFFFFFBEB),
+                                  statusColor('En Route'),
+                                  statusBgColor('En Route'),
                                 ),
                                 const SizedBox(width: 8),
                                 _buildMetricCard(
                                   _busyUnits.toString(),
-                                  'Busy / On',
-                                  'Scene',
+                                  'Arrived /',
+                                  'On Scene',
                                   Icons.wifi_tethering_rounded,
-                                  const Color(0xFFEF4444),
-                                  const Color(0xFFFEF2F2),
+                                  statusColor('Arrived'),
+                                  statusBgColor('Arrived'),
                                 ),
                                 const SizedBox(width: 8),
                                 _buildMetricCard(
@@ -1082,16 +999,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
     final look = vehicleMarkerConfig(vehicle);
     final color = look['color'] as Color;
     final status = vehicleStatus(vehicle);
-    final s = status.toLowerCase();
-    final statusColor = s == 'available'
-        ? const Color(0xFF16A34A)
-        : s == 'offline'
-            ? const Color(0xFF94A3B8)
-            : s.contains('arriv')
-                ? const Color(0xFF8B5CF6)
-                : (s.contains('route') || s.contains('dispatch'))
-                    ? const Color(0xFF2563EB)
-                    : const Color(0xFFF59E0B);
+    final badgeColor = statusColor(status);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1130,11 +1038,11 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.circle, size: 7, color: statusColor),
+              Icon(Icons.circle, size: 7, color: badgeColor),
               const SizedBox(width: 5),
-              Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor)),
+              Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: badgeColor)),
             ]),
           ),
         ],

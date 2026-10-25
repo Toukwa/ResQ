@@ -11,6 +11,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../config.dart';
 import 'firebase_rest.dart';
 import '../shared/log_details.dart';
+import '../shared/status_style.dart';
 import 'incident_data.dart';
 import 'live_socket.dart';
 import 'password_policy.dart';
@@ -131,6 +132,7 @@ class AdminData {
       Rtdb.get('departments'),
       Rtdb.get('users', query: {'shallow': 'true'}),
       Rtdb.get('trackers'),
+      Rtdb.get('dispatches'),
     ]);
     final incidents = IncidentData.rows(results[0]);
     final vehicles = IncidentData.rows(results[1]);
@@ -141,24 +143,42 @@ class AdminData {
         ? 'offline'
         : (v['status'] ?? '').toString().toLowerCase();
 
-    final active = incidents
-        .where((i) => ['pending', 'in_progress', 'en route', 'active'].contains((i['reqStatus'] ?? '').toString().toLowerCase()))
-        .length;
-    final available = vehicles.where((v) => st(v) == 'available').length;
-    final enRoute = vehicles.where((v) => ['en route', 'en_route'].contains(st(v))).length;
-    final busy = vehicles.where((v) => ['busy', 'on scene', 'dispatched'].contains(st(v))).length;
+    final active = incidents.where((i) => isOpenStatus(i['reqStatus'])).length;
+    final available = vehicles.where((v) => vehicleStatusLabel(st(v)) == 'Available').length;
+    // On the way (En Route) and at the scene (Arrived) are counted apart
+    final enRoute = vehicles.where((v) => vehicleStatusLabel(st(v)) == 'En Route').length;
+    final busy = vehicles.where((v) => vehicleStatusLabel(st(v)) == 'Arrived').length;
+
+    // Units sent today, in all and per agency
+    final today = DateTime.now();
+    final byDept = <String, int>{};
+    var dispatchedToday = 0;
+    final deptOfVehicle = {
+      for (final v in vehicles)
+        _int(v['vehicle_ID']): IncidentData.normalizeDepartment(
+            depts.where((d) => _int(d['dept_ID']) == _int(v['dept_ID'])).firstOrNull?['deptName']?.toString()),
+    };
+    for (final d in IncidentData.rows(results[5])) {
+      final t = DateTime.tryParse('${d['Dispatch_timeStamp'] ?? ''}')?.toLocal();
+      if (t == null || t.year != today.year || t.month != today.month || t.day != today.day) continue;
+      dispatchedToday++;
+      final dept = '${d['dept'] ?? deptOfVehicle[_int(d['Vehicle_ID'])] ?? ''}';
+      if (dept.isNotEmpty) byDept[dept] = (byDept[dept] ?? 0) + 1;
+    }
 
     String ratio(String name) {
       final dept = depts.where((d) => (d['deptName'] ?? '').toString().toUpperCase().contains(name));
       if (dept.isEmpty) return '0/0';
       final units = vehicles.where((v) => _int(v['dept_ID']) == _int(dept.first['dept_ID']));
-      return '${units.where((v) => st(v) == 'available').length}/${units.length}';
+      return '${units.where((v) => vehicleStatusLabel(st(v)) == 'Available').length}/${units.length}';
     }
 
     return {
       'availableUnits': available,
       'enRouteUnits': enRoute,
       'busyUnits': busy,
+      'dispatchedToday': dispatchedToday,
+      'dispatchedTodayByDept': byDept,
       'activeIncidentsCount': active,
       'pnpRatio': ratio('PNP'),
       'bfpRatio': ratio('BFP'),
@@ -195,6 +215,9 @@ class AdminData {
         'userName': user?['fullName'],
         'actor_display': user?['fullName'] ?? l['role'] ?? 'System',
         'details': details is String ? details : (details == null ? null : jsonEncode(details)),
+        'entity_type': IncidentData.logKind(l['entity_type']),
+        // Older entries have no agency saved: use the agency of the admin who made them
+        'dept': l['dept'] ?? (user?['role'] == 'Admin' ? IncidentData.normalizeDepartment(user?['department']?.toString()) : null),
         'timestamp': ts?.toUtc().toIso8601String(),
         '_ms': l['timestamp'] is int ? l['timestamp'] : 0,
       };
@@ -322,7 +345,7 @@ class AdminData {
     }
 
     final doc = pw.Document();
-    final orange = PdfColor.fromHex('#FF5200');
+    final orange = PdfColor.fromHex('#FF6B00');
     final grey = PdfColor.fromHex('#64748B');
     final red = PdfColor.fromHex('#DC2626');
 
@@ -368,7 +391,7 @@ class AdminData {
         pw.Divider(color: PdfColor.fromHex('#E2E8F0')),
         pw.Text('Report Date: $targetDate', style: const pw.TextStyle(fontSize: 11)),
         pw.Text('Total Audit Records: ${rows.length} event(s) (Full-Day Scope)', style: pw.TextStyle(color: grey, fontSize: 10)),
-        pw.Text('Report Generated: ${DateFormat('M/d/yyyy, h:mm:ss a').format(DateTime.now())}',
+        pw.Text('Report Generated: ${DateFormat('MMM d, yyyy h:mm a').format(DateTime.now())}',
             style: pw.TextStyle(color: grey, fontSize: 10)),
         pw.SizedBox(height: 4),
         pw.Text('IP addresses are recorded and shown only for prank reports.', style: pw.TextStyle(color: red, fontSize: 8)),
@@ -442,7 +465,19 @@ class AdminData {
   static Future<List<Map<String, dynamic>>> accounts() async {
     final users = await _allUsers();
     final depts = await _departmentsById();
-    final list = users.values.where((u) => u['disabled'] != true).map((u) {
+    // Last active: each account's most recent entry in the activity log
+    final lastSeen = <String, int>{};
+    try {
+      final raw = (await Rtdb.get('system_logs', query: {'orderBy': '"timestamp"', 'limitToLast': '3000'}) as Map?) ?? {};
+      for (final l in raw.values) {
+        if (l is! Map || l['uid'] == null || l['timestamp'] is! int) continue;
+        final uid = '${l['uid']}';
+        if ((lastSeen[uid] ?? 0) < l['timestamp']) lastSeen[uid] = l['timestamp'];
+      }
+    } catch (_) {}
+    String when(dynamic ms) => ms is int ? DateFormat('MMM d, yyyy h:mm a').format(DateTime.fromMillisecondsSinceEpoch(ms)) : '—';
+    final list = users.entries.where((e) => e.value['disabled'] != true).map((e) {
+      final u = e.value;
       final name = (u['fullName'] ?? '').toString();
       final deptName = depts['${u['deptID']}']?['deptName'];
       final colors = _roleColors[u['role']] ?? ('#0D9488', '#F0FDFA', '#0F766E');
@@ -466,8 +501,8 @@ class AdminData {
         'roleBg': colors.$2,
         'roleText': colors.$3,
         'initials': name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase(),
-        'lastActive': 'Just now',
-        'created': 'Active',
+        'lastActive': lastSeen.containsKey(e.key) ? when(lastSeen[e.key]) : 'No activity yet',
+        'created': when(u['createdAt']),
       };
     }).toList()
       ..sort((a, b) => a['name'].toString().toLowerCase().compareTo(b['name'].toString().toLowerCase()));

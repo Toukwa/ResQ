@@ -6,56 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../services/incident_data.dart';
-import '../services/theme_service.dart';
+import 'status_style.dart';
 import 'vehicle_markers.dart';
 
-Color mapStatusColor(String status) {
-  final ts = ThemeService.instance;
-  final s = status.toLowerCase();
-  if (ts.isDark) {
-    if (s == 'en route' || s == 'en_route') return const Color(0xFFFB923C);
-    if (s == 'arrived') return const Color(0xFFC084FC);
-    if (s == 'completed') return const Color(0xFF34D399);
-    if (s == 'declined' || s == 'denied') return const Color(0xFFF87171);
-    if (s == 'invalid') return const Color(0xFFA78BFA);
-    return const Color(0xFF94A3B8);
-  }
-  if (s == 'en route' || s == 'en_route') return const Color(0xFFFF5200);
-  if (s == 'arrived') return const Color(0xFF8B5CF6);
-  if (s == 'completed') return const Color(0xFF10B981);
-  if (s == 'declined' || s == 'denied') return const Color(0xFFEF4444);
-  if (s == 'invalid') return const Color(0xFF7C3AED);
-  return const Color(0xFF64748B);
-}
+Color mapStatusColor(String status) => statusColor(status);
 
-Color mapStatusBgColor(String status) {
-  final ts = ThemeService.instance;
-  final s = status.toLowerCase();
-  if (ts.isDark) {
-    if (s == 'en route' || s == 'en_route') return const Color(0xFF431407);
-    if (s == 'arrived') return const Color(0xFF2E1065);
-    if (s == 'completed') return const Color(0xFF064E3B);
-    if (s == 'declined' || s == 'denied') return const Color(0xFF450A0A);
-    if (s == 'invalid') return const Color(0xFF2E1065);
-    return const Color(0xFF1E293B);
-  }
-  if (s == 'en route' || s == 'en_route') return const Color(0xFFFFEDD5);
-  if (s == 'arrived') return const Color(0xFFF3E8FF);
-  if (s == 'completed') return const Color(0xFFECFDF5);
-  if (s == 'declined' || s == 'denied') return const Color(0xFFFEF2F2);
-  if (s == 'invalid') return const Color(0xFFF5F3FF);
-  return const Color(0xFFF1F5F9);
-}
+Color mapStatusBgColor(String status) => statusBgColor(status);
 
-/// Vehicle badge: green when free, grey when offline, orange when busy.
-Color vehicleBadgeColor(String status) {
-  final dark = ThemeService.instance.isDark;
-  return switch (status.toLowerCase()) {
-    'available' => dark ? const Color(0xFF34D399) : const Color(0xFF047857),
-    'offline' || 'maintenance' || 'inactive' => dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-    _ => dark ? const Color(0xFFFB923C) : const Color(0xFFC2410C),
-  };
-}
+/// Vehicle badge colour (see status_style.dart).
+Color vehicleBadgeColor(String status) => statusColor(vehicleStatusLabel(status));
 
 String mapStatusKey(dynamic inc) {
   final s = (inc['status'] ?? inc['reqStatus'] ?? inc['Status'] ?? 'Pending').toString().trim().toLowerCase();
@@ -80,12 +39,11 @@ String formatMapTime(dynamic timestamp) {
     hour = hour % 12;
     if (hour == 0) hour = 12;
     final minStr = minute.toString().padLeft(2, '0');
-    final hourStr = hour.toString().padLeft(2, '0');
-    return '$hourStr:$minStr $period';
+    return '$hour:$minStr $period'; // h:mm a, like every other time in the app
   }
 
   final dt = DateTime.tryParse(str);
-  if (dt != null) return DateFormat('hh:mm a').format(dt.toLocal());
+  if (dt != null) return DateFormat('h:mm a').format(dt.toLocal());
   return str;
 }
 

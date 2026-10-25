@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/map_format.dart';
+import '../../shared/vehicle_markers.dart';
+import '../../shared/status_style.dart' hide statusColor;
+import '../../shared/status_style.dart' as status_style show statusColor;
 import '../../shared/resq_dialog.dart';
 import '../../shared/closed_reports_tabs.dart';
 import '../../shared/search_shortcut.dart';
@@ -55,7 +58,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   int? _selectedRequestId;
   /// Units picked on the right panel; all of them go out on one dispatch.
   final Set<int> _selectedVehicleIds = {};
-  String _bottomTabFilter = 'Cancelled';
+  String _bottomTabFilter = 'Declined';
   String _selectedQueueFilter = 'All';
 
   io.Socket? _socket;
@@ -254,12 +257,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     try {
       final dt = DateTime.parse(str).toLocal();
-      return DateFormat('MMM d, hh:mm a').format(dt);
+      return DateFormat('MMM d, h:mm a').format(dt);
     } catch (_) {
       final ms = int.tryParse(str);
       if (ms != null) {
         final dt = DateTime.fromMillisecondsSinceEpoch(ms > 10000000000 ? ms : ms * 1000).toLocal();
-        return DateFormat('MMM d, hh:mm a').format(dt);
+        return DateFormat('MMM d, h:mm a').format(dt);
       }
       return str;
     }
@@ -267,15 +270,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   IconData _getEmergencyIcon(dynamic req) => emergencyTypeStyle(req)['icon'] as IconData;
 
-  String _displayStatus(dynamic rawStatus) {
-    final s = (rawStatus ?? 'pending').toString().trim().toLowerCase();
-    if (s == 'pending' || s == 'accepted') return 'Pending';
-    if (s == 'dispatched' || s == 'en route' || s == 'en_route' || s == 'arrived' || s == 'active' || s == 'in_progress' || s == 'in progress') return 'En Route';
-    if (s == 'completed') return 'Completed';
-    if (s == 'cancelled' || s == 'declined' || s == 'denied') return 'Cancelled';
-    if (s == 'invalid') return 'Invalid';
-    return 'Pending';
-  }
+  String _displayStatus(dynamic rawStatus) => reportStatusLabel(rawStatus);
 
   bool _isIncidentForDepartment(dynamic req) => IncidentData.isForDepartment(req, widget.department);
 
@@ -292,24 +287,15 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       if (req is! Map) return false;
 
       final status = IncidentData.statusFor(req, widget.department, 'Pending');
-      final statusLow = status.toLowerCase();
 
       // Filter by selected Queue dropdown filter
-      if (_selectedQueueFilter == 'All') {
-        if (statusLow == 'cancelled' || statusLow == 'declined' || statusLow == 'completed' || statusLow == 'invalid') return false;
-      } else if (_selectedQueueFilter == 'Pending') {
-        if (statusLow != 'pending') return false;
-      } else if (_selectedQueueFilter == 'Accepted') {
-        if (statusLow != 'accepted') return false;
-      } else if (_selectedQueueFilter == 'Dispatched') {
-        if (statusLow != 'dispatched' && statusLow != 'en route' && statusLow != 'en_route' && statusLow != 'arrived' && statusLow != 'in_progress') return false;
-      } else if (_selectedQueueFilter == 'Completed') {
-        if (statusLow != 'completed') return false;
-      } else if (_selectedQueueFilter == 'Cancelled') {
-        if (statusLow != 'cancelled' && statusLow != 'declined') return false;
-      } else if (_selectedQueueFilter == 'Invalid') {
-        if (statusLow != 'invalid') return false;
-      }
+      final label = reportStatusLabel(status);
+      final shown = switch (_selectedQueueFilter) {
+        'All' => isOpenStatus(status),
+        'En Route' => label == 'En Route' || label == 'Arrived',
+        _ => label == _selectedQueueFilter,
+      };
+      if (!shown) return false;
 
       // Search query filter
       if (query.isNotEmpty) {
@@ -406,17 +392,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     return Map<String, dynamic>.from(match as Map);
   }
 
-  String _getVehicleStatus(Map<String, dynamic> v) {
-    final raw = (v['computed_status'] ?? v['status'] ?? v['Status'] ?? v['vehicleStatus'] ?? 'Offline').toString().trim();
-    final low = raw.toLowerCase();
-    if (low == 'available' || low == 'ready' || low == 'idle' || low == '1') {
-      return 'Available';
-    }
-    if (low == 'dispatched' || low == 'en route' || low == 'en_route' || low == 'busy' || low == 'in use' || low == 'in_progress') {
-      return 'Dispatched';
-    }
-    return 'Offline';
-  }
+  String _getVehicleStatus(Map<String, dynamic> v) => vehicleStatus(v);
 
   List<dynamic> get _filteredVehicles {
     final dept = widget.department.toUpperCase().trim();
@@ -498,6 +474,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     if (!await ensureSeverityRated(context, reqId) || !mounted) return;
     setState(() => _isActionInProgress = true);
     var failed = 0;
+    String? reason;
     for (final vehicleId in vehicleIds) {
       final res = await AdminService.dispatchVehicle(
         reqId: reqId,
@@ -505,11 +482,14 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         adminId: widget.adminId,
         department: widget.department,
       );
-      if (res == 'Failed to dispatch vehicle') failed++;
+      if (res != null && res.startsWith(AdminService.dispatchFailed)) {
+                failed++;
+                reason = res.contains(': ') ? res.split(': ').last : reason;
+              }
     }
     final message = failed == 0
         ? (vehicleIds.length == 1 ? 'Unit dispatched!' : '${vehicleIds.length} units dispatched!')
-        : '$failed of ${vehicleIds.length} units failed to dispatch';
+        : '$failed of ${vehicleIds.length} units failed to dispatch${reason == null ? '' : ' ($reason)'}';
     setState(() {
       _isActionInProgress = false;
       _selectedVehicleIds.clear();
@@ -519,7 +499,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: const Color(0xFFFF5C00),
+          backgroundColor: const Color(0xFFFF6B00),
         ),
       );
       await _fetchData(showLoading: false);
@@ -637,7 +617,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF5C00)),
+        child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
       );
     }
 
@@ -650,7 +630,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => _fetchData(),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5C00)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B00)),
               child: const Text('Retry', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -766,7 +746,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF5C00),
+                        color: Color(0xFFFF6B00),
                       ),
                     ),
                   ),
@@ -830,7 +810,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   // ==========================================
   Widget _buildCancelledRequestsColumn() {
     final tab = _bottomTabFilter;
-    final list = tab == 'Invalid' ? _invalidIncidentsForDept : tab == 'Cancelled' ? _cancelledIncidentsForDept : _completedIncidentsForDept;
+    final list = tab == 'Invalid' ? _invalidIncidentsForDept : tab == 'Declined' ? _cancelledIncidentsForDept : _completedIncidentsForDept;
     final containerBg = ClosedReportsTabs.panel(tab).bg;
     final containerBorder = ClosedReportsTabs.panel(tab).border;
 
@@ -967,28 +947,14 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final ts = ThemeService.instance;
 
     final displayStatusText = _displayStatus(status);
-    Color statusBg = ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD);
-    Color statusColor = ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFF856404);
-
-    if (displayStatusText == 'Pending') {
-      statusBg = ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD);
-      statusColor = ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFF856404);
-    } else if (displayStatusText == 'En Route') {
-      statusBg = ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEBF5FF);
-      statusColor = ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
-    } else if (displayStatusText == 'Completed') {
-      statusBg = ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7);
-      statusColor = ts.isDark ? const Color(0xFF6EE7B7) : const Color(0xFF16A34A);
-    } else if (displayStatusText == 'Cancelled') {
-      statusBg = ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFEE2E2);
-      statusColor = ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626);
-    }
+    final statusBg = statusBgColor(displayStatusText);
+    final statusColor = statusColorOf(displayStatusText);
 
     final cardBg = isSelected
         ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFF2F7FE))
         : (ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFFBFBFB));
     final cardBorder = isSelected
-        ? const Color(0xFFFF5C00)
+        ? const Color(0xFFFF6B00)
         : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
@@ -1010,7 +976,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           children: [
             Row(
               children: [
-                Icon(_getEmergencyIcon(type), size: 16, color: const Color(0xFFFF5C00)),
+                Icon(_getEmergencyIcon(type), size: 16, color: const Color(0xFFFF6B00)),
                 const SizedBox(width: 6),
                 Text(
                   reqIdStr,
@@ -1145,7 +1111,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.mic_rounded, size: 16, color: Color(0xFFFF5C00)),
+            const Icon(Icons.mic_rounded, size: 16, color: Color(0xFFFF6B00)),
             const SizedBox(width: 6),
             Text('Voice message', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary)),
           ]),
@@ -1248,7 +1214,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 ),
                 child: Row(
                   children: [
-                    Icon(_getEmergencyIcon(m.report), color: const Color(0xFFFF5C00), size: 20),
+                    Icon(_getEmergencyIcon(m.report), color: const Color(0xFFFF6B00), size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -1417,7 +1383,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFE0D1)),
                 ),
-                child: Icon(_getEmergencyIcon(type), color: const Color(0xFFFF5C00), size: 24),
+                child: Icon(_getEmergencyIcon(type), color: const Color(0xFFFF6B00), size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1602,7 +1568,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
           // Action Buttons
           if (_isActionInProgress)
-            const Center(child: CircularProgressIndicator(color: Color(0xFFFF5C00)))
+            const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
           else if (isPending && reqIdNum != 0)
             Column(
               children: [
@@ -1674,7 +1640,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5C00),
+                      backgroundColor: const Color(0xFFFF6B00),
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: ts.isDark ? const Color(0xFF1E293B) : Colors.grey.shade200,
                       disabledForegroundColor: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -1700,7 +1666,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5C00),
+                    backgroundColor: const Color(0xFFFF6B00),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1966,18 +1932,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     final statusStr = _getVehicleStatus(v);
     final isAvailable = statusStr == 'Available';
-    final isDispatched = statusStr == 'Dispatched';
-
-    Color dotColor = ts.textSecondary;
-    Color statusTextColor = ts.textSecondary;
-
-    if (isAvailable) {
-      dotColor = const Color(0xFF27AE60);
-      statusTextColor = const Color(0xFF27AE60);
-    } else if (isDispatched) {
-      dotColor = const Color(0xFFF2994A);
-      statusTextColor = const Color(0xFFF2994A);
-    }
+    final dotColor = statusColorOf(statusStr);
+    final statusTextColor = dotColor;
 
     return InkWell(
       onTap: isAvailable && vId != null
@@ -1997,7 +1953,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFFFF5C00)
+                ? const Color(0xFFFF6B00)
                 : ts.borderColor,
             width: isSelected ? 1.5 : 1,
           ),
@@ -2018,7 +1974,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   child: Icon(
                     Icons.directions_car,
                     size: 16,
-                    color: isSelected ? const Color(0xFFFF5C00) : const Color(0xFF0052CC),
+                    color: isSelected ? const Color(0xFFFF6B00) : const Color(0xFF0052CC),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -2030,7 +1986,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFFFF5C00) : const Color(0xFF2563EB),
+                        color: isSelected ? const Color(0xFFFF6B00) : const Color(0xFF2563EB),
                       ),
                     ),
                     Text(
@@ -2088,9 +2044,9 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ResqOption('All', 'All', icon: Icons.all_inclusive_rounded, color: const Color(0xFFFF6B00)),
         ResqOption('Pending', 'Pending', icon: Icons.schedule_rounded, color: const Color(0xFFF59E0B)),
         ResqOption('Accepted', 'Accepted', icon: Icons.thumb_up_alt_rounded, color: const Color(0xFF0EA5E9)),
-        ResqOption('Dispatched', 'Dispatched', icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB)),
+        ResqOption('En Route', 'En Route', icon: Icons.local_shipping_rounded, color: statusColorOf('En Route')),
         ResqOption('Completed', 'Completed', icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
-        ResqOption('Cancelled', 'Cancelled', icon: Icons.cancel_rounded, color: const Color(0xFFEF4444)),
+        ResqOption('Declined', 'Declined', icon: Icons.cancel_rounded, color: statusColorOf('Declined')),
         ResqOption('Invalid', 'Invalid (prank)', icon: Icons.gpp_bad_rounded, color: const Color(0xFF7C3AED)),
           ],
         ),
@@ -2098,3 +2054,5 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
 
 }
+
+Color statusColorOf(String status) => status_style.statusColor(status);

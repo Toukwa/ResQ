@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// The logo's orange, used for the "ResQ" name wherever it appears.
-const resqOrange = Color(0xFFFF7A14);
+const resqOrange = Color(0xFFFF6B00);
 
 /// [text] with every "ResQ" coloured [resqOrange]; the rest keeps [style].
 class ResqText extends StatelessWidget {

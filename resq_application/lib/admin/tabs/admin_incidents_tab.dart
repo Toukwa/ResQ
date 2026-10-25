@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../shared/status_style.dart';
 import '../../shared/incident_details_dialog.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/live_socket.dart' as io;
@@ -116,7 +117,11 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
       final mine = IncidentData.normalizeDepartment(widget.department);
       final newRecords = (incidents ?? [])
           .where((incident) => mine == 'ALL' || _agenciesOn(incident as Map).contains(mine))
-          .map((incident) => EmergencyRequestModel.fromMap(incident))
+          // Each agency sees its own status on a report (others on it move on their own)
+          .map((incident) => EmergencyRequestModel.fromMap({
+                ...Map<String, dynamic>.from(incident as Map),
+                'reqStatus': IncidentData.statusFor(incident, widget.department),
+              }))
           .toList();
       
       if (mounted) {
@@ -150,26 +155,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
     final query = widget.searchFilter.toLowerCase();
 
     return _databaseRecords.where((incident) {
-      if (_selectedStatus != "All") {
-        final reqStatus = incident.reqStatus.toLowerCase().trim();
-        final normalizedFilter = _selectedStatus.toLowerCase().trim();
-        
-        if (normalizedFilter == 'pending') {
-          if (reqStatus != 'pending' && reqStatus != 'accepted') return false;
-        } else if (normalizedFilter == 'en route') {
-          if (reqStatus != 'en route' && reqStatus != 'en_route' && reqStatus != 'active' && reqStatus != 'arrived' && reqStatus != 'dispatched' && reqStatus != 'in_progress' && reqStatus != 'in progress') {
-            return false;
-          }
-        } else if (normalizedFilter == 'declined' || normalizedFilter == 'cancelled') {
-          if (reqStatus != 'declined' && reqStatus != 'denied' && reqStatus != 'cancelled') {
-            return false;
-          }
-        } else if (normalizedFilter == 'completed') {
-          if (reqStatus != 'completed') return false;
-        } else if (reqStatus != normalizedFilter) {
-          return false;
-        }
-      }
+      if (_selectedStatus != "All" && reportStatusLabel(incident.reqStatus) != _selectedStatus) return false;
 
       if (query.isNotEmpty) {
         final matchesTitle = incident.incType.toLowerCase().contains(query);
@@ -189,26 +175,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
 
   int _countStatus(String status) {
     if (status == "All") return _databaseRecords.length;
-    
-    final normalizedStatus = status.toLowerCase().trim();
-    return _databaseRecords
-        .where((r) {
-          final reqStatus = r.reqStatus.toLowerCase().trim();
-          if (normalizedStatus == 'pending') {
-            return reqStatus == 'pending' || reqStatus == 'accepted';
-          }
-          if (normalizedStatus == 'en route') {
-            return reqStatus == 'en route' || reqStatus == 'en_route' || reqStatus == 'active' || reqStatus == 'arrived' || reqStatus == 'dispatched' || reqStatus == 'in_progress' || reqStatus == 'in progress';
-          }
-          if (normalizedStatus == 'completed') {
-            return reqStatus == 'completed';
-          }
-          if (normalizedStatus == 'declined' || normalizedStatus == 'cancelled') {
-            return reqStatus == 'declined' || reqStatus == 'denied' || reqStatus == 'cancelled';
-          }
-          return reqStatus == normalizedStatus;
-        })
-        .length;
+    return _databaseRecords.where((r) => reportStatusLabel(r.reqStatus) == status).length;
   }
 
   @override
@@ -346,10 +313,12 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                       children: [
                         _buildStatusPill("All", _countStatus("All"), 0),
                         _buildStatusPill("Pending", _countStatus("Pending"), 1),
-                        _buildStatusPill("En Route", _countStatus("En Route"), 2),
-                        _buildStatusPill("Completed", _countStatus("Completed"), 3),
-                        _buildStatusPill("Declined", _countStatus("Declined"), 4),
-                        _buildStatusPill("Invalid", _countStatus("Invalid"), 5),
+                        _buildStatusPill("Accepted", _countStatus("Accepted"), 2),
+                        _buildStatusPill("En Route", _countStatus("En Route"), 3),
+                        _buildStatusPill("Arrived", _countStatus("Arrived"), 4),
+                        _buildStatusPill("Completed", _countStatus("Completed"), 5),
+                        _buildStatusPill("Declined", _countStatus("Declined"), 6),
+                        _buildStatusPill("Invalid", _countStatus("Invalid"), 7),
                       ],
                     ),
                   ),

@@ -87,7 +87,7 @@ class _EocHeaderState extends State<EocHeader> {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    return DateFormat('hh:mm:ss a').format(dateTime);
+    return DateFormat('h:mm:ss a').format(dateTime);
   }
 
   String _getInitials(String name) {
@@ -240,7 +240,7 @@ class _EocHeaderState extends State<EocHeader> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFF5200),
+                        color: Color(0xFFFF6B00),
                         shape: BoxShape.circle,
                       ),
                       constraints: const BoxConstraints(

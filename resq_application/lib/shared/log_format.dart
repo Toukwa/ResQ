@@ -71,7 +71,7 @@ Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log) {
       'raw': Map<String, dynamic>.from(log),
       'status': status,
       'requestId': log['entity_id']?.toString() ?? 'N/A',
-      'time': DateFormat('hh:mm a').format(parsedTime),
+      'time': DateFormat('h:mm a').format(parsedTime),
       'date': DateFormat('yyyy-MM-dd').format(parsedTime),
       'timestamp': parsedTime.toIso8601String(),
       'source': "Real-time Audit Stream",

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'status_style.dart';
 
-import '../services/theme_service.dart';
 
 /// One report as the Incident Log screens (Admin and Super Admin) show it.
 class EmergencyRequestModel {
@@ -297,67 +297,9 @@ extension EmergencyRequestDisplay on EmergencyRequestModel {
   }
 }
 
-/// Maps raw DB status to a user-facing display label.
-/// 'Arrived', 'En_Route', 'Active' → 'En Route'.
-String displayIncidentStatus(String rawStatus) {
-  final s = rawStatus.toLowerCase().trim();
-  if (s == 'pending' || s == 'accepted') return 'Pending';
-  const enRoute = {'dispatched', 'en route', 'en_route', 'arrived', 'active', 'in_progress', 'in progress'};
-  if (enRoute.contains(s)) return 'En Route';
-  if (s == 'completed') return 'Completed';
-  if (s == 'denied' || s == 'declined' || s == 'cancelled') return 'Cancelled';
-  if (s == 'invalid') return 'Invalid';
-  return 'Pending';
-}
+/// Maps raw DB status to a user-facing display label (see status_style.dart).
+String displayIncidentStatus(String rawStatus) => reportStatusLabel(rawStatus);
 
-Color incidentStatusColor(String status) {
-  final ts = ThemeService.instance;
-  final normalizedStatus = status.toLowerCase().trim();
-  switch (normalizedStatus) {
-    case 'pending':
-    case 'accepted':
-      return ts.isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706);
-    case 'en route':
-    case 'en_route':
-    case 'active':
-    case 'arrived':
-    case 'dispatched':
-    case 'in_progress':
-    case 'in progress':
-      return ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
-    case 'completed':
-      return ts.isDark ? const Color(0xFF6EE7B7) : const Color(0xFF16A34A);
-    case 'denied':
-    case 'declined':
-    case 'cancelled':
-      return ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEF4444);
-    default:
-      return ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-  }
-}
+Color incidentStatusColor(String status) => statusColor(status);
 
-Color incidentStatusBgColor(String status) {
-  final ts = ThemeService.instance;
-  final normalizedStatus = status.toLowerCase().trim();
-  switch (normalizedStatus) {
-    case 'pending':
-    case 'accepted':
-      return ts.isDark ? const Color(0xFF451A03) : const Color(0xFFFFF3CD);
-    case 'en route':
-    case 'en_route':
-    case 'active':
-    case 'arrived':
-    case 'dispatched':
-    case 'in_progress':
-    case 'in progress':
-      return ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEBF5FF);
-    case 'completed':
-      return ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7);
-    case 'denied':
-    case 'declined':
-    case 'cancelled':
-      return ts.isDark ? const Color(0xFF4C1D24) : const Color(0xFFFEE2E2);
-    default:
-      return ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-  }
-}
+Color incidentStatusBgColor(String status) => statusBgColor(status);

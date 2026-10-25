@@ -8,6 +8,7 @@ import 'shared/google_logo.dart';
 import 'shared/iriga_address.dart';
 import 'shared/resq_logo.dart';
 import 'services/password_policy.dart';
+import 'services/phone_policy.dart';
 import 'shared/resq_toast.dart';
 import 'shared/terms.dart';
 
@@ -44,10 +45,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // Master execution logic handler to write data into XAMPP via Node.js
   Future<void> _processAccountRegistration() async {
     final String fullName = _nameController.text.trim();
-    final String contactNo = _phoneController.text.trim();
+    final String contactNo = PhonePolicy.normalize(_phoneController.text) ?? _phoneController.text.trim();
     final String email = _emailController.text.trim();
     final String password = _passwordController.text;
     final String confirmPassword = _confirmPasswordController.text;
@@ -60,6 +60,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email.isEmpty ||
         password.isEmpty) {
       _showFeedbackMessage('Please fill out all fields completely.');
+      return;
+    }
+
+    // Responders call this number, so it must be a real mobile number
+    final phoneError = PhonePolicy.check(contactNo);
+    if (phoneError != null) {
+      _showFeedbackMessage(phoneError);
       return;
     }
 

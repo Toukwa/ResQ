@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../shared/status_style.dart';
 import '../shared/assigning_animation.dart';
 import '../shared/image_gallery_widget.dart';
 import '../shared/incident_format.dart';
@@ -45,7 +46,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     super.initState();
     _displayEmergency = widget.emergencyTypes.isNotEmpty ? widget.emergencyTypes : "General Emergency";
     _fetchIncidentDetails();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _fetchIncidentDetails();
     });
   }
@@ -150,12 +151,12 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
     try {
       final dt = DateTime.parse(str).toLocal();
-      return DateFormat('hh:mm a').format(dt);
+      return DateFormat('h:mm a').format(dt);
     } catch (_) {
       final ms = int.tryParse(str);
       if (ms != null) {
         final dt = DateTime.fromMillisecondsSinceEpoch(ms > 10000000000 ? ms : ms * 1000).toLocal();
-        return DateFormat('hh:mm a').format(dt);
+        return DateFormat('h:mm a').format(dt);
       }
     }
 
@@ -200,6 +201,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
   /// The top banner shows the furthest any agency has got.
   int get _headerIndex {
+    // A closed report says so at the top instead of falling back to "Sent"
+    final overall = reportStatusLabel(_currentStatus);
+    if (overall == 'Invalid') return -2;
+    if (overall == 'Declined') return -1;
     final active = _deptStatuses.where((d) => !_isDeclined(d.status));
     if (active.isEmpty) return _getStatusIndex(_currentStatus);
     return active.map((d) => _getStatusIndex(d.status)).reduce((a, b) => a > b ? a : b);
@@ -627,52 +632,21 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
 
   Widget _buildStatusHeaderCard(String ticketId, int currentIndex) {
     final ts = ThemeService.instance;
-    Color bg = const Color(0xFFECFDF5);
-    Color border = const Color(0xFFA7F3D0);
-    Color badgeColor = const Color(0xFF10B981);
-    Color titleColor = const Color(0xFF065F46);
-    Color subtitleColor = const Color(0xFF047857);
-    IconData iconData = Icons.check_rounded;
-    String title = "Emergency Alert Sent!";
-    String subtitle = "Responders are being dispatched to you";
-
-    if (currentIndex == 1) {
-      bg = const Color(0xFFEFF6FF);
-      border = const Color(0xFFBFDBFE);
-      badgeColor = const Color(0xFF2563EB);
-      titleColor = const Color(0xFF1E40AF);
-      subtitleColor = const Color(0xFF1D4ED8);
-      iconData = Icons.rule_folder_outlined;
-      title = "Alert Acknowledged!";
-      subtitle = "Dispatchers have received and acknowledged your request";
-    } else if (currentIndex == 2) {
-      bg = const Color(0xFFFFF7ED);
-      border = const Color(0xFFFED7AA);
-      badgeColor = const Color(0xFFFF6B00);
-      titleColor = const Color(0xFFC2410C);
-      subtitleColor = const Color(0xFFEA580C);
-      iconData = Icons.near_me_rounded;
-      title = "Responders En Route!";
-      subtitle = "Response vehicle is currently heading to your location";
-    } else if (currentIndex == 3) {
-      bg = const Color(0xFFF5F3FF);
-      border = const Color(0xFFDDD6FE);
-      badgeColor = const Color(0xFF8B5CF6);
-      titleColor = const Color(0xFF5B21B6);
-      subtitleColor = const Color(0xFF6D28D9);
-      iconData = Icons.place_rounded;
-      title = "Responders Have Arrived";
-      subtitle = "The response unit is at your location";
-    } else if (currentIndex == 4) {
-      bg = const Color(0xFFECFDF5);
-      border = const Color(0xFFA7F3D0);
-      badgeColor = const Color(0xFF10B981);
-      titleColor = const Color(0xFF065F46);
-      subtitleColor = const Color(0xFF047857);
-      iconData = Icons.task_alt_rounded;
-      title = "Incident Completed";
-      subtitle = "Response unit has resolved the emergency";
-    }
+    // -2 Invalid · -1 Declined · 0 Sent · 1 Accepted · 2 En route · 3 Arrived · 4 Completed
+    final (String label, IconData iconData, String title, String subtitle) = switch (currentIndex) {
+      -2 => ('Invalid', Icons.gpp_bad_rounded, 'Report Marked Invalid', 'Responders found this report was not a real emergency'),
+      -1 => ('Declined', Icons.cancel_rounded, 'Report Declined', 'No agency is responding. Call an agency if you still need help'),
+      1 => ('Accepted', Icons.rule_folder_outlined, 'Alert Acknowledged!', 'Dispatchers have received and acknowledged your request'),
+      2 => ('En Route', Icons.near_me_rounded, 'Responders En Route!', 'Response vehicle is currently heading to your location'),
+      3 => ('Arrived', Icons.place_rounded, 'Responders Have Arrived', 'The response unit is at your location'),
+      4 => ('Completed', Icons.task_alt_rounded, 'Incident Completed', 'Response unit has resolved the emergency'),
+      _ => ('Pending', Icons.check_rounded, 'Emergency Alert Sent!', 'Your report is waiting for an agency to respond'),
+    };
+    final badgeColor = statusColor(label);
+    var bg = statusBgColor(label);
+    var border = badgeColor.withValues(alpha: 0.4);
+    var titleColor = Color.lerp(badgeColor, Colors.black, 0.35)!;
+    var subtitleColor = badgeColor;
 
     // Dark mode: a deep tint of the status colour with a brighter border, and light text
     if (ts.isDark) {

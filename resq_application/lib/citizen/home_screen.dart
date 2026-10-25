@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../shared/status_style.dart';
 import '../shared/display_settings.dart';
 import '../shared/evidence_camera.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -36,7 +37,10 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
   final String incidentStatus;
   final VoidCallback? onTap;
 
-  const HelpIsOnTheWayBanner({super.key, this.vehicleCode = "BFP-001", this.incidentStatus = "Pending", this.onTap});
+  const HelpIsOnTheWayBanner({super.key, this.vehicleCode = '', this.incidentStatus = "Pending", this.onTap});
+
+  /// Help is only "on the way" once a unit has been sent.
+  bool get _unitSent => const ['En Route', 'Arrived'].contains(reportStatusLabel(incidentStatus));
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +72,17 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
             const SizedBox(width: 12),
 
             // 2. Middle Text Info
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    "Help is on the way!",
+                    _unitSent
+                        ? (vehicleCode.isEmpty ? 'Help is on the way!' : 'Help is on the way: $vehicleCode')
+                        : reportStatusLabel(incidentStatus) == 'Accepted'
+                            ? 'Your report was accepted.'
+                            : 'Report sent. Waiting for an agency.',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -82,8 +90,8 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
                       letterSpacing: -0.2,
                     ),
                   ),
-                  SizedBox(height: 1),
-                  Text(
+                  const SizedBox(height: 1),
+                  const Text(
                     'You can send a new report once this one is closed.',
                     style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w400, height: 1.3),
                   ),
@@ -106,7 +114,7 @@ class HelpIsOnTheWayBanner extends StatelessWidget {
                   const _BlinkingDot(color: Colors.white, size: 7),
                   const SizedBox(width: 6),
                   Text(
-                    incidentStatus,
+                    reportStatusLabel(incidentStatus),
                     style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
                   ),
                 ],
@@ -204,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Timer? _activeCheckTimer;
   Map<String, dynamic>? _activeIncident;
   List<dynamic> _dispatchedVehicles = [];
-  String _activeVehicleCode = "BFP-001";
+  String _activeVehicleCode = '';
   String _activeStatusStr = "Pending";
 
   bool get _hasActiveIncident => _activeIncident != null;
@@ -243,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _loadTheme();
     _showWelcomeOnce();
     _checkPrankWarning();
-    _warningTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkPrankWarning());
+    _warningTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkPrankWarning());
     _descriptionController.addListener(() => setState(() {}));
 
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
@@ -255,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ).animate(CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut));
 
     _checkActiveIncident();
-    _activeCheckTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _activeCheckTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _checkActiveIncident();
     });
 
@@ -302,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ? p.toString()
                   : ((vt != null && vt.toString().isNotEmpty) ? vt.toString() : "Unit Dispatched");
             } else {
-              _activeVehicleCode = "BFP-001";
+              _activeVehicleCode = '';
             }
           });
           // Lock pin to reported active incident coordinates
@@ -575,10 +583,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 if (!_hasActiveIncident)
                   TextButton.icon(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.check_circle_rounded, color: Color(0xFFFF5200)),
+                    icon: const Icon(Icons.check_circle_rounded, color: Color(0xFFFF6B00)),
                     label: const Text(
                       "Confirm Location",
-                      style: TextStyle(color: Color(0xFFFF5200), fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.bold),
                     ),
                   ),
               ],
@@ -634,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             }
                             setDialogState(() {});
                           },
-                          icon: const Icon(Icons.my_location_rounded, color: Color(0xFFFF5200)),
+                          icon: const Icon(Icons.my_location_rounded, color: Color(0xFFFF6B00)),
                           label: const Text("My GPS Location", style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -892,7 +900,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
         actionsPadding: const EdgeInsets.all(24),
@@ -1272,7 +1279,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: ts.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
         content: Column(
           mainAxisSize: MainAxisSize.min,

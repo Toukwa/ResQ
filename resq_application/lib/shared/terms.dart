@@ -488,7 +488,6 @@ Future<bool> showTermsAcceptanceDialog(BuildContext context, {DateTime? birthdat
         return AlertDialog(
           backgroundColor: ts.cardBackground,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
           content: SingleChildScrollView(
             child: Column(

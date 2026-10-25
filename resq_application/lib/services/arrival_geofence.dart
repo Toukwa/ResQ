@@ -9,7 +9,7 @@ typedef NearbyUnit = ({String plate, int meters});
 /// them as arrived by itself: the admin confirms (GPS can be off by a few metres,
 /// and a unit can drive past without stopping).
 class ArrivalGeofence {
-  static const radiusMeters = 50;
+  static const radiusMeters = 100;
   static const _distance = Distance();
 
   /// [department]'s units dispatched to [incident] that are within [radiusMeters] of it.

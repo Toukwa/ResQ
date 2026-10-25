@@ -116,7 +116,6 @@ class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
     return AlertDialog(
       backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       actionsPadding: const EdgeInsets.all(24),

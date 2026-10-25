@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../services/firebase_services.dart';
 
 class AdminService {
@@ -29,6 +30,8 @@ class AdminService {
     return await FirebaseService.searchIncidents(query);
   }
 
+  static const dispatchFailed = 'Failed to dispatch vehicle';
+
   static Future<String?> dispatchVehicle({
     required int reqId,
     required int vehicleId,
@@ -44,8 +47,9 @@ class AdminService {
         department: department,
         help: help,
       );
-    } catch (_) {
-      return 'Failed to dispatch vehicle';
+    } catch (e) {
+      // Keep the reason (e.g. "Vehicle is not available.") so the admin knows what went wrong
+      return '$dispatchFailed${e is HttpException ? ': ${e.message}' : ''}';
     }
   }
 

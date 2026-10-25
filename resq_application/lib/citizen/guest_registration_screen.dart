@@ -100,7 +100,6 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
       builder: (c) => AlertDialog(
         backgroundColor: ThemeService.instance.cardBackground,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
         actionsPadding: const EdgeInsets.all(24),

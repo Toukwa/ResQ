@@ -1,6 +1,7 @@
 import '../services/theme_service.dart';
 import 'package:flutter/material.dart';
 import 'map_pin.dart';
+import 'status_style.dart';
 import '../services/incident_data.dart';
 
 String formatTimeAgo(DateTime timestamp) {
@@ -60,7 +61,7 @@ Color departmentBadgeColor(String dept) {
       // General Emergency: the EOC decides who responds
       'EOC' => (icon: Icons.support_agent_rounded, color: const Color(0xFFFF6B00), bgColor: themedBg(const Color(0xFFFFEDD5))),
       // Several agencies on one report
-      _ => (icon: Icons.priority_high_rounded, color: const Color(0xFFF97316), bgColor: themedBg(const Color(0xFFFFEDD5))),
+      _ => (icon: Icons.priority_high_rounded, color: const Color(0xFFFF6B00), bgColor: themedBg(const Color(0xFFFFEDD5))),
     };
 
 /// Incident severity, set by the EOC (Super Admin) before assigning: most to least serious.
@@ -176,12 +177,5 @@ class _IncidentRingMarkerState extends State<IncidentRingMarker> with SingleTick
   }
 }
 
-String formatStatus(String? rawStatus) {
-  if (rawStatus == null) return 'Unknown';
-  final s = rawStatus.trim().toLowerCase();
-  if (s == 'en route' || s == 'en_route') return 'En Route';
-  if (s == 'declined' || s == 'denied') return 'Declined';
-  if (s == 'invalid') return 'Invalid';
-  return rawStatus;
-}
+String formatStatus(String? rawStatus) => rawStatus == null ? 'Unknown' : reportStatusLabel(rawStatus);
 

@@ -73,7 +73,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     super.initState();
     _setupBufferedStream();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 10),
+      const Duration(seconds: 60), // live events refresh it sooner
       (_) => _loadActivityLogs(showLoading: false, forceFullLoad: false),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -230,7 +230,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF5200)),
+                      const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF6B00)),
                       const SizedBox(width: 8),
                       Text(
                         'Export Audit Package (PDF + Photos)',
@@ -289,7 +289,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.calendar_today_rounded, size: 18, color: Color(0xFFFF5200)),
+                              const Icon(Icons.calendar_today_rounded, size: 18, color: Color(0xFFFF6B00)),
                               const SizedBox(width: 12),
                               Text(
                                 DateFormat('EEEE, MMMM d, yyyy').format(selectedExportDate),
@@ -322,7 +322,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF5200),
+                            backgroundColor: const Color(0xFFFF6B00),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -422,7 +422,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     if (mounted && showLoading && !_isLoading) setState(() => _isLoading = true);
 
     try {
-      final limit = forceFullLoad ? 100 : 50;
+      final limit = forceFullLoad ? 500 : 300;
       final rawLogs = await AdminService.getActivityLogs(limit: limit);
 
       if (mounted && rawLogs != null) {
@@ -487,6 +487,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
 
           parsedEvents.add({
             'id': log['log_id'],
+            'dept': log['dept'],
             'title': actorDisplay,
             'type': action,
             'category': entityType,
@@ -494,7 +495,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
             'raw': Map<String, dynamic>.from(log),
             'status': status,
             'requestId': log['entity_id']?.toString() ?? 'N/A',
-            'time': DateFormat('hh:mm a').format(parsedTime),
+            'time': DateFormat('h:mm a').format(parsedTime),
             'date': DateFormat('yyyy-MM-dd').format(parsedTime),
             'timestamp': parsedTime.toIso8601String(),
             'source': "Audit Database Engine",
@@ -828,7 +829,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFFF5200),
+        color: const Color(0xFFFF6B00),
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
@@ -915,13 +916,13 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFFFF5200) : (ts.isDark ? const Color(0xFFE2E8F0) : ts.textPrimary),
+                                  color: isSelected ? const Color(0xFFFF6B00) : (ts.isDark ? const Color(0xFFE2E8F0) : ts.textPrimary),
                                 ),
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFFFF5200) : (ts.isDark ? const Color(0xFF334155) : ts.inputBackground),
+                                  color: isSelected ? const Color(0xFFFF6B00) : (ts.isDark ? const Color(0xFF334155) : ts.inputBackground),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
@@ -1051,7 +1052,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                             color: ts.inputBackground,
                           ),
                           child: Text(
-                            _startDate != null ? DateFormat('MM/dd/yyyy').format(_startDate!) : "Start Date",
+                            _startDate != null ? DateFormat('MMM d, yyyy').format(_startDate!) : "Start Date",
                             style: TextStyle(fontSize: 11, color: _startDate != null ? ts.textPrimary : ts.textSecondary),
                           ),
                         ),
@@ -1069,7 +1070,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                             color: ts.inputBackground,
                           ),
                           child: Text(
-                            _endDate != null ? DateFormat('MM/dd/yyyy').format(_endDate!) : "End Date",
+                            _endDate != null ? DateFormat('MMM d, yyyy').format(_endDate!) : "End Date",
                             style: TextStyle(fontSize: 11, color: _endDate != null ? ts.textPrimary : ts.textSecondary),
                           ),
                         ),
@@ -1368,7 +1369,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _currentPage > 1 ? const Color(0xFFFF5200) : const Color(0xFFE2E8F0),
+                    color: _currentPage > 1 ? const Color(0xFFFF6B00) : const Color(0xFFE2E8F0),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -1403,9 +1404,9 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            color: isCurrentPage ? const Color(0xFFFF5200) : Colors.white,
+                            color: isCurrentPage ? const Color(0xFFFF6B00) : Colors.white,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: isCurrentPage ? const Color(0xFFFF5200) : const Color(0xFFE2E8F0)),
+                            border: Border.all(color: isCurrentPage ? const Color(0xFFFF6B00) : const Color(0xFFE2E8F0)),
                           ),
                           child: Center(
                             child: Text(
@@ -1443,7 +1444,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _currentPage < _totalPages ? const Color(0xFFFF5200) : const Color(0xFFE2E8F0),
+                    color: _currentPage < _totalPages ? const Color(0xFFFF6B00) : const Color(0xFFE2E8F0),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

@@ -11,7 +11,7 @@ import 'report_data.dart';
 /// The analytics package: a PDF report with charts and tables, plus the same
 /// figures as CSV, zipped like the audit log package.
 class ReportPdf {
-  static final _orange = PdfColor.fromHex('#FF5200');
+  static final _orange = PdfColor.fromHex('#FF6B00');
   static final _grey = PdfColor.fromHex('#64748B');
   static final _dark = PdfColor.fromHex('#1E293B');
   static final _line = PdfColor.fromHex('#E2E8F0');
@@ -28,7 +28,7 @@ class ReportPdf {
   static final _outcomeColors = {
     'Completed': PdfColor.fromHex('#10B981'),
     'Open': PdfColor.fromHex('#F59E0B'),
-    'Declined / Cancelled': PdfColor.fromHex('#EF4444'),
+    'Declined': PdfColor.fromHex('#EF4444'),
   };
 
   static final _day = DateFormat('yyyy-MM-dd');
@@ -49,7 +49,7 @@ class ReportPdf {
 
   static Future<List<int>> build(Report r) async {
     final doc = pw.Document(title: 'ResQ Analytics Report', author: 'ResQ');
-    final period = '${DateFormat('MMMM d, yyyy').format(r.from)} - ${DateFormat('MMMM d, yyyy').format(r.to)}';
+    final period = '${DateFormat('MMM d, yyyy').format(r.from)} - ${DateFormat('MMM d, yyyy').format(r.to)}';
 
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
@@ -63,7 +63,7 @@ class ReportPdf {
       footer: (ctx) => pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text('Generated ${DateFormat('M/d/yyyy, h:mm a').format(DateTime.now())}',
+          pw.Text('Generated ${DateFormat('MMM d, yyyy h:mm a').format(DateTime.now())}',
               style: pw.TextStyle(color: _grey, fontSize: 8)),
           pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: pw.TextStyle(color: _grey, fontSize: 8)),
         ],

@@ -149,10 +149,10 @@ class _LogDetailsPanelState extends State<LogDetailsPanel> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                    size: 16, color: const Color(0xFFFF5200)),
+                    size: 16, color: const Color(0xFFFF6B00)),
                 const SizedBox(width: 2),
                 Text(_open ? 'Hide details' : 'Show details',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFFF5200))),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFFF6B00))),
               ],
             ),
           ),

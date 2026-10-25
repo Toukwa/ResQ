@@ -174,7 +174,8 @@ class FirebaseService {
 
     final settings = await Rtdb.get('user_settings/$uid');
     final mfaSetting = settings is Map ? settings['mfa_enabled'] : null;
-    final mfaEnabled = mfaSetting != false && mfaSetting != 0;
+    // Agency admins always get the code; only citizens and the EOC may turn it off
+    final mfaEnabled = user['role'] == 'Admin' || (mfaSetting != false && mfaSetting != 0);
 
     // The email code is asked at sign-up, on a phone that hasn't passed it for this
     // account yet, and after a week without logging in

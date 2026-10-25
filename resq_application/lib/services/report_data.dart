@@ -52,7 +52,9 @@ class ReportData {
       final inc = incidents[_int(d['Req_ID'])];
       final sent = _time(d['Dispatch_timeStamp']);
       if (inc == null || sent == null) continue;
-      final dDept = vehicleDept(d['Vehicle_ID']) ?? 'Unassigned';
+      // Saved on newer dispatches; older ones fall back to the vehicle's current agency
+      final saved = d['dept']?.toString() ?? '';
+      final dDept = saved.isNotEmpty && saved != 'ALL' ? saved : vehicleDept(d['Vehicle_ID']) ?? 'Unassigned';
       if (dept != 'ALL' && dDept != dept) continue;
       final dispatch = _Dispatch(d, sent, _time(d['Completed_timeStamp']), dDept);
       dispatches.add(dispatch);
@@ -230,7 +232,7 @@ class Report {
       '${totalIncidents - count(all, 'completed') - count(all, 'declined') - count(all, 'cancelled') - count(all, 'invalid')}',
       '${count(all, 'declined') + count(all, 'cancelled')}',
     ]);
-    return ReportTable('Emergency Count', ['Incident Type', 'Total', 'Completed', 'Open', 'Declined / Cancelled'], rows);
+    return ReportTable('Emergency Count', ['Incident Type', 'Total', 'Completed', 'Open', 'Declined'], rows);
   }
 
   /// FT-AR-03: report-to-dispatch and dispatch-to-completion time per incident.
@@ -462,13 +464,13 @@ class Report {
 
   /// Incidents grouped as Completed / Open / Declined or Cancelled.
   Map<String, int> get countsByOutcome {
-    final m = {'Completed': 0, 'Open': 0, 'Declined / Cancelled': 0, 'Invalid (prank)': 0};
+    final m = {'Completed': 0, 'Open': 0, 'Declined': 0, 'Invalid (prank)': 0};
     for (final i in _incidents) {
       final s = i.status.toLowerCase();
       final key = s == 'completed'
           ? 'Completed'
           : (s == 'declined' || s == 'cancelled')
-              ? 'Declined / Cancelled'
+              ? 'Declined'
               : s == 'invalid'
                   ? 'Invalid (prank)'
                   : 'Open';

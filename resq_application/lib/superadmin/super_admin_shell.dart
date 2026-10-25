@@ -19,8 +19,8 @@ import '../shared/reports_screen.dart';
 import '../services/sound_service.dart';
 import '../shared/tab_activity.dart';
 import '../shared/display_settings.dart';
-import '../shared/incident_format.dart';
 import '../shared/resq_toast.dart';
+import '../shared/session_timeout_guard.dart';
 
 class SuperAdminShell extends StatefulWidget {
   final bool isSuperAdmin;
@@ -50,11 +50,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
   Timer? _pollingTimer;
 
   // Session Timeout & Auto-Logout Inactivity Tracking State
-  Timer? _inactivityTimer;
   Timer? _settingsTimer;
-  bool _autoLogoutEnabled = true;
-  Duration _sessionTimeoutDuration = const Duration(minutes: 15);
-  bool _isLoggingOut = false;
 
   // Effective Admin User ID (defaults to 13 for SuperAdmin if not passed)
   int get _effectiveUserId => widget.userId ?? 13;
@@ -68,22 +64,21 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     _loadNotifications();
     _initWebSocket();
     TabActivity.enabled.addListener(_onTabDotsSetting);
-    _loadUserSettingsAndInitInactivityTimer();
+    _loadUserSettings();
     
     // Periodic fallback polling for notifications (every 10 seconds)
-    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadNotifications();
     });
 
     // Periodic check for settings updates (every 5 seconds)
-    _settingsTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _loadUserSettingsAndInitInactivityTimer();
+    _settingsTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _loadUserSettings();
     });
   }
 
-  DateTime _lastInteractionTime = DateTime.now();
 
-  Future<void> _loadUserSettingsAndInitInactivityTimer() async {
+  Future<void> _loadUserSettings() async {
     try {
       final settings = await AdminService.getUserSettings(_effectiveUserId);
       SoundService.start(soundsOn: '${settings?['sound_alerts']}' != '0');
@@ -94,107 +89,8 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
         if (settings['theme_mode'] != null) {
           ThemeService.instance.setThemeMode(settings['theme_mode'].toString());
         }
-        final autoLogout = toBool(settings['auto_logout'], defaultValue: true);
-        final timeoutStr = (settings['session_timeout'] as String?) ?? '15 min';
-        final duration = _parseTimeoutDuration(timeoutStr);
-
-        final changed = _autoLogoutEnabled != autoLogout || _sessionTimeoutDuration != duration;
-
-        setState(() {
-          _autoLogoutEnabled = autoLogout;
-          _sessionTimeoutDuration = duration;
-        });
-
-        if (_inactivityTimer == null || changed) {
-          _resetInactivityTimer();
-        }
-      } else if (_inactivityTimer == null && mounted) {
-        _resetInactivityTimer();
       }
-    } catch (_) {
-      if (_inactivityTimer == null && mounted) {
-        _resetInactivityTimer();
-      }
-    }
-  }
-
-  Duration _parseTimeoutDuration(String str) {
-    final s = str.toLowerCase().trim();
-    if (s.contains('30 sec')) return const Duration(seconds: 30);
-    if (s.contains('1 min')) return const Duration(minutes: 1);
-    if (s.contains('5 min')) return const Duration(minutes: 5);
-    if (s.contains('15 min')) return const Duration(minutes: 15);
-    if (s.contains('30 min')) return const Duration(minutes: 30);
-    if (s.contains('1 hour') || s.contains('1 hr')) return const Duration(hours: 1);
-    if (s.contains('2 hour') || s.contains('2 hr')) return const Duration(hours: 2);
-    return const Duration(minutes: 15);
-  }
-
-
-  void _resetInactivityTimer() {
-    _inactivityTimer?.cancel();
-    if (!_autoLogoutEnabled || _isLoggingOut) return;
-    _inactivityTimer = Timer(_sessionTimeoutDuration, _handleSessionTimeout);
-  }
-
-  void _handleUserInteraction() {
-    if (!_autoLogoutEnabled || _isLoggingOut) return;
-    
-    final now = DateTime.now();
-    if (now.difference(_lastInteractionTime).inMilliseconds >= 1000 || _inactivityTimer == null) {
-      _lastInteractionTime = now;
-      _resetInactivityTimer();
-    }
-  }
-
-  void _handleSessionTimeout() {
-    if (!mounted || _isLoggingOut) return;
-    _isLoggingOut = true;
-    _inactivityTimer?.cancel();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.timer_off_outlined, color: Color(0xFFEF4444), size: 28),
-            SizedBox(width: 10),
-            Text(
-              'Session Expired',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        content: Text(
-          'You have been automatically logged out due to inactivity (${_formatDurationText(_sessionTimeoutDuration)}).\n\nPlease log in again to continue.',
-          style: TextStyle(fontSize: 14, color: themedInk(const Color(0xFF475569))),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B00),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              await SessionService.clearSession();
-              if (ctx.mounted) Navigator.of(ctx).pop();
-              if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-            },
-            child: const Text('Return to Login', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDurationText(Duration duration) {
-    if (duration.inSeconds < 60) return '${duration.inSeconds} seconds';
-    if (duration.inMinutes < 60) return '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''}';
-    return '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''}';
+    } catch (_) {}
   }
 
   // Load notifications from database
@@ -223,7 +119,6 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
 
   @override
   void dispose() {
-    _inactivityTimer?.cancel();
     _settingsTimer?.cancel();
     _pollingTimer?.cancel();
     _socket?.disconnect();
@@ -379,11 +274,9 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
         final Color sidebarIconInactive = ts.isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
         final Color dividerColor = ts.isDark ? const Color(0xFF2D3748) : const Color(0xFFE2E8F0);
 
-        return Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: (_) => _handleUserInteraction(),
-          onPointerMove: (_) => _handleUserInteraction(),
-          onPointerHover: (_) => _handleUserInteraction(),
+        // The same auto-logout (with its 1-minute warning) as the agency admins
+        return SessionTimeoutGuard(
+          userId: _effectiveUserId,
           child: Scaffold(
             resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
             backgroundColor: ts.pageBackground,

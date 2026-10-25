@@ -25,6 +25,7 @@ void main() {
       'admin1': {'id': 2, 'fullName': 'BFP Admin', 'email': 'a@x.com', 'role': 'Admin', 'department': 'BFP'},
       'cit1': {'id': 6, 'fullName': 'Juan Dela Cruz', 'email': 'j@x.com', 'role': 'Citizen'},
     });
+    await db.seed('departments', {'2': {'dept_ID': 2, 'deptName': 'BFP'}});
     await db.seed('vehicles/4', {'vehicle_ID': 4, 'plate_no': 'BFP 004', 'vehicle_type': 'Fire Truck', 'dept_ID': 2, 'status': 'Available'});
     await db.seed('counters', {'vehicles': 4});
   });

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
 
 /// The closed-reports panel under the queues (Fleet & Vehicles, both maps):
-/// Cancelled, Completed and Invalid (prank reports, closed after the warning was unlocked).
+/// Declined (also cancelled), Completed and Invalid (prank reports, closed after the warning was unlocked).
 class ClosedReportsTabs {
-  static const tabs = ['Cancelled', 'Completed', 'Invalid'];
+  static const tabs = ['Declined', 'Completed', 'Invalid'];
 
   static const _red = Color(0xFFEB5757);
   static const _green = Color(0xFF16A34A);

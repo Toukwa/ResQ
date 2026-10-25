@@ -177,7 +177,7 @@ class _PagedImageGalleryBannerState extends State<PagedImageGalleryBanner> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 36, color: const Color(0xFFFF5C00)),
+            Icon(icon, size: 36, color: const Color(0xFFFF6B00)),
             const SizedBox(height: 6),
             Text(
               '${widget.type} Responder / Evidence Photo',
@@ -234,7 +234,7 @@ class _PagedImageGalleryBannerState extends State<PagedImageGalleryBanner> {
                         color: const Color(0xFF1E293B),
                         child: const Center(
                           child: CircularProgressIndicator(
-                            color: Color(0xFFFF5200),
+                            color: Color(0xFFFF6B00),
                             strokeWidth: 2,
                           ),
                         ),
@@ -423,7 +423,7 @@ class _IncidentImageGalleryState extends State<IncidentImageGallery> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF5200),
+                  color: const Color(0xFFFF6B00),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -843,7 +843,7 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                         width: isActive ? 22 : 6,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: isActive ? const Color(0xFFFF5200) : Colors.white38,
+                          color: isActive ? const Color(0xFFFF6B00) : Colors.white38,
                           borderRadius: BorderRadius.circular(3),
                         ),
                       );

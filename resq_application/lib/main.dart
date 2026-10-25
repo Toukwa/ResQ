@@ -80,6 +80,30 @@ class _DesktopFullScreen {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  /// Every pop-up gets the ResqDialog look (rounded bordered card, bold title),
+  /// including the forms still built on the plain AlertDialog.
+  static DialogThemeData _dialogTheme({required bool dark}) => DialogThemeData(
+        backgroundColor: dark ? const Color(0xFF1F2937) : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: dark ? const Color(0xFF374151) : const Color(0xFFE2E8F0)),
+        ),
+        titleTextStyle: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: dark ? const Color(0xFFF9FAFB) : const Color(0xFF0F172A),
+        ),
+      );
+
+  static final _textButtonTheme = TextButtonThemeData(
+    style: TextButton.styleFrom(
+      foregroundColor: const Color(0xFF64748B),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -96,10 +120,12 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFFF4F3F0),
             cardColor: Colors.white,
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF5C00),
+              seedColor: const Color(0xFFFF6B00),
               brightness: Brightness.light,
               surface: const Color(0xFFF4F3F0),
             ),
+            dialogTheme: _dialogTheme(dark: false),
+            textButtonTheme: _textButtonTheme,
           ),
           darkTheme: ThemeData(
             fontFamily: 'Inter',
@@ -107,10 +133,12 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFF111827),
             cardColor: const Color(0xFF1F2937),
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF5C00),
+              seedColor: const Color(0xFFFF6B00),
               brightness: Brightness.dark,
               surface: const Color(0xFF1F2937),
             ),
+            dialogTheme: _dialogTheme(dark: true),
+            textButtonTheme: _textButtonTheme,
           ),
           home: const SessionInitializer(),
           routes: {

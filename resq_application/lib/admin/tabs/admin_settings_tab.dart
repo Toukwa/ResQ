@@ -55,7 +55,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   bool _autoCenterOnIncident = true;
   bool _showUnitLabels = true;
   // Account Security state (backed by user_settings table)
-  bool _mfa = true;
   String _sessionTimeout = '15 min';
   bool _autoLogout = true;
   // RxDart Subjects for search and status messages
@@ -125,7 +124,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           _tabActivityDots = toBool(settings['tab_activity_dots'], defaultValue: true);
           _autoCenterOnIncident = toBool(settings['auto_center_on_incident'], defaultValue: true);
           _showUnitLabels = toBool(settings['show_unit_labels'], defaultValue: true);
-          _mfa = toBool(settings['mfa_enabled'], defaultValue: true);
           _sessionTimeout = (settings['session_timeout'] as String?) ?? '15 min';
           _autoLogout = toBool(settings['auto_logout'], defaultValue: true);
         });
@@ -946,21 +944,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   List<Widget> _buildSecurityContent() {
     const activeColor = Color(0xFF0066FF);
     final list = <Widget>[];
-    if (_matchesSearch('Multi-Factor Authentication', 'Require MFA for all logins')) {
-      list.add(
-        _buildSwitchRow(
-          Icons.key_outlined,
-          'Multi-Factor Authentication',
-          'Require MFA for all logins',
-          _mfa,
-          (v) {
-            setState(() => _mfa = v);
-            _saveSetting({'mfa_enabled': v ? 1 : 0});
-          },
-          activeColor,
-        ),
-      );
-    }
+    // The email login code is always on for agency admins (only the EOC may change its own)
     if (_matchesSearch('Session Timeout', 'Auto-lock after inactivity')) {
       if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
@@ -1132,7 +1116,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
         builder: (ctx, setD) => AlertDialog(
           backgroundColor: ts.cardBackground,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               Container(
@@ -1221,7 +1204,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.lock_reset_rounded, color: Color(0xFF0066FF)),
