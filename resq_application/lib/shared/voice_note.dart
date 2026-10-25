@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -436,7 +437,7 @@ class _VoiceNotePlayerState extends State<VoiceNotePlayer> {
               child: _loading
                   ? const Padding(
                       padding: EdgeInsets.all(11),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: ResqLoader(color: Colors.white),
                     )
                   : Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
             ),

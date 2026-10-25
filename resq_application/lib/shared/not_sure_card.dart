@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'package:flutter/material.dart';
 
 import '../services/incident_data.dart';
@@ -111,7 +112,7 @@ class _NotSureIncidentCardState extends State<NotSureIncidentCard> {
               ElevatedButton.icon(
                 onPressed: _saving ? null : () => _choose(card),
                 icon: _saving
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(width: 14, height: 14, child: ResqLoader(color: Colors.white))
                     : Icon(card == IncidentData.generalEmergency ? Icons.checklist_rounded : agencySymbol(card).icon, size: 16),
                 label: Text(cards.length > 1 ? 'Choose for $card' : 'Choose incident',
                     style: const TextStyle(fontWeight: FontWeight.bold)),

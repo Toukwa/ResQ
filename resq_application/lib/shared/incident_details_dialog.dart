@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'package:flutter/material.dart';
 import 'display_settings.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -157,7 +158,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
                 height: 240,
                 child: Center(
                   child: _error == null
-                      ? const CircularProgressIndicator(color: _orange)
+                      ? const ResqLoader(color: _orange)
                       : Column(mainAxisSize: MainAxisSize.min, children: [
                           Icon(Icons.cloud_off_rounded, size: 40, color: ts.textMuted),
                           const SizedBox(height: 10),
@@ -641,7 +642,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             busy
-                ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+                ? SizedBox(width: 12, height: 12, child: ResqLoader(color: color))
                 : Icon(Icons.notifications_active_rounded, size: 14, color: color),
             const SizedBox(width: 4),
             Text('Notify', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
@@ -654,7 +655,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
   Widget _primary(String label, IconData icon, VoidCallback? onPressed) => ElevatedButton.icon(
         onPressed: onPressed,
         icon: _saving
-            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            ? const SizedBox(width: 14, height: 14, child: ResqLoader(color: Colors.white))
             : Icon(icon, size: 17),
         label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
         style: ElevatedButton.styleFrom(

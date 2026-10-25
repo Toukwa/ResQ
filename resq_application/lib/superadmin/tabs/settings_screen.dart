@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/resq_dropdown.dart';
@@ -243,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const CircularProgressIndicator(strokeWidth: 3),
+                                    const ResqLoader(),
                                     const SizedBox(height: 16),
                                     Text(
                                       'Loading settings...',
@@ -480,7 +481,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           SizedBox(
                             width: 12,
                             height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: ResqLoader(),
                           ),
                           SizedBox(width: 8),
                           Text(
@@ -1173,7 +1174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: ResqLoader(color: Colors.white),
                     )
                   : const Text('Update Password'),
             ),

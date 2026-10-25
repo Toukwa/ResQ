@@ -1,3 +1,5 @@
+import '../shared/resq_loader.dart';
+import '../services/friendly_error.dart';
 import 'package:flutter/material.dart';
 import '../shared/resq_dropdown.dart';
 
@@ -89,7 +91,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = '$e'.replaceFirst('HttpException: ', '').replaceFirst('Exception: ', '');
+        _error = friendlyError(e);
       });
     }
   }
@@ -328,7 +330,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                child: ResqLoader(color: Colors.white),
                               )
                             : const Text(
                                 'Create Account',

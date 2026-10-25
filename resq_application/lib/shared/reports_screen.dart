@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -157,7 +158,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 16),
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator(color: _accent))
+                    ? const Center(child: ResqLoader(color: _accent))
                     : _error != null
                     ? _errorCard(ts)
                     : report == null

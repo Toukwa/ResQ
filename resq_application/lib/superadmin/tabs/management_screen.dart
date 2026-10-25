@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'package:flutter/material.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
@@ -12,6 +13,8 @@ import '../../services/live_socket.dart' as io;
 import '../../services/prank_warning.dart';
 import '../../services/theme_service.dart';
 import '../../shared/resq_toast.dart';
+import '../../services/admin_data.dart';
+import '../../services/friendly_error.dart';
 
 class ManagementScreen extends StatefulWidget {
   final String searchFilter;
@@ -320,6 +323,26 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // DELETED ACCOUNTS (recover)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: _showDeletedAccounts,
+                        icon: Icon(Icons.restore_rounded, size: 20, color: ts.textPrimary),
+                        label: Text(
+                          "Deleted Accounts",
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: ts.textPrimary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: ts.cardBackground,
+                          side: BorderSide(color: ts.borderColor),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -389,7 +412,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final ts = ThemeService.instance;
 
     if (_isLoadingAccounts) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
+      return const Center(child: ResqLoader(color: Color(0xFFFF6B00)));
     }
 
     final tableHeaderStyle = TextStyle(
@@ -1059,6 +1082,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
         : 'PNP';
     String selectedRole = 'Admin';
     bool obscurePassword = true;
+    // Restoring a deleted account takes a few seconds; a second press used to close the EOC
+    // screen behind the pop-up as well, leaving a black window
+    var creating = false;
 
     showDialog(
       context: context,
@@ -1294,7 +1320,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         child: SizedBox(
                           height: 44,
                           child: ElevatedButton(
-                            onPressed: () async {
+                            onPressed: creating ? null : () async {
                               if (nameController.text.isEmpty ||
                                   emailController.text.isEmpty ||
                                   contactNoController.text.isEmpty ||
@@ -1330,19 +1356,23 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 'deptID': deptID,
                               };
 
+                              final messenger = ScaffoldMessenger.of(context);
+                              final navigator = Navigator.of(context);
+                              setModalState(() => creating = true);
                               final success = await AdminService.createAccount(accountData);
                               if (!context.mounted) return;
                               if (success) {
-                                Navigator.pop(context);
+                                navigator.pop();
                                 _loadAccounts();
-                                ScaffoldMessenger.of(context).showResqSnackBar(
+                                messenger.showResqSnackBar(
                                   SnackBar(
                                     content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
                                     duration: const Duration(seconds: 6),
                                   ),
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showResqSnackBar(
+                                setModalState(() => creating = false);
+                                messenger.showResqSnackBar(
                                   SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
                                 );
                               }
@@ -1354,14 +1384,20 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: Text(
-                              "Create Account",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: creating
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: ResqLoader(color: Colors.white),
+                                  )
+                                : Text(
+                                    "Create Account",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -1601,45 +1637,178 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   void _showDeleteAccountDialog(Map<String, dynamic> account) {
+    // The EOC's own password first, so an unattended screen can't be used to remove staff
     final ts = ThemeService.instance;
+    final passwordController = TextEditingController();
+    String? error;
+    var busy = false;
     showDialog(
       context: context,
-      builder: (context) => ResqDialog(
-        icon: Icons.person_remove_rounded,
-        color: const Color(0xFFDC2626),
-        title: 'Delete Account',
-        subtitle: 'This cannot be undone',
-        maxWidth: 420,
-        primaryLabel: 'Delete',
-        primaryIcon: Icons.delete_rounded,
-        onPrimary: () async {
-          final messenger = ScaffoldMessenger.of(context);
-          Navigator.pop(context);
-          final success = await AdminService.deleteAccount(account['id'] as int);
-          if (success) {
-            _loadAccounts();
-            messenger.showResqSnackBar(
-              const SnackBar(content: Text('Account deleted successfully'), backgroundColor: Color(0xFF27AE60)),
-            );
+      builder: (context) => StatefulBuilder(
+        builder: (context, setD) {
+          Future<void> delete() async {
+            final messenger = ScaffoldMessenger.of(context);
+            final navigator = Navigator.of(context);
+            if (passwordController.text.isEmpty) {
+              setD(() => error = 'Enter your password to confirm.');
+              return;
+            }
+            setD(() {
+              busy = true;
+              error = null;
+            });
+            bool ok;
+            try {
+              ok = await AdminData.checkMyPassword(passwordController.text);
+            } catch (e) {
+              setD(() {
+                busy = false;
+                error = friendlyError(e);
+              });
+              return;
+            }
+            if (!ok) {
+              setD(() {
+                busy = false;
+                error = 'Incorrect password.';
+              });
+              return;
+            }
+            final success = await AdminService.deleteAccount(account['id'] as int);
+            navigator.pop();
+            if (success) _loadAccounts();
+            messenger.showResqSnackBar(SnackBar(
+              content: Text(success ? 'Account deleted. You can recover it under Deleted Accounts.' : 'Failed to delete account'),
+              backgroundColor: success ? const Color(0xFF27AE60) : Colors.redAccent,
+            ));
+          }
+
+          return ResqDialog(
+            icon: Icons.person_remove_rounded,
+            color: const Color(0xFFDC2626),
+            title: 'Delete Account',
+            subtitle: 'Confirm with your password',
+            maxWidth: 420,
+            primaryLabel: 'Delete',
+            primaryIcon: Icons.delete_rounded,
+            busy: busy,
+            onPrimary: delete,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    style: TextStyle(fontSize: 13, height: 1.45, color: ts.textSecondary),
+                    children: [
+                      const TextSpan(text: 'Delete the account of '),
+                      TextSpan(
+                        text: account['name'] ?? 'this user',
+                        style: TextStyle(fontWeight: FontWeight.w800, color: ts.textPrimary),
+                      ),
+                      TextSpan(text: ' (${account['email'] ?? 'no email'})? They will no longer be able to log in.'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  autofocus: true,
+                  enabled: !busy,
+                  onSubmitted: (_) => delete(),
+                  decoration: InputDecoration(
+                    labelText: 'Your password',
+                    errorText: error,
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Deleted accounts, each with a Recover button that brings it back as it was.
+  Future<void> _showDeletedAccounts() async {
+    final ts = ThemeService.instance;
+    List<Map<String, dynamic>>? list;
+    String? error;
+    var loading = false;
+    final busyIds = <String>{};
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setD) {
+          if (list == null && error == null && !loading) {
+            loading = true;
+            AdminData.deletedAccounts().then((l) {
+              if (context.mounted) setD(() => list = l);
+            }, onError: (Object e) {
+              if (context.mounted) setD(() => error = friendlyError(e));
+            });
+          }
+          Future<void> recover(Map<String, dynamic> a) async {
+            final messenger = ScaffoldMessenger.of(context);
+            setD(() => busyIds.add(a['uid']));
+            try {
+              await AdminData.recoverAccount(a['uid']);
+              setD(() => list!.remove(a));
+              _loadAccounts();
+              messenger.showResqSnackBar(SnackBar(
+                content: Text('${a['name']} was recovered and can log in again with their old password.'),
+                backgroundColor: const Color(0xFF27AE60),
+              ));
+            } catch (e) {
+              setD(() => busyIds.remove(a['uid']));
+              messenger.showResqSnackBar(SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.redAccent));
+            }
+          }
+
+          final Widget body;
+          if (error != null) {
+            body = Text(error!, style: const TextStyle(color: Colors.redAccent));
+          } else if (list == null) {
+            body = const Center(child: Padding(padding: EdgeInsets.all(16), child: ResqLoader()));
+          } else if (list!.isEmpty) {
+            body = Text('No deleted accounts.', style: TextStyle(color: ts.textSecondary));
           } else {
-            messenger.showResqSnackBar(
-              const SnackBar(content: Text('Failed to delete account'), backgroundColor: Colors.redAccent),
+            body = ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 380),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: list!.length,
+                separatorBuilder: (_, _) => Divider(height: 1, color: ts.borderColor),
+                itemBuilder: (context, i) {
+                  final a = list![i];
+                  final busy = busyIds.contains(a['uid']);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('${a['name']}', style: TextStyle(fontWeight: FontWeight.w700, color: ts.textPrimary)),
+                    subtitle: Text('${a['email']} · ${a['role']} · ${a['agency']}',
+                        style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                    trailing: TextButton.icon(
+                      onPressed: busy ? null : () => recover(a),
+                      icon: const Icon(Icons.restore_rounded, size: 18, color: Color(0xFFFF6B00)),
+                      label: const Text('Recover', style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.w700)),
+                    ),
+                  );
+                },
+              ),
             );
           }
+          return ResqDialog(
+            icon: Icons.restore_rounded,
+            color: const Color(0xFFFF6B00),
+            title: 'Deleted Accounts',
+            subtitle: 'Recover brings an account back with its old password',
+            maxWidth: 520,
+            child: body,
+          );
         },
-        child: Text.rich(
-          TextSpan(
-            style: TextStyle(fontSize: 13, height: 1.45, color: ts.textSecondary),
-            children: [
-              const TextSpan(text: 'Delete the account of '),
-              TextSpan(
-                text: account['name'] ?? 'this user',
-                style: TextStyle(fontWeight: FontWeight.w800, color: ts.textPrimary),
-              ),
-              TextSpan(text: ' (${account['email'] ?? 'no email'})? They will no longer be able to log in.'),
-            ],
-          ),
-        ),
       ),
     );
   }

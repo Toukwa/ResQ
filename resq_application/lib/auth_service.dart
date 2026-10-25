@@ -1,3 +1,4 @@
+import 'services/friendly_error.dart';
 import 'services/firebase_services.dart';
 
 class AuthService {
@@ -20,7 +21,7 @@ class AuthService {
       );
       return (data: data, error: null);
     } catch (e) {
-      return (data: null, error: e.toString());
+      return (data: null, error: friendlyError(e));
     }
   }
 
@@ -32,7 +33,7 @@ class AuthService {
       final data = await FirebaseService.login(email: email, password: password);
       return (data: data, error: null);
     } catch (e) {
-      return (data: null, error: e.toString());
+      return (data: null, error: friendlyError(e));
     }
   }
 
@@ -41,7 +42,7 @@ class AuthService {
     try {
       return (data: await FirebaseService.loginWithGoogle(), error: null);
     } catch (e) {
-      return (data: null, error: e.toString());
+      return (data: null, error: friendlyError(e));
     }
   }
 
@@ -60,7 +61,7 @@ class AuthService {
     try {
       return (data: await FirebaseService.quickReport(fullName: fullName, contactNo: contactNo), error: null);
     } catch (e) {
-      return (data: null, error: e.toString());
+      return (data: null, error: friendlyError(e));
     }
   }
 

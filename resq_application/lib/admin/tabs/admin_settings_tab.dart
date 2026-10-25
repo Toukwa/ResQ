@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/prank_warning.dart';
@@ -246,7 +247,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const CircularProgressIndicator(strokeWidth: 3),
+                                const ResqLoader(),
                                 const SizedBox(height: 16),
                                 Text(
                                   'Loading settings...',
@@ -487,7 +488,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                           SizedBox(
                             width: 12,
                             height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: ResqLoader(),
                           ),
                           SizedBox(width: 8),
                           Text(
@@ -1388,7 +1389,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: ResqLoader(color: Colors.white),
                     )
                   : const Text('Update Password'),
             ),

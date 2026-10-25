@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/status_style.dart';
@@ -168,7 +169,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: bgCanvas,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
+          ? const Center(child: ResqLoader(color: Color(0xFFFF6B00)))
           : Column(
               children: [
                 // ==========================================

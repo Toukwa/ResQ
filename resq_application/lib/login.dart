@@ -1,3 +1,5 @@
+import 'shared/resq_loader.dart';
+import 'services/friendly_error.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'register.dart';
@@ -116,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFEF4444))),
+      builder: (_) => const Center(child: ResqLoader(color: Color(0xFFEF4444))),
     );
     final existing = await AuthService.resumeGuest();
     if (!mounted) return;
@@ -288,7 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: ResqLoader(color: Colors.white),
                             )
                           : const Text(
                               'Continue',
@@ -514,7 +516,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         } catch (e) {
                           setDialogState(() {
                             isVerifying = false;
-                            errorMessage = e.toString();
+                            errorMessage = friendlyError(e);
                           });
                         }
                       },
@@ -522,7 +524,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: ResqLoader(color: Colors.white),
                       )
                     : const Text('Verify & Login'),
               ),
@@ -647,7 +649,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showResqSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('HttpException: ', '')), backgroundColor: Colors.redAccent),
+        SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.redAccent),
       );
     }
   }
@@ -746,7 +748,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: ResqLoader(color: Colors.white),
                   )
                 : const Text(
                     'Log In',
@@ -789,7 +791,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFFFF6B00)),
+              ResqLoader(color: Color(0xFFFF6B00)),
               SizedBox(height: 16),
               Text('Checking saved session…', style: TextStyle(color: Color(0xFF94A3B8))),
             ],

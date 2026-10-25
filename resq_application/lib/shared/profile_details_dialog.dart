@@ -1,3 +1,5 @@
+import 'resq_loader.dart';
+import '../services/friendly_error.dart';
 import 'package:flutter/material.dart';
 import 'resq_dropdown.dart';
 
@@ -82,7 +84,7 @@ class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.toString().replaceFirst('HttpException: ', '').replaceFirst('Exception: ', '');
+        _error = friendlyError(e);
       });
     }
   }
@@ -251,7 +253,7 @@ class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: ResqLoader(color: Colors.white),
                       )
                     : const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),

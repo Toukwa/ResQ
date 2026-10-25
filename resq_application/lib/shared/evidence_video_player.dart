@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -85,7 +86,7 @@ class _EvidenceVideoPageState extends State<_EvidenceVideoPage> {
                         )
                       : v.isInitialized
                           ? AspectRatio(aspectRatio: v.aspectRatio, child: VideoPlayer(_video))
-                          : const CircularProgressIndicator(color: Color(0xFFFF6B00)),
+                          : const ResqLoader(color: Color(0xFFFF6B00)),
                 ),
               ),
             ),

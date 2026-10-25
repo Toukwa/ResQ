@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -845,7 +846,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     const Color brandOrange = Color(0xFFFF6B00);
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: brandOrange));
+      return const Center(child: ResqLoader(color: brandOrange));
     }
 
     return LayoutBuilder(
@@ -1243,7 +1244,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF94A3B8)),
+                          child: ResqLoader(color: Color(0xFF94A3B8)),
                         )
                       : const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF94A3B8)),
                 ),
@@ -1295,7 +1296,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF94A3B8)),
+                          child: ResqLoader(color: Color(0xFF94A3B8)),
                         )
                       : const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF94A3B8)),
                 ),
@@ -1354,7 +1355,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+                          child: ResqLoader(color: Color(0xFFFF6B00)),
                         )
                       : const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFFFF6B00)),
                 ),

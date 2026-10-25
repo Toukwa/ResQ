@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'package:flutter/material.dart';
 import 'display_settings.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -398,7 +399,7 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               if (_routing) ...[
                                 const SizedBox(
-                                    width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: _orange)),
+                                    width: 12, height: 12, child: ResqLoader(color: _orange)),
                                 const SizedBox(width: 8),
                               ] else ...[
                                 Icon(Icons.more_horiz_rounded, size: 16, color: ts.textSecondary),
@@ -418,7 +419,7 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
                         Positioned.fill(
                           child: Container(
                             color: ts.cardBackground.withValues(alpha: 0.4),
-                            child: const Center(child: CircularProgressIndicator(color: _orange)),
+                            child: const Center(child: ResqLoader(color: _orange)),
                           ),
                         )
                       else if (_error != null || _points.isEmpty)

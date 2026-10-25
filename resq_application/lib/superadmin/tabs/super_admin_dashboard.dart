@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -463,7 +464,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
         const brandOrange = Color(0xFFFF6B00);
 
         return _isLoading
-            ? const Center(child: CircularProgressIndicator(color: brandOrange))
+            ? const Center(child: ResqLoader(color: brandOrange))
             : Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Row(

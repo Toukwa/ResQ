@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -250,7 +251,7 @@ class _EvidenceCameraScreenState extends State<EvidenceCameraScreen> with Widget
                 ),
               )
             else
-              const Center(child: CircularProgressIndicator(color: _orange)),
+              const Center(child: ResqLoader(color: _orange)),
 
             // White blink on capture
             IgnorePointer(
@@ -352,7 +353,7 @@ class _EvidenceCameraScreenState extends State<EvidenceCameraScreen> with Widget
           child: _busy
               ? const Padding(
                   padding: EdgeInsets.all(18),
-                  child: CircularProgressIndicator(strokeWidth: 3, color: _orange),
+                  child: ResqLoader(color: _orange),
                 )
               : null,
         ),

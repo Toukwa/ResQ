@@ -1,3 +1,4 @@
+import 'shared/resq_loader.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'shared/resq_dropdown.dart';
@@ -310,7 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  child: ResqLoader(color: Colors.white),
                 )
               : const Text(
                   'Create Account',
@@ -340,7 +341,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: brandOrange),
+                  child: ResqLoader(color: brandOrange),
                 )
               : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,

@@ -615,4 +615,42 @@ class AdminData {
     await IncidentData.log('ACCOUNT_DISABLED', 'USER', accountId, {});
     LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});
   }
+
+  /// True if [password] is the signed-in user's own password (asked before deleting an account).
+  static Future<bool> checkMyPassword(String password) async {
+    final me = await IncidentData.me();
+    final res = await http
+        .post(
+          Uri.parse('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${AppConfig.firebaseApiKey}'),
+          body: jsonEncode({'email': me['email'], 'password': password, 'returnSecureToken': false}),
+        )
+        .timeout(const Duration(seconds: 15));
+    return res.statusCode == 200;
+  }
+
+  /// Accounts that were deleted (disabled), newest id first, for the EOC's "Deleted accounts" list.
+  static Future<List<Map<String, dynamic>>> deletedAccounts() async {
+    final depts = await _departmentsById();
+    return [
+      for (final e in (await _allUsers()).entries)
+        if (e.value['disabled'] == true)
+          {
+            'uid': e.key,
+            'id': e.value['id'],
+            'name': e.value['fullName'] ?? '',
+            'email': e.value['email'] ?? '',
+            'role': e.value['role'] ?? 'Citizen',
+            'agency': depts['${e.value['deptID']}']?['deptName'] ?? 'Unassigned',
+          },
+    ]..sort((a, b) => (_int(b['id']) ?? 0).compareTo(_int(a['id']) ?? 0));
+  }
+
+  /// Brings a deleted account back as it was; the person logs in with their old password.
+  static Future<void> recoverAccount(String uid) async {
+    final u = await Rtdb.get('users/$uid');
+    if (u is! Map || u['disabled'] != true) throw const HttpException('This account is not deleted.');
+    await Rtdb.update('users/$uid', {'disabled': null});
+    await IncidentData.log('ACCOUNT_RECOVERED', 'USER', u['id'], {'email': u['email'], 'role': u['role']});
+    LiveEvents.emit('refreshManagementData', {'type': 'account_changed'});
+  }
 }

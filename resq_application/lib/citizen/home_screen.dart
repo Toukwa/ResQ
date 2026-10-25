@@ -1,3 +1,4 @@
+import '../shared/resq_loader.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -1012,7 +1013,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       barrierDismissible: false,
       builder: (context) =>
-          const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)))),
+          const Center(child: ResqLoader()),
     );
 
     try {
@@ -1726,7 +1727,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+                      child: ResqLoader(color: Color(0xFFFF6B00)),
                     ),
                     SizedBox(width: 8),
                     Text(

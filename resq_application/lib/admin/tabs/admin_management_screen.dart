@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'package:flutter/material.dart';
 import '../../shared/resq_dialog.dart';
 import '../../shared/resq_dropdown.dart';
@@ -761,7 +762,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     final ts = ThemeService.instance;
 
     if (_isLoadingVehicles) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
+      return const Center(child: ResqLoader(color: Color(0xFFFF6B00)));
     }
 
     final tableHeaderStyle = TextStyle(
@@ -1046,6 +1047,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
       }
     }
 
+    var saving = false; // one press saves once
     showDialog(
       context: context,
       builder: (dialogCtx) {
@@ -1238,13 +1240,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     backgroundColor: const Color(0xFFFF6B00),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () async {
+                  onPressed: saving ? null : () async {
                     final plate = plateController.text.trim();
                     final officer = officerController.text.trim();
                     final messenger = ScaffoldMessenger.of(context);
                     final targetDept = (widget.department.isNotEmpty && widget.department.toUpperCase() != 'ALL')
                         ? widget.department.toUpperCase()
                         : 'BFP';
+                    setModalState(() => saving = true);
 
                     bool success = false;
                     if (selectedUnassignedVehicleId != null) {

@@ -1,3 +1,4 @@
+import '../shared/resq_loader.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -240,7 +241,7 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
           ? const SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+              child: ResqLoader(color: Colors.white),
             )
           : Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
     ),
@@ -545,7 +546,7 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
           title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         body: _loading
-            ? const Center(child: CircularProgressIndicator(color: _orange))
+            ? const Center(child: ResqLoader(color: _orange))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 children: [
@@ -606,7 +607,7 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
                     children: [
                       ProfileAvatar(photoUrl: _profile?['photoUrl'] as String?, name: name, radius: 36, light: true),
                       if (_uploadingPhoto)
-                        const Positioned.fill(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)),
+                        const Positioned.fill(child: ResqLoader(color: Colors.white)),
                       if (!_isGuest)
                         Positioned(
                           right: 0,

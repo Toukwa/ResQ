@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -356,7 +357,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+                  child: ResqLoader(color: Color(0xFFFF6B00)),
                 ),
                 SizedBox(width: 16),
                 // Expanded so the text wraps instead of running off the snackbar
@@ -748,7 +749,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
       color: ts.pageBackground,
       padding: const EdgeInsets.all(24.0),
       child: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
+          ? const Center(child: ResqLoader(color: Color(0xFFFF6B00)))
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

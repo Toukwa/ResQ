@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'package:flutter/material.dart';
 import '../config.dart';
 import 'evidence_video_player.dart';
@@ -233,10 +234,7 @@ class _PagedImageGalleryBannerState extends State<PagedImageGalleryBanner> {
                       return Container(
                         color: const Color(0xFF1E293B),
                         child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFFFF6B00),
-                            strokeWidth: 2,
-                          ),
+                          child: ResqLoader(color: Color(0xFFFF6B00)),
                         ),
                       );
                     },
@@ -478,10 +476,7 @@ class _IncidentImageGalleryState extends State<IncidentImageGallery> {
                   return Container(
                     color: const Color(0xFFF1F5F9),
                     child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFFF6B00),
-                        strokeWidth: 2,
-                      ),
+                      child: ResqLoader(color: Color(0xFFFF6B00)),
                     ),
                   );
                 },

@@ -1,3 +1,4 @@
+import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/map_format.dart';
@@ -617,7 +618,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
+        child: ResqLoader(color: Color(0xFFFF6B00)),
       );
     }
 
@@ -1568,7 +1569,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
           // Action Buttons
           if (_isActionInProgress)
-            const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
+            const Center(child: ResqLoader(color: Color(0xFFFF6B00)))
           else if (isPending && reqIdNum != 0)
             Column(
               children: [

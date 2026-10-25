@@ -1,3 +1,4 @@
+import 'resq_loader.dart';
 import 'package:flutter/material.dart';
 
 import '../services/theme_service.dart';
@@ -107,7 +108,7 @@ class ResqDialog extends StatelessWidget {
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: ResqLoader(color: Colors.white),
                               )
                             : Icon(primaryIcon ?? Icons.check_rounded, size: 18),
                         label: Text(primaryLabel!, style: const TextStyle(fontWeight: FontWeight.w800)),
