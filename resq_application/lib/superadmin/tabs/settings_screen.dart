@@ -307,7 +307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             category: SettingsCategory.appearance,
             title: 'Appearance',
             icon: Icons.wb_sunny_outlined,
-            activeColor: const Color(0xFFFF4D00),
+            activeColor: const Color(0xFFFF6B00),
           ),
           _buildMenuItem(
             category: SettingsCategory.alerts,
@@ -566,7 +566,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildCategoryHeader() {
     switch (_selectedCategory) {
       case SettingsCategory.appearance:
-        return _buildHeaderItem('Appearance', 'Configure appearance preferences', Icons.wb_sunny_outlined, const Color(0xFFFF4D00));
+        return _buildHeaderItem('Appearance', 'Configure appearance preferences', Icons.wb_sunny_outlined, const Color(0xFFFF6B00));
       case SettingsCategory.alerts:
         return _buildHeaderItem('Alerts & Notifications', 'Configure alerts & notifications preferences', Icons.notifications_none_rounded, const Color(0xFFEF4444));
       case SettingsCategory.map:
@@ -635,29 +635,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildThemeOption('Light', Icons.wb_sunny_outlined, _themeMode == 'Light', const Color(0xFFFF4D00)),
+              _buildThemeOption('Light', Icons.wb_sunny_outlined, _themeMode == 'Light', const Color(0xFFFF6B00)),
               const SizedBox(width: 8),
-              _buildThemeOption('Dark', Icons.nightlight_round, _themeMode == 'Dark', const Color(0xFFFF4D00)),
+              _buildThemeOption('Dark', Icons.nightlight_round, _themeMode == 'Dark', const Color(0xFFFF6B00)),
             ],
           ),
         ),
       );
     }
-    if (_matchesSearch('Reduced Motion', 'Minimize animations and transitions')) {
+    if (_matchesSearch('Minimize Animations', 'No blinking, pulsing, startup animation or screen transitions')) {
       if (list.isNotEmpty) list.add(const SizedBox(height: 10));
       list.add(
         _buildRowLayout(
-          icon: Icons.autorenew_rounded,
-          title: 'Reduced Motion',
-          subtitle: 'Minimize animations and transitions',
+          icon: Icons.motion_photos_off_outlined,
+          title: 'Minimize Animations',
+          subtitle: 'No blinking, pulsing, startup animation or screen transitions',
           trailing: Switch(
             value: _reducedMotion,
             onChanged: (v) {
               setState(() => _reducedMotion = v);
-              DisplaySettings.reducedMotion.value = v;
+              DisplaySettings.setReducedMotion(v);
               _saveSetting({'reduced_motion': v ? 1 : 0});
             },
-            activeThumbColor: const Color(0xFFFF4D00),
+            activeThumbColor: const Color(0xFFFF6B00),
           ),
         ),
       );

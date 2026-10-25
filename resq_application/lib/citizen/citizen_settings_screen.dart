@@ -780,6 +780,17 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
         },
         color: _blue,
       ),
+      _switch(
+        Icons.motion_photos_off_rounded,
+        'Minimize animations',
+        'No blinking, pulsing, startup animation or screen transitions',
+        DisplaySettings.reducedMotion.value,
+        (v) {
+          setState(() => DisplaySettings.setReducedMotion(v));
+          _saveSetting({'reduced_motion': v});
+        },
+        color: _green,
+      ),
       _switch(Icons.volume_up_rounded, 'Alert sounds', 'Play a sound for report updates', _sound, (v) {
         setState(() => _sound = v);
         SoundService.enabled = v;

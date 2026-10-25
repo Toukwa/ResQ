@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/theme_service.dart';
 
@@ -9,7 +10,28 @@ import '../services/theme_service.dart';
 class DisplaySettings {
   static final autoCenterOnIncident = ValueNotifier<bool>(true);
   static final showUnitLabels = ValueNotifier<bool>(true);
+  /// Minimize animations (Settings, every role): no blinking or pulsing, no startup
+  /// animation, no sliding or fading between screens. Also on when the phone or PC
+  /// itself asks for reduced motion. Kept on the device so it applies before login.
   static final reducedMotion = ValueNotifier<bool>(false);
+  static const _motionKey = 'reduced_motion';
+
+  /// Restores this device's choice; call before the first frame.
+  static Future<void> loadDeviceSettings() async {
+    try {
+      reducedMotion.value = (await SharedPreferences.getInstance()).getBool(_motionKey) ?? false;
+    } catch (_) {}
+  }
+
+  /// Turns minimized animations on or off and remembers it on this device.
+  static void setReducedMotion(bool on) {
+    reducedMotion.value = on;
+    SharedPreferences.getInstance().then((p) => p.setBool(_motionKey, on)).catchError((_) => false);
+  }
+
+  /// Whether to skip decorative motion in [context] (the setting or the system's own).
+  static bool still(BuildContext context) =>
+      reducedMotion.value || (MediaQuery.maybeOf(context)?.disableAnimations ?? false);
 
   /// Map colours on their own: 'Match app', 'Light' or 'Dark', so the map can stay
   /// light while the rest of the app is dark (or the other way round).
@@ -25,7 +47,7 @@ class DisplaySettings {
     bool on(String key, bool fallback) => s[key] == null ? fallback : '${s[key]}' == '1' || s[key] == true;
     autoCenterOnIncident.value = on('auto_center_on_incident', true);
     showUnitLabels.value = on('show_unit_labels', true);
-    reducedMotion.value = on('reduced_motion', false);
+    if (s['reduced_motion'] != null) setReducedMotion(on('reduced_motion', false));
     if (mapThemes.contains(s['map_theme'])) mapTheme.value = s['map_theme'] as String;
   }
 

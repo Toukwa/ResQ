@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'display_settings.dart';
+
 /// Startup animation built from the logo's layers (assets/logos/splash/):
 /// the alert rays light up one by one as a loading bar that follows the real
 /// [progress] (0..1). At 1 the rays fade and the siren drives up off the top;
@@ -64,6 +66,8 @@ class _SplashSirenState extends State<SplashSiren> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    // Minimized animations: the plain logo, and on to the next screen once loaded
+    if (DisplaySettings.reducedMotion.value) _enter.value = 1;
     _ticker.start(); // late fields are lazy, so start it explicitly
   }
 
@@ -76,6 +80,14 @@ class _SplashSirenState extends State<SplashSiren> with TickerProviderStateMixin
   }
 
   void _tick(Duration now) {
+    if (DisplaySettings.reducedMotion.value) {
+      if (widget.progress.value >= 1 && !_exiting) {
+        _exiting = true;
+        _ticker.stop();
+        widget.onDone();
+      }
+      return;
+    }
     final dt = (now - _last).inMicroseconds / 1e6;
     _last = now;
     final real = widget.progress.value.clamp(0.0, 1.0);
@@ -122,7 +134,7 @@ class _SplashSirenState extends State<SplashSiren> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final s = widget.size;
-    final still = _glide || MediaQuery.of(context).disableAnimations;
+    final still = _glide || DisplaySettings.still(context);
     return AnimatedBuilder(
       animation: Listenable.merge([_enter, _exit]),
       builder: (context, _) {
@@ -146,8 +158,9 @@ class _SplashSirenState extends State<SplashSiren> with TickerProviderStateMixin
                 height: s,
                 child: Stack(
                   children: [
-                    for (var i = 0; i < _rayCount; i++)
-                      _ray(i, Curves.easeOutCubic.transform((_shown * _rayCount - i).clamp(0.0, 1.0)) * raysOut),
+                    if (!DisplaySettings.reducedMotion.value)
+                      for (var i = 0; i < _rayCount; i++)
+                        _ray(i, Curves.easeOutCubic.transform((_shown * _rayCount - i).clamp(0.0, 1.0)) * raysOut),
                     // Same tightly cropped image as the in-app logo, placed where the
                     // siren sits in the layer canvas, so the hand-off has no jump
                     Positioned(

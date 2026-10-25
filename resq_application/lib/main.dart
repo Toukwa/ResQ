@@ -11,6 +11,7 @@ import 'admin/admin_shell.dart';
 import 'services/firebase_rest.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
+import 'shared/display_settings.dart';
 import 'shared/resq_text.dart';
 import 'shared/splash_siren.dart';
 import 'shared/role_home.dart';
@@ -39,6 +40,7 @@ void main() async {
   }
 
   await ThemeService.instance.load();
+  await DisplaySettings.loadDeviceSettings();
   runApp(const MyApp());
 }
 
@@ -97,6 +99,11 @@ class MyApp extends StatelessWidget {
         ),
       );
 
+  /// Screens switch at once when animations are minimized.
+  static final _noTransitions = PageTransitionsTheme(builders: {
+    for (final p in TargetPlatform.values) p: _NoTransition(),
+  });
+
   static final _textButtonTheme = TextButtonThemeData(
     style: TextButton.styleFrom(
       foregroundColor: const Color(0xFF64748B),
@@ -107,13 +114,20 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ThemeService.instance,
+      listenable: Listenable.merge([ThemeService.instance, DisplaySettings.reducedMotion]),
       builder: (context, _) {
         final isDark = ThemeService.instance.isDark;
+        final still = DisplaySettings.reducedMotion.value;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'ResQ',
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          // Minimize animations: no theme fade, and every screen below sees disableAnimations
+          themeAnimationDuration: still ? Duration.zero : kThemeAnimationDuration,
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            return MediaQuery(data: mq.copyWith(disableAnimations: still || mq.disableAnimations), child: child!);
+          },
           theme: ThemeData(
             fontFamily: 'Inter',
             brightness: Brightness.light,
@@ -126,6 +140,7 @@ class MyApp extends StatelessWidget {
             ),
             dialogTheme: _dialogTheme(dark: false),
             textButtonTheme: _textButtonTheme,
+            pageTransitionsTheme: still ? _noTransitions : null,
           ),
           darkTheme: ThemeData(
             fontFamily: 'Inter',
@@ -139,6 +154,7 @@ class MyApp extends StatelessWidget {
             ),
             dialogTheme: _dialogTheme(dark: true),
             textButtonTheme: _textButtonTheme,
+            pageTransitionsTheme: still ? _noTransitions : null,
           ),
           home: const SessionInitializer(),
           routes: {
@@ -148,6 +164,15 @@ class MyApp extends StatelessWidget {
       },
     );
   }
+}
+
+class _NoTransition extends PageTransitionsBuilder {
+  const _NoTransition();
+
+  @override
+  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation,
+          Animation<double> secondaryAnimation, Widget child) =>
+      child;
 }
 
 class SessionInitializer extends StatefulWidget {
@@ -194,7 +219,9 @@ class _SessionInitializerState extends State<SessionInitializer> {
       context,
       PageRouteBuilder(
         // Going to login, the siren and name glide into place (Hero), so take it slow
-        transitionDuration: Duration(milliseconds: screen is LoginScreen ? 1100 : 450),
+        transitionDuration: DisplaySettings.reducedMotion.value
+            ? Duration.zero
+            : Duration(milliseconds: screen is LoginScreen ? 1100 : 450),
         pageBuilder: (_, _, _) => screen,
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),

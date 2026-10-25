@@ -149,7 +149,8 @@ class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-    opacity: Tween(begin: 0.2, end: 1.0).animate(_blink),
+    // Minimized animations: a steady dot
+    opacity: DisplaySettings.still(context) ? const AlwaysStoppedAnimation(1.0) : Tween(begin: 0.2, end: 1.0).animate(_blink),
     child: Container(
       width: widget.size,
       height: widget.size,
@@ -254,8 +255,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _warningTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkPrankWarning());
     _descriptionController.addListener(() => setState(() {}));
 
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat(reverse: true);
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+    _syncMotion();
+    DisplaySettings.reducedMotion.addListener(_syncMotion);
 
     _pulseAnimation = Tween<double>(
       begin: 8.0,
@@ -1262,6 +1264,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _warningOpen = false;
   }
 
+  /// The location pulse and status dot breathe, unless animations are minimized.
+  void _syncMotion() {
+    final c = _pulseController;
+    if (c == null) return;
+    if (DisplaySettings.reducedMotion.value) {
+      c.stop();
+      c.value = 1; // steady: full dot, widest ring
+    } else if (!c.isAnimating) {
+      c.repeat(reverse: true);
+    }
+  }
+
   /// First login on this account: a short welcome explaining how to report.
   Future<void> _showWelcomeOnce() async {
     try {
@@ -1342,6 +1356,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _warningTimer?.cancel();
     _activeCheckTimer?.cancel();
     _descriptionController.dispose();
+    DisplaySettings.reducedMotion.removeListener(_syncMotion);
     _pulseController?.dispose();
     _gpsStream?.cancel();
     _pinMoved.dispose();
