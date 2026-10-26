@@ -420,7 +420,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Check your terminal log or enter code above (valid for 5 mins).',
+                          'Enter the code sent to your email (valid for 5 mins).',
                           style: TextStyle(
                             fontSize: 12,
                             color: ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),

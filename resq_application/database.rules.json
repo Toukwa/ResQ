@@ -138,10 +138,10 @@
         "barangay": { ".validate": "newData.isString() && newData.val().length <= 64" },
         "image_path": { ".validate": "newData.isString() && newData.val().length <= 3000" },
         "voice_path": { ".validate": "newData.isString() && newData.val().length <= 300" },
-        // An agency rates severity on reports sent straight to it (its name in the type), or on a
-        // General Emergency the EOC assigned to it unrated (the EOC normally rates those)
+        // An agency rates severity only on reports sent straight to it (its name in the type),
+        // never on a General Emergency; those are the EOC's call
         "severity": {
-          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && ((!data.parent().child('incType').val().beginsWith('General Emergency') && data.parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')) || (data.parent().child('incType').val().beginsWith('General Emergency') && data.parent().child('dept_status').child(root.child('users/' + auth.uid + '/department').val()).exists()))",
+          ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) && !data.parent().child('incType').val().beginsWith('General Emergency') && data.parent().child('incType').val().contains(root.child('users/' + auth.uid + '/department').val() + ':')",
           // ...and the EOC rates only General Emergencies (direct reports are their agency's call)
           // Once rated it is locked for everyone (agencies and the EOC)
           ".validate": "(!data.exists() || newData.val() === data.val()) && (newData.val() === 'Immediate' || newData.val() === 'Emergent' || newData.val() === 'Urgent' || newData.val() === 'Semi-urgent' || newData.val() === 'Non-urgent') && (root.child('users/' + auth.uid + '/role').val() !== 'Superadmin' || newData.parent().child('incType').val().beginsWith('General Emergency'))"
