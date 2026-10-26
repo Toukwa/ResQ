@@ -10,7 +10,7 @@ import 'resq_toast.dart';
 /// Returns true when it has a severity (already, or rated here in a pop-up by
 /// someone allowed to); otherwise explains why not and returns false.
 Future<bool> ensureSeverityRated(BuildContext context, int reqId,
-    {String reason = 'Required before units can be sent'}) async {
+    {String reason = 'Required before units can be sent', bool blockIfCannotRate = true}) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   void say(String text) => messenger?.showResqSnackBar(
         SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
@@ -22,6 +22,8 @@ Future<bool> ensureSeverityRated(BuildContext context, int reqId,
     if (incident['severity'] != null) return true;
     final me = await IncidentData.me();
     if (!IncidentData.canRateSeverity(me, incident)) {
+      // e.g. an agency only asked to help: it can still respond, the owner rates it
+      if (!blockIfCannotRate) return true;
       say(IncidentData.isGeneral(incident['incType']?.toString())
           ? 'Waiting for the EOC to rate this report\'s severity before units can be sent.'
           : 'This report needs a severity rating before units can be sent.');

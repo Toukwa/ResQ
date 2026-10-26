@@ -412,6 +412,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleAcceptRequest(int reqId) async {
+    if (!await ensureSeverityRated(context, reqId, reason: 'Required before responding', blockIfCannotRate: false) || !mounted) return;
     setState(() => _isActionInProgress = true);
     final success = await AdminService.updateIncidentStatus(
       reqId: reqId,
@@ -442,6 +443,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleDenyRequest(int reqId) async {
+    if (!await ensureSeverityRated(context, reqId, reason: 'Required before responding', blockIfCannotRate: false) || !mounted) return;
     setState(() => _isActionInProgress = true);
     final success = await AdminService.updateIncidentStatus(
       reqId: reqId,
@@ -566,6 +568,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   /// This department's units reached the scene; the citizen sees "Arrived".
   Future<void> _handleArrived(int reqId) async {
+    if (!await ensureSeverityRated(context, reqId, reason: 'Required before responding', blockIfCannotRate: false) || !mounted) return;
     setState(() => _isActionInProgress = true);
     final success = await AdminService.updateIncidentStatus(
       reqId: reqId,
@@ -585,6 +588,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleCompleteRequest(int reqId) async {
+    if (!await ensureSeverityRated(context, reqId, reason: 'Required before responding', blockIfCannotRate: false) || !mounted) return;
     setState(() => _isActionInProgress = true);
     final success = await AdminService.updateIncidentStatus(
       reqId: reqId,
@@ -1073,7 +1077,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
 
 
-  /// Severity next to the status (asked for when dispatching); once rated it is locked.
+  /// Severity next to the status: tap to rate (also asked before any response); locked once rated.
   Widget _severityBadge(Map<String, dynamic> req, int reqId, ThemeService ts) {
     final rated = req['severity'] != null;
     final sev = severityStyle(req['severity']?.toString());
@@ -1096,8 +1100,18 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       ]),
     );
     return Tooltip(
-      message: rated ? 'Severity is locked once set' : 'You will be asked for the severity when dispatching',
-      child: badge,
+      message: rated ? 'Severity is locked once set' : 'Tap to rate the severity',
+      child: rated
+          ? badge
+          : InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () async {
+                if (await ensureSeverityRated(context, reqId, reason: 'Locked once saved') && mounted) {
+                  _fetchData(showLoading: false);
+                }
+              },
+              child: badge,
+            ),
     );
   }
 

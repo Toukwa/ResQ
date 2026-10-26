@@ -231,8 +231,10 @@ class IncidentData {
     if (incident['severity'] != null) return false; // once rated, locked for everyone
     final type = incident['incType']?.toString();
     if (user['role'] == 'Superadmin') return isGeneral(type);
-    if (user['role'] != 'Admin' || isGeneral(type)) return false;
+    if (user['role'] != 'Admin') return false;
     final mine = normalizeDepartment(user['department']?.toString());
+    // A General Emergency the EOC assigned without a rating: the assigned agency rates it
+    if (isGeneral(type)) return ((incident['dept_status'] as Map?) ?? {}).keys.map((k) => normalizeDepartment('$k')).contains(mine);
     return involvedDepartments(type).contains(mine);
   }
 
