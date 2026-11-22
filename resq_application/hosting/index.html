@@ -3,84 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ResQ - Download</title>
-  <meta name="description" content="Download the ResQ Emergency Operations Center app for Windows and Android." />
+  <title>ResQ Download</title>
+  <meta name="description" content="Download ResQ, Iriga City's emergency reporting and response app, for Android and Windows." />
+  <meta name="theme-color" content="#ff6b00" />
   <link rel="icon" href="favicon.png" />
+  <link rel="preload" href="inter-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="hero">
-    <div class="logo-badge">
-      <img src="logo_white.png" alt="" />
-      <span>ResQ</span>
+  <header class="hero">
+    <div class="brand">
+      <img src="logo.png" alt="" />
+      <span class="brand-name">ResQ</span>
     </div>
-    <h1>Download <span>ResQ</span></h1>
-    <p class="subtitle">Emergency Operations Center app for real-time incident monitoring and response management.</p>
-  </div>
+    <div class="tagline">Iriga City Emergency Operations Center</div>
+    <h1>Get the ResQ app</h1>
+    <p class="subtitle">Report emergencies in seconds, and let responders track and dispatch help in real time.</p>
+  </header>
 
-  <div class="cards">
+  <main class="cards">
 
-    <!-- Windows Card -->
-    <div class="card">
+    <!-- Android -->
+    <section class="card">
       <div class="platform-row">
         <div class="platform-icon">
-          <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 1H7C5.9 1 5 1.9 5 3v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14zm-5 3.25a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
         </div>
         <div class="platform-info">
-          <h2>Windows Desktop</h2>
-          <p>64-bit for Windows 10 / 11</p>
-          <span class="version-badge" data-latest-version>Latest version</span>
+          <h2>Android</h2>
+          <p>For citizens and responders</p>
         </div>
+        <span class="version-badge" data-latest-version>Latest</span>
       </div>
-      <hr class="divider" />
       <div class="requirements">
         <h3>Requirements</h3>
-        <div class="req-item"><span class="req-dot"></span>Windows 10 or Windows 11 (64-bit)</div>
-        <div class="req-item"><span class="req-dot"></span>Internet connection required</div>
-        <div class="req-item"><span class="req-dot"></span>~120 MB free disk space</div>
-      </div>
-      <a class="btn-download" href="https://github.com/Toukwa/ResQ/releases/latest/download/ResQ_EOC_Windows.zip">
-        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7 7-7z"/></svg>
-        Download for Windows (.zip)
-      </a>
-      <p class="note">
-        Extract the ZIP, then run <strong>ResQ.exe</strong> inside.<br/>
-        Issues? <a href="mailto:resq.cspc@gmail.com">resq.cspc@gmail.com</a>
-      </p>
-    </div>
-
-    <!-- Android Card -->
-    <div class="card">
-      <div class="platform-row">
-        <div class="platform-icon">
-          <svg viewBox="0 0 24 24"><path d="M17.523 15.341a5.98 5.98 0 0 1-5.52 3.66 5.98 5.98 0 0 1-5.521-3.66H17.523zM7.5 2.5l1.5 2.598a5.964 5.964 0 0 0-2.473 2.151L4.5 5.5 7.5 2.5zm9 0l3 3-2.027 1.749A5.964 5.964 0 0 0 15 4.848L16.5 2.5zM12.003 5.5A5.5 5.5 0 1 1 6.5 11a5.5 5.5 0 0 1 5.503-5.5zM9.5 9.5a.5.5 0 1 0 .5.5.5.5 0 0 0-.5-.5zm5 0a.5.5 0 1 0 .5.5.5.5 0 0 0-.5-.5z"/></svg>
-        </div>
-        <div class="platform-info">
-          <h2>Android Mobile</h2>
-          <p>For Android 6.0 (Marshmallow) and above</p>
-          <span class="version-badge" data-latest-version>Latest version</span>
-        </div>
-      </div>
-      <hr class="divider" />
-      <div class="requirements">
-        <h3>Requirements</h3>
-        <div class="req-item"><span class="req-dot"></span>Android 6.0 or later (API 23+)</div>
-        <div class="req-item"><span class="req-dot"></span>Internet connection required</div>
-        <div class="req-item"><span class="req-dot"></span>~56 MB free storage</div>
+        <div class="req-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>Android 7.0 or later</div>
+        <div class="req-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>Internet connection and location (GPS)</div>
+        <div class="req-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>About 70 MB free storage</div>
       </div>
       <a class="btn-download" href="https://github.com/Toukwa/ResQ/releases/latest/download/ResQ_EOC.apk">
-        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm14-9h-4V3H9v8H5l7 7 7-7z"/></svg>
         Download for Android (.apk)
       </a>
       <p class="note">
-        Enable <strong>Install from unknown sources</strong> in Android settings before installing.<br/>
-        Issues? <a href="mailto:resq.cspc@gmail.com">resq.cspc@gmail.com</a>
+        Allow <strong>Install unknown apps</strong> for your browser when Android asks.<br />
+        Problems? <a href="mailto:resq.cspc@gmail.com">resq.cspc@gmail.com</a>
       </p>
-    </div>
+    </section>
 
-  </div>
+    <!-- Windows -->
+    <section class="card">
+      <div class="platform-row">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M0 3.449 9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+        </div>
+        <div class="platform-info">
+          <h2>Windows</h2>
+          <p>For the EOC and agency dispatch desks</p>
+        </div>
+        <span class="version-badge" data-latest-version>Latest</span>
+      </div>
+      <div class="requirements">
+        <h3>Requirements</h3>
+        <div class="req-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>Windows 10 or 11 (64-bit)</div>
+        <div class="req-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>Internet connection</div>
+        <div class="req-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>About 50 MB free disk space</div>
+      </div>
+      <a class="btn-download" href="https://github.com/Toukwa/ResQ/releases/latest/download/ResQ_EOC_Windows.zip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm14-9h-4V3H9v8H5l7 7 7-7z"/></svg>
+        Download for Windows (.zip)
+      </a>
+      <p class="note">
+        Extract the ZIP, then open <strong>ResQ.exe</strong>.<br />
+        Problems? <a href="mailto:resq.cspc@gmail.com">resq.cspc@gmail.com</a>
+      </p>
+    </section>
 
-  <footer>&copy; 2026 ResQ &mdash; Emergency Operations Center</footer>
+  </main>
+
+  <footer>&copy; 2026 ResQ &middot; Iriga City Emergency Operations Center</footer>
   <script src="app.js"></script>
 </body>
 </html>

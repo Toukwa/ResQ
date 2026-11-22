@@ -1,80 +1,157 @@
+/* Same look as the app: colours from lib/services/theme_service.dart,
+   Inter for text and Bangers for the "ResQ" name (as on the app's start screen). */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
-  font-weight: 300 700;
+  font-weight: 300 800;
   font-display: swap;
   src: url(inter-latin.woff2) format('woff2');
 }
+@font-face {
+  font-family: 'Bangers';
+  font-display: swap;
+  src: url(bangers.ttf) format('truetype');
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 :root {
-  --accent: #ff6b00; --accent2: #ff9a3c;
-  --bg: #0b0f1a; --card: #131929; --border: #1e2d45;
-  --text: #f0f4ff; --muted: #7a8aaa;
+  --brand: #ff6b00;          /* AppColors.brand */
+  --brand-soft: #fff1e6;
+  --success: #16a34a;        /* AppColors.success */
+  --page: #f4f3f0;           /* pageBackground */
+  --card: #ffffff;           /* cardBackground */
+  --subtle: #f8fafc;         /* subtleBackground */
+  --border: #e2e8f0;         /* borderColor */
+  --text: #0f172a;           /* textPrimary */
+  --text-2: #64748b;         /* textSecondary */
+  --muted: #94a3b8;          /* textMuted */
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-soft: rgba(255, 107, 0, .14);
+    --page: #111827;
+    --card: #1f2937;
+    --subtle: #111827;
+    --border: #374151;
+    --text: #f9fafb;
+    --text-2: #9ca3af;
+    --muted: #6b7280;
+    --shadow: 0 8px 32px rgba(0, 0, 0, .35);
+  }
+}
+
 body {
-  font-family: "Inter", sans-serif; background: var(--bg); color: var(--text);
-  min-height: 100vh; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: 40px 20px;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--page);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 16px 32px;
+  -webkit-font-smoothing: antialiased;
 }
-body::before {
-  content: ""; position: fixed; inset: 0;
-  background-image: linear-gradient(rgba(255,107,0,.04) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,107,0,.04) 1px,transparent 1px);
-  background-size: 40px 40px; pointer-events: none;
+
+/* Siren + name, like the app's start screen */
+.hero { text-align: center; margin-bottom: 36px; animation: rise .5s ease both; }
+.hero { width: 100%; max-width: 560px; }
+.brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 auto 20px; }
+.brand img { width: 88px; height: 88px; display: block; }
+.brand-name {
+  font-family: 'Bangers', 'Inter', sans-serif;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: 2.5px;
+  color: var(--brand);
 }
-.hero { text-align: center; margin-bottom: 48px; animation: fadeUp .6s ease both; }
-.logo-badge {
-  display: inline-flex; align-items: center; gap: 12px;
-  background: linear-gradient(135deg,var(--accent),var(--accent2));
-  border-radius: 16px; padding: 14px 24px; margin-bottom: 28px;
-  box-shadow: 0 0 40px rgba(255,107,0,.35);
+.tagline {
+  display: inline-block;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  max-width: 100%;
+  margin-bottom: 18px;
 }
-.logo-badge img { height: 44px; width: auto; display: block; }
-.logo-badge span { font-size: 22px; font-weight: 700; color: #fff; }
-h1 { font-size: clamp(28px,5vw,48px); font-weight: 700; margin-bottom: 14px; }
-h1 span { background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.subtitle { font-size: 17px; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
-.cards { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 560px; }
+h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 800; letter-spacing: -.5px; margin-bottom: 10px; }
+.subtitle { font-size: 15px; color: var(--text-2); max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+.cards { display: grid; gap: 16px; width: 100%; max-width: 560px; }
 .card {
-  background: var(--card); border: 1px solid var(--border); border-radius: 20px;
-  padding: 32px 36px; width: 100%;
-  animation: fadeUp .7s .1s ease both; box-shadow: 0 8px 48px rgba(0,0,0,.5);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  animation: rise .55s .08s ease both;
 }
-.card:nth-child(2) { animation-delay: .18s; }
-.platform-row { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.card:nth-child(2) { animation-delay: .16s; }
+
+.platform-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
 .platform-icon {
-  width: 52px; height: 52px; background: rgba(255,107,0,.12);
-  border-radius: 14px; display: grid; place-items: center; flex-shrink: 0;
+  width: 48px; height: 48px; flex-shrink: 0;
+  background: var(--brand-soft);
+  border-radius: 14px;
+  display: grid; place-items: center;
 }
-.platform-icon svg { width: 28px; height: 28px; fill: var(--accent); }
-.platform-info h2 { font-size: 19px; font-weight: 600; margin-bottom: 4px; }
-.platform-info p { font-size: 13px; color: var(--muted); }
+.platform-icon svg { width: 24px; height: 24px; fill: var(--brand); }
+.platform-info { flex: 1; min-width: 0; }
+.platform-info h2 { font-size: 17px; font-weight: 800; margin-bottom: 2px; }
+.platform-info p { font-size: 13px; color: var(--text-2); }
 .version-badge {
-  display: inline-block; background: rgba(255,107,0,.15); color: var(--accent2);
-  border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin-top: 6px;
+  flex-shrink: 0;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
 }
-.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
 .requirements {
-  background: rgba(255,255,255,.03); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;
+  background: var(--subtle);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
 }
-.requirements h3 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
-.req-item { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); margin-bottom: 7px; }
+.requirements h3 {
+  font-size: 11px; font-weight: 800; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px;
+}
+.req-item { display: flex; align-items: center; gap: 10px; font-size: 14px; margin-bottom: 8px; }
 .req-item:last-child { margin-bottom: 0; }
-.req-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
+.req-item svg { width: 16px; height: 16px; fill: var(--success); flex-shrink: 0; }
+
 .btn-download {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  width: 100%; padding: 15px 24px;
-  background: linear-gradient(135deg,var(--accent),var(--accent2));
-  color: #fff; font-family: "Inter",sans-serif; font-size: 15px; font-weight: 600;
-  border: none; border-radius: 13px; cursor: pointer; text-decoration: none;
-  transition: transform .15s,box-shadow .15s; box-shadow: 0 4px 24px rgba(255,107,0,.4);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; min-height: 50px; padding: 14px 20px;
+  background: var(--brand);
+  color: #fff;
+  font: 700 15px 'Inter', sans-serif;
+  border-radius: 14px;
+  text-decoration: none;
+  transition: filter .15s, transform .15s;
 }
-.btn-download:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255,107,0,.55); }
-.btn-download:active { transform: translateY(0); }
+.btn-download:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-download:active { transform: none; }
+.btn-download:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; }
 .btn-download svg { width: 20px; height: 20px; fill: #fff; flex-shrink: 0; }
-.note { text-align: center; font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
-.note a { color: var(--accent2); text-decoration: none; }
-.note a:hover { text-decoration: underline; }
-footer { margin-top: 48px; font-size: 13px; color: var(--muted); text-align: center; animation: fadeUp .8s .25s ease both; }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.note { text-align: center; font-size: 12.5px; color: var(--text-2); margin-top: 12px; line-height: 1.6; }
+.note a, .hero a { color: var(--brand); font-weight: 600; text-decoration: none; }
+.note a:hover, .hero a:hover { text-decoration: underline; }
+
+footer { margin-top: 40px; font-size: 12.5px; color: var(--muted); text-align: center; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .hero, .card { animation: none; } }
+@media (max-width: 420px) {
+  .card { padding: 20px 16px; }
+  .platform-row { flex-wrap: wrap; }
+}
