@@ -358,6 +358,7 @@ class TermsConsentSection extends StatelessWidget {
 
   Widget _input(ThemeService ts, TextEditingController c, String hint, IconData icon, TextInputType type) => TextField(
     controller: c,
+    textInputAction: TextInputAction.next, // the consent checkbox still has to be ticked
     keyboardType: type,
     style: TextStyle(color: ts.textPrimary, fontSize: 14),
     decoration: InputDecoration(

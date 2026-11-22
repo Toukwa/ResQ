@@ -2,10 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../services/live_socket.dart' as io;
-import 'package:intl/intl.dart';
 
 import 'admin_service.dart';
-import '../../config.dart';
 import '../../services/session_service.dart';
 import '../../services/theme_service.dart';
 import '../shared/resq_dialog.dart';
@@ -50,8 +48,6 @@ class _AdminShellState extends State<AdminShell> {
   int _selectedIndex = 0;
 
   io.Socket? _socket;
-  Timer? _clockTimer;
-  String _currentTimeString = '';
 
   List<Map<String, dynamic>> _notifications = [];
   int _unreadNotificationCount = 0;
@@ -68,8 +64,6 @@ class _AdminShellState extends State<AdminShell> {
   @override
   void initState() {
     super.initState();
-    _updateClock();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
     _resolveSession();
     TabActivity.enabled.addListener(_onTabDotsSetting);
   }
@@ -81,7 +75,6 @@ class _AdminShellState extends State<AdminShell> {
 
   @override
   void dispose() {
-    _clockTimer?.cancel();
     _notifSubscription?.cancel();
     _notificationTrigger.close();
     _socket?.disconnect();
@@ -151,14 +144,6 @@ class _AdminShellState extends State<AdminShell> {
     _fetchNotifications();
   }
 
-  void _updateClock() {
-    if (mounted) {
-      setState(() {
-        _currentTimeString = DateFormat('h:mm:ss a').format(DateTime.now());
-      });
-    }
-  }
-
   /// RxDart-powered notification stream.
   /// Multiple rapid socket events are debounced (300 ms) so we never spam the API.
   void _setupNotificationStream() {
@@ -183,10 +168,7 @@ class _AdminShellState extends State<AdminShell> {
 
   void _initSocket() {
     try {
-      _socket = io.io(
-        AppConfig.baseUrl,
-        io.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build(),
-      );
+      _socket = io.liveEvents(autoConnect: false);
       _socket?.connect();
 
       _socket?.onConnect((_) => debugPrint('AdminShell socket connected'));
@@ -401,7 +383,6 @@ class _AdminShellState extends State<AdminShell> {
                 AdminHeader(
                   title: _headerTitle,
                   subtitle: _headerSubtitle,
-                  currentTimeString: _currentTimeString,
                   userName: _effectiveUserName,
                   userRole: (_effectiveDepartment.isNotEmpty && _effectiveDepartment != 'ALL')
                       ? '${_effectiveDepartment.toUpperCase()} Admin'

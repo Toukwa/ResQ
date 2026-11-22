@@ -1,4 +1,5 @@
 import 'resq_loader.dart';
+import 'submit_on_enter.dart';
 import 'package:flutter/material.dart';
 
 import '../services/theme_service.dart';
@@ -43,6 +44,14 @@ class ResqDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ts = ThemeService.instance;
+    // Enter = the main button, like a form's submit
+    return SubmitOnEnter(
+      onSubmit: primaryLabel == null || busy ? null : onPrimary,
+      child: _dialog(context, ts),
+    );
+  }
+
+  Widget _dialog(BuildContext context, ThemeService ts) {
     return Dialog(
       backgroundColor: ts.cardBackground,
       surfaceTintColor: Colors.transparent,
@@ -174,6 +183,8 @@ class ResqDialogField extends StatelessWidget {
             controller: controller,
             maxLines: maxLines,
             keyboardType: keyboardType,
+            // Phone keyboards: Enter moves on (the pop-up's Enter key handles submitting on a keyboard)
+            textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
             obscureText: obscure,
             style: TextStyle(fontSize: 13, color: ts.textPrimary),
             decoration: InputDecoration(

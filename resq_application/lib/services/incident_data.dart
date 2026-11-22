@@ -513,15 +513,41 @@ class IncidentData {
     return list;
   }
 
-  /// All incidents with their latest dispatch, vehicle and department joined in
+  /// How far back staff screens load closed reports. Older ones are on the Reports screen.
+  static const recentDays = 30;
+
+  /// Every open report (any age) plus the reports sent in the last [recentDays] days,
+  /// so staff screens don't download the whole history on every update.
+  static Future<Map<String, dynamic>> openAndRecentIncidents() async {
+    String q(String v) => '"$v"';
+    final since = DateTime.now().toUtc().subtract(const Duration(days: recentDays)).toIso8601String();
+    final parts = await Future.wait([
+      // The overall status only closes once every agency on the report is done
+      for (final status in ['Pending', 'Accepted', 'En Route', 'Dispatched', 'Arrived'])
+        Rtdb.get('incidents', query: {'orderBy': q('reqStatus'), 'equalTo': q(status)}),
+      Rtdb.get('incidents', query: {'orderBy': q('SOS_timeStamp'), 'startAt': q(since)}),
+    ]);
+    return {
+      for (final part in parts)
+        if (part is Map) ...Map<String, dynamic>.from(part),
+    };
+  }
+
+  /// Dispatches for these reports. Report numbers only go up, so everything from the
+  /// lowest one loaded is enough (one request instead of the whole dispatch history).
+  static Future<dynamic> dispatchesFrom(Iterable<Map<String, dynamic>> incidents) async {
+    final ids = [for (final e in incidents) _int(e['Req_ID'])].whereType<int>();
+    if (ids.isEmpty) return null;
+    final lowest = ids.reduce(math.min);
+    return Rtdb.get('dispatches', query: {'orderBy': '"Req_ID"', 'startAt': '$lowest'});
+  }
+
+  /// Open and recent incidents with their latest dispatch, vehicle and department joined in
   /// (what the old `/admin/active-incidents-list` returned).
   static Future<List<Map<String, dynamic>>> getAllIncidents() async {
-    final results = await Future.wait([
-      Rtdb.get('incidents'),
-      Rtdb.get('dispatches'),
-      Rtdb.get('vehicles'),
-      Rtdb.get('departments'),
-    ]);
+    final loaded = await Future.wait([openAndRecentIncidents(), Rtdb.get('vehicles'), Rtdb.get('departments')]);
+    final incidentRows = rows(loaded[0]);
+    final results = [incidentRows, await dispatchesFrom(incidentRows), loaded[1], loaded[2]];
     final vehicles = {for (final v in rows(results[2])) _int(v['vehicle_ID']): v};
     final depts = {for (final d in rows(results[3])) _int(d['dept_ID']): d};
     final latestDispatch = <int, Map<String, dynamic>>{};

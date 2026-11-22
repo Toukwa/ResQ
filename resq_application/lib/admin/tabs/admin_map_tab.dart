@@ -9,7 +9,6 @@ import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_ti
 import 'package:rxdart/rxdart.dart';
 import '../../services/live_socket.dart' as io;
 import '../admin_service.dart';
-import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
 import '../../shared/vehicle_history_dialog.dart';
@@ -104,10 +103,7 @@ class _AdminMapTabState extends State<AdminMapTab> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.baseUrl, <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
       _socket!.on('refreshIncidentQueueEvent', (data) {
         if (mounted) _realtimeSubject.add(data);
       });

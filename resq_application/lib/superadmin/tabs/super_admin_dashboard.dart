@@ -13,7 +13,6 @@ import '../../services/live_socket.dart' as io;
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../services/firebase_services.dart';
-import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
 import '../../shared/animated_marker_layer.dart';
@@ -147,10 +146,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
 
       _socket!.on('refreshActivityLogsEvent', (data) {
         if (!mounted || data == null) return;

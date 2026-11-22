@@ -218,6 +218,45 @@ class _LoginScreenState extends State<LoginScreen> {
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          Future<void> verify() async {
+            final code = otpController.text.trim();
+            if (code.length != 6) {
+              setDialogState(() => errorMessage = 'Please enter a 6-digit code');
+              return;
+            }
+
+            setDialogState(() {
+              isVerifying = true;
+              errorMessage = null;
+            });
+
+            try {
+              final result = await FirebaseService.verifyMfa(userId: userId, otpCode: code);
+
+              if (result != null && result['success'] == true) {
+                verified = true;
+                // Trust this device so the OTP isn't asked again here for 7 days
+                final token = await SessionService.getOrCreateDeviceToken(userId);
+                await FirebaseService.trustDevice(userId: userId, deviceToken: token);
+                await SessionService.saveTrustedUserId(userId);
+                if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+                if (!mounted) return;
+                final verifiedUser = Map<String, dynamic>.from(result['user'] as Map);
+                _navigateToRoleScreen(verifiedUser);
+              } else {
+                setDialogState(() {
+                  isVerifying = false;
+                  errorMessage = result?['error'] ?? 'Invalid code';
+                });
+              }
+            } catch (e) {
+              setDialogState(() {
+                isVerifying = false;
+                errorMessage = friendlyError(e);
+              });
+            }
+          }
+
           return AlertDialog(
             backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
             surfaceTintColor: Colors.transparent,
@@ -286,6 +325,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: otpController,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => isVerifying ? null : verify(),
                   maxLength: 6,
                   autofocus: true,
                   textAlign: TextAlign.center,
@@ -332,46 +373,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: isVerifying
-                    ? null
-                    : () async {
-                        final code = otpController.text.trim();
-                        if (code.length != 6) {
-                          setDialogState(() => errorMessage = 'Please enter a 6-digit code');
-                          return;
-                        }
-
-                        setDialogState(() {
-                          isVerifying = true;
-                          errorMessage = null;
-                        });
-
-                        try {
-                          final result = await FirebaseService.verifyMfa(userId: userId, otpCode: code);
-
-                          if (result != null && result['success'] == true) {
-                            verified = true;
-                            // Trust this device so the OTP isn't asked again here for 7 days
-                            final token = await SessionService.getOrCreateDeviceToken(userId);
-                            await FirebaseService.trustDevice(userId: userId, deviceToken: token);
-                            await SessionService.saveTrustedUserId(userId);
-                            if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
-                            if (!mounted) return;
-                            final verifiedUser = Map<String, dynamic>.from(result['user'] as Map);
-                            _navigateToRoleScreen(verifiedUser);
-                          } else {
-                            setDialogState(() {
-                              isVerifying = false;
-                              errorMessage = result?['error'] ?? 'Invalid code';
-                            });
-                          }
-                        } catch (e) {
-                          setDialogState(() {
-                            isVerifying = false;
-                            errorMessage = friendlyError(e);
-                          });
-                        }
-                      },
+                onPressed: isVerifying ? null : verify,
                 child: isVerifying
                     ? const SizedBox(
                         width: 18,
@@ -554,6 +556,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
             style: TextStyle(color: textDark),
             decoration: _inputDecor('Enter Email', Icons.email_outlined, borderGrey, brandOrange),
           ),
@@ -566,6 +569,8 @@ class _LoginScreenState extends State<LoginScreen> {
           TextField(
             controller: _passwordController,
             obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _loggingIn ? null : _handleLogin(),
             style: TextStyle(color: textDark),
             decoration: _inputDecor(
               'Enter your password',

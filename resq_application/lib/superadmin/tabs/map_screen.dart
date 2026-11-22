@@ -9,7 +9,6 @@ import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_ti
 import 'package:rxdart/rxdart.dart';
 import '../../services/live_socket.dart' as io;
 import '../../admin/admin_service.dart';
-import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
 import '../../shared/vehicle_history_dialog.dart';
@@ -93,10 +92,7 @@ class _MapScreenState extends State<MapScreen> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
       // Listen for new/updated incidents
       _socket!.on('refreshIncidentQueueEvent', (data) {
         if (mounted) _realtimeSubject.add(data);

@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../services/incident_data.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/resq_dialog.dart';
+import '../../shared/submit_on_enter.dart';
 import '../../shared/resq_dropdown.dart';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
-import '../../config.dart';
 import '../../services/firebase_services.dart';
 import '../../services/live_socket.dart' as io;
 import '../../services/prank_warning.dart';
@@ -95,10 +95,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
 
       _socket!.on('refreshManagementData', (data) {
         if (mounted) {
@@ -1089,7 +1086,69 @@ class _ManagementScreenState extends State<ManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Dialog(
+        builder: (context, setModalState) {
+          Future<void> create() async {
+                              if (nameController.text.isEmpty ||
+                                  emailController.text.isEmpty ||
+                                  contactNoController.text.isEmpty ||
+                                  passwordController.text.isEmpty) {
+                                ScaffoldMessenger.of(context).showResqSnackBar(
+                                  const SnackBar(content: Text('Please fill all required fields')),
+                                );
+                                return;
+                              }
+
+                              if (passwordController.text != confirmPasswordController.text) {
+                                ScaffoldMessenger.of(context).showResqSnackBar(
+                                  const SnackBar(content: Text('Passwords do not match')),
+                                );
+                                return;
+                              }
+
+                              // Map agency name to deptID
+                              int? deptID;
+                              for (var dept in _departments) {
+                                if (dept['deptName'] == selectedAgency) {
+                                  deptID = dept['dept_ID'] as int?;
+                                  break;
+                                }
+                              }
+
+                              final accountData = {
+                                'userName': nameController.text,
+                                'email': emailController.text,
+                                'contactNo': contactNoController.text,
+                                'password': passwordController.text,
+                                'role': selectedRole,
+                                'deptID': deptID,
+                              };
+
+                              final messenger = ScaffoldMessenger.of(context);
+                              final navigator = Navigator.of(context);
+                              setModalState(() => creating = true);
+                              final success = await AdminService.createAccount(accountData);
+                              if (!context.mounted) return;
+                              if (success) {
+                                navigator.pop();
+                                _loadAccounts();
+                                messenger.showResqSnackBar(
+                                  SnackBar(
+                                    content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
+                                    duration: const Duration(seconds: 6),
+                                  ),
+                                );
+                              } else {
+                                setModalState(() => creating = false);
+                                messenger.showResqSnackBar(
+                                  SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
+                                );
+                              }
+                            }
+
+          // Enter = Create Account
+          return SubmitOnEnter(
+            onSubmit: creating ? null : create,
+            child: Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Container(
@@ -1320,63 +1379,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         child: SizedBox(
                           height: 44,
                           child: ElevatedButton(
-                            onPressed: creating ? null : () async {
-                              if (nameController.text.isEmpty ||
-                                  emailController.text.isEmpty ||
-                                  contactNoController.text.isEmpty ||
-                                  passwordController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showResqSnackBar(
-                                  const SnackBar(content: Text('Please fill all required fields')),
-                                );
-                                return;
-                              }
-
-                              if (passwordController.text != confirmPasswordController.text) {
-                                ScaffoldMessenger.of(context).showResqSnackBar(
-                                  const SnackBar(content: Text('Passwords do not match')),
-                                );
-                                return;
-                              }
-
-                              // Map agency name to deptID
-                              int? deptID;
-                              for (var dept in _departments) {
-                                if (dept['deptName'] == selectedAgency) {
-                                  deptID = dept['dept_ID'] as int?;
-                                  break;
-                                }
-                              }
-
-                              final accountData = {
-                                'userName': nameController.text,
-                                'email': emailController.text,
-                                'contactNo': contactNoController.text,
-                                'password': passwordController.text,
-                                'role': selectedRole,
-                                'deptID': deptID,
-                              };
-
-                              final messenger = ScaffoldMessenger.of(context);
-                              final navigator = Navigator.of(context);
-                              setModalState(() => creating = true);
-                              final success = await AdminService.createAccount(accountData);
-                              if (!context.mounted) return;
-                              if (success) {
-                                navigator.pop();
-                                _loadAccounts();
-                                messenger.showResqSnackBar(
-                                  SnackBar(
-                                    content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
-                                    duration: const Duration(seconds: 6),
-                                  ),
-                                );
-                              } else {
-                                setModalState(() => creating = false);
-                                messenger.showResqSnackBar(
-                                  SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
-                                );
-                              }
-                            },
+                            onPressed: creating ? null : create,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.brand,
                               elevation: 0,
@@ -1408,6 +1411,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
             ),
           ),
         ),
+          );
+        },
       ),
     );
   }

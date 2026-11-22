@@ -44,13 +44,6 @@ class ClosedReportsTabs {
         'Invalid' => 'No invalid (prank) reports',
         _ => 'No cancelled requests',
       };
-
-  /// Status badge colour for a closed report (by its status).
-  static Color colorForStatus(String status) => switch (status.toLowerCase()) {
-        'completed' => _green,
-        'invalid' => _purple,
-        _ => _red,
-      };
 }
 
 /// The tab pills with the count on the right.

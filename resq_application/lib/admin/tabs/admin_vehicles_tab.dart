@@ -24,7 +24,6 @@ import '../../shared/incident_format.dart';
 import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
-import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
@@ -106,10 +105,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   void _connectSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl, <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': false,
-      });
+      _socket = io.liveEvents(autoConnect: false);
       _socket!.connect();
       // Route all updates through debounce to avoid concurrent setState calls
       for (final event in ['refreshIncidentQueueEvent', 'refreshManagementData', 'vehicleUpdate']) {
@@ -279,7 +275,6 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   IconData _getEmergencyIcon(dynamic req) => emergencyTypeStyle(req)['icon'] as IconData;
 
-  String _displayStatus(dynamic rawStatus) => reportStatusLabel(rawStatus);
 
   bool _isIncidentForDepartment(dynamic req) => IncidentData.isForDepartment(req, widget.department);
 
@@ -1048,7 +1043,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final status = IncidentData.statusFor(req, widget.department, 'Pending');
     final ts = ThemeService.instance;
 
-    final displayStatusText = _displayStatus(status);
+    final displayStatusText = reportStatusLabel(status);
     final statusBg = statusBgColor(displayStatusText);
     final statusColor = statusColorOf(displayStatusText);
 
@@ -1174,7 +1169,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    _displayStatus(status),
+                    reportStatusLabel(status),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,

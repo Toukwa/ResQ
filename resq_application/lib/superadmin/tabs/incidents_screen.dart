@@ -6,7 +6,6 @@ import '../../shared/incident_details_dialog.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/live_socket.dart' as io;
 import '../../admin/admin_service.dart';
-import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/emergency_request_model.dart';
@@ -78,10 +77,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
 
       _socket!.on('refreshIncidentQueueEvent', (_) {
         if (mounted) {

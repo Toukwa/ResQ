@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../shared/live_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/theme_service.dart';
@@ -9,7 +10,6 @@ import '../../shared/resq_text.dart';
 class AdminHeader extends StatefulWidget {
   final String title;
   final String subtitle;
-  final String currentTimeString;
   final String userName;
   final String userRole;
   final int unreadNotificationCount;
@@ -27,7 +27,6 @@ class AdminHeader extends StatefulWidget {
     super.key,
     required this.title,
     this.subtitle = 'Iriga City Emergency Operations Center · Admin Active',
-    required this.currentTimeString,
     this.userName = 'Admin',
     this.userRole = 'Admin',
     required this.unreadNotificationCount,
@@ -148,8 +147,8 @@ class _AdminHeaderState extends State<AdminHeader> {
                   color: textPrimary,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  widget.currentTimeString,
+                // Ticks on its own, so the whole screen doesn't redraw every second
+                LiveClock(
                   style: TextStyle(
                     color: textPrimary,
                     fontWeight: FontWeight.bold,

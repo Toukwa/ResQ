@@ -193,9 +193,13 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
     bool obscure = false,
     String? error,
     bool autofocus = false,
+    VoidCallback? onSubmit,
   }) => TextField(
     controller: c,
     autofocus: autofocus,
+    // Enter: the sheet's Save on its last field, otherwise the next field
+    textInputAction: onSubmit == null ? TextInputAction.next : TextInputAction.done,
+    onSubmitted: onSubmit == null ? null : (_) => onSubmit(),
     keyboardType: keyboard,
     obscureText: obscure,
     style: TextStyle(color: ts.textPrimary),
@@ -309,12 +313,8 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
       icon: icon,
       title: title,
       subtitle: subtitle,
-      body: (sheet, setSheet) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _field(controller, hint: hint, icon: icon, keyboard: keyboard, error: error, autofocus: true),
-          const SizedBox(height: 16),
-          _primaryButton('Save', () async {
+      body: (sheet, setSheet) {
+        Future<void> submit() async {
             final v = controller.text.trim();
             final e = validate(v);
             if (e != null) return setSheet(() => error = e);
@@ -330,9 +330,17 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
                 error = cleanErrorText("Couldn't save. $e");
               });
             }
-          }, busy: busy),
+          }
+
+        return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _field(controller, hint: hint, icon: icon, keyboard: keyboard, error: error, autofocus: true, onSubmit: busy ? null : submit),
+          const SizedBox(height: 16),
+          _primaryButton('Save', submit, busy: busy),
         ],
-      ),
+      );
+      },
     );
   }
 
@@ -375,16 +383,8 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
       title: 'Change Password',
       subtitle: 'Enter your current password first',
       color: _purple,
-      body: (sheet, setSheet) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _field(current, hint: 'Current password', icon: Icons.lock_outline_rounded, obscure: true, autofocus: true),
-          const SizedBox(height: 12),
-          _field(next, hint: 'New password', icon: Icons.lock_reset_rounded, obscure: true, error: error),
-          const SizedBox(height: 16),
-          _primaryButton(
-            'Save Password',
-            () async {
+      body: (sheet, setSheet) {
+        Future<void> savePassword() async {
               setSheet(() {
                 busy = true;
                 error = null;
@@ -401,12 +401,25 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
                 setSheet(() => error = cleanErrorText('$e'));
               }
               setSheet(() => busy = false);
-            },
+            }
+
+        return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _field(current, hint: 'Current password', icon: Icons.lock_outline_rounded, obscure: true, autofocus: true),
+          const SizedBox(height: 12),
+          _field(next, hint: 'New password', icon: Icons.lock_reset_rounded, obscure: true, error: error,
+              onSubmit: busy ? null : savePassword),
+          const SizedBox(height: 16),
+          _primaryButton(
+            'Save Password',
+            savePassword,
             busy: busy,
             color: _purple,
           ),
         ],
-      ),
+      );
+      },
     );
   }
 

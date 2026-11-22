@@ -1,11 +1,11 @@
 import '../../shared/resq_loader.dart';
+import '../../shared/incident_format.dart';
 import 'package:flutter/material.dart';
 import '../../shared/resq_dialog.dart';
 import '../../shared/resq_dropdown.dart';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../admin_service.dart';
-import '../../config.dart';
 import '../../services/live_socket.dart' as io;
 import '../../services/theme_service.dart';
 import '../../shared/sim_balance_indicator.dart';
@@ -99,11 +99,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
 
   void _initWebSocket() {
     try {
-      final baseSocketUrl = AppConfig.baseUrl;
-      _socket = io.io(baseSocketUrl, <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
 
       for (final evt in ['refreshManagementData', 'vehicleUpdate', 'vehicle_dispatched']) {
         _socket!.on(evt, (data) {
@@ -210,13 +206,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   Color _getStatusColor(String status) => statusColor(vehicleStatusLabel(status));
 
 
-  Color _getDeptColor(String dept) {
-    final clean = dept.toUpperCase().trim();
-    if (clean.contains('PNP')) return const Color(0xFF1E3A8A);
-    if (clean.contains('BFP')) return const Color(0xFFDC2626);
-    if (clean.contains('CDRRMO')) return const Color(0xFFD97706);
-    return const Color(0xFF64748B);
-  }
+  Color _getDeptColor(String dept) => departmentBadgeColor(dept);
 
   IconData _getVehicleIcon(String type) {
     final lower = type.toLowerCase();

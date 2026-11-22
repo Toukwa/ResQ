@@ -51,7 +51,7 @@ void main() {
       fb.run(() async {
         final list = vehicles ?? await VehicleData.getVehicles();
         final pins = <Map<String, LatLng>>[];
-        final socket = io.io('')..on('vehicleLocationUpdated', (d) => applyVehicleLocation(list, d));
+        final socket = io.liveEvents()..on('vehicleLocationUpdated', (d) => applyVehicleLocation(list, d));
         await Future.delayed(const Duration(milliseconds: 100));
         await body(() async {
           await settle();

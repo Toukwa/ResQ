@@ -87,7 +87,7 @@ class DashboardAnalyticsView extends StatelessWidget {
       children: [
         Row(
           children: [
-            _stat(ts, 'Total reports', '${list.length}'),
+            _stat(ts, 'Reports (open + last ${IncidentData.recentDays} days)', '${list.length}'),
             const SizedBox(width: 8),
             _stat(ts, 'Today', '${perDay.last}'),
             const SizedBox(width: 8),

@@ -191,6 +191,7 @@ class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
               TextField(
                 controller: _password,
                 obscureText: _obscure,
+                textInputAction: TextInputAction.next,
                 enabled: !_busy,
                 style: TextStyle(color: textDark),
                 decoration: decor('New password', Icons.lock_outline).copyWith(
@@ -206,6 +207,8 @@ class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
               TextField(
                 controller: _confirm,
                 obscureText: _obscure,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _busy ? null : _save(),
                 enabled: !_busy,
                 style: TextStyle(color: textDark),
                 decoration: decor('Confirm password', Icons.lock_outline),

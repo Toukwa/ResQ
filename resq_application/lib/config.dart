@@ -26,8 +26,6 @@ class AppConfig {
   /// now goes to Firebase directly (there is no API server anymore).
   static const String baseUrl = 'https://resq-db-41ff8.web.app';
 
-  /// Kept because screens still pass it to the live-update socket, which ignores it.
-  static const String apiBaseUrl = '$baseUrl/api';
 
   /// Road routing (OSRM) used to fill a tracker's signal gaps along the road.
   /// The public demo server is for testing only (about 1 request per second, no guarantee);

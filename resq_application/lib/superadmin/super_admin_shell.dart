@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../services/live_socket.dart' as io;
 import './tabs/eoc_header.dart'; // Make sure this import path matches your project file layout
 import '../admin/admin_service.dart'; // Import AdminService for notification methods
-import '../../config.dart';
 import '../../services/session_service.dart';
 import '../../services/theme_service.dart';
 import '../shared/resq_logo.dart';
@@ -148,13 +147,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(
-        AppConfig.apiBaseUrl.replaceAll('/api', ''),
-        <String, dynamic>{
-          'transports': ['websocket'],
-          'autoConnect': true,
-        },
-      );
+      _socket = io.liveEvents();
 
       void reload(_) {
         if (mounted) {

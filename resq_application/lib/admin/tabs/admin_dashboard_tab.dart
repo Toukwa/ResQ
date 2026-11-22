@@ -14,7 +14,6 @@ import 'package:rxdart/rxdart.dart';
 import '../../services/live_socket.dart' as io;
 
 import '../admin_service.dart';
-import '../../config.dart';
 import '../../shared/image_gallery_widget.dart';
 import '../../shared/animated_marker_layer.dart';
 import '../../shared/vehicle_markers.dart';
@@ -132,7 +131,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   void _initSocket() {
     try {
-      _socket = io.io(AppConfig.baseUrl, io.OptionBuilder().setTransports(['websocket']).enableAutoConnect().build());
+      _socket = io.liveEvents();
 
       for (final event in [
         'refreshIncidentQueueEvent',
@@ -403,15 +402,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         if (item is Map) {
           final dName = (item['dept_name'] ?? item['deptName'] ?? '').toString().trim().toUpperCase();
           if (dName.isNotEmpty) {
-            if (dName.contains('BFP') || dName.contains('FIRE')) {
-              depts.add('BFP');
-            } else if (dName.contains('PNP') || dName.contains('POLICE')) {
-              depts.add('PNP');
-            } else if (dName.contains('CDRRMO') || dName.contains('RESCUE') || dName.contains('DISASTER')) {
-              depts.add('CDRRMO');
-            } else {
-              depts.add(dName);
-            }
+            depts.add(IncidentData.normalizeDepartment(dName));
           }
         }
       }
@@ -469,15 +460,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               .trim()
               .toUpperCase();
       if (agency.isNotEmpty) {
-        if (agency.contains('BFP')) {
-          depts.add('BFP');
-        } else if (agency.contains('PNP')) {
-          depts.add('PNP');
-        } else if (agency.contains('CDRRMO')) {
-          depts.add('CDRRMO');
-        } else {
-          depts.add(agency);
-        }
+        depts.add(IncidentData.normalizeDepartment(agency));
       }
     }
 
@@ -1770,22 +1753,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final vehicleType = (v['Vehicle_Type'] ?? v['vehicle_type'] ?? 'Vehicle').toString();
     final status = vehicleStatus(v);
 
-    final Color iconBg;
-    final Color iconColor;
-    final IconData deptIcon;
-    if (dept.toUpperCase().contains('BFP')) {
-      iconBg = ts.isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2);
-      iconColor = const Color(0xFFDC2626);
-      deptIcon = Icons.local_fire_department_outlined;
-    } else if (dept.toUpperCase().contains('PNP')) {
-      iconBg = ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFEFF6FF);
-      iconColor = const Color(0xFF2563EB);
-      deptIcon = Icons.local_police_outlined;
-    } else {
-      iconBg = ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
-      iconColor = AppColors.success;
-      deptIcon = Icons.health_and_safety_outlined;
-    }
+    // Same agency symbol and colour as everywhere else
+    final normalized = IncidentData.normalizeDepartment(dept);
+    final symbol = agencySymbol(normalized == 'BFP' || normalized == 'PNP' ? normalized : 'CDRRMO');
+    final iconBg = symbol.bgColor;
+    final iconColor = symbol.color;
+    final deptIcon = symbol.icon;
 
     final Color badgeColor = statusColor(status);
     final Color badgeBg = statusBgColor(status);

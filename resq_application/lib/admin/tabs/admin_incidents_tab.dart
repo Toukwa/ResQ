@@ -7,7 +7,6 @@ import 'package:rxdart/rxdart.dart';
 import '../../services/live_socket.dart' as io;
 import '../admin_service.dart';
 import '../../services/incident_data.dart';
-import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/emergency_request_model.dart';
@@ -88,10 +87,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
 
       _socket!.on('refreshIncidentQueueEvent', (_) {
         if (mounted) {

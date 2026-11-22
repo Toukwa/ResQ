@@ -287,6 +287,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       _label('Full Name'),
                       TextField(
                         controller: _name,
+                        textInputAction: TextInputAction.next,
                         enabled: !_busy,
                         textCapitalization: TextCapitalization.words,
                         decoration: _decor('Juan Dela Cruz', Icons.person_outline),
@@ -294,6 +295,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       _label('Phone Number'),
                       TextField(
                         controller: _phone,
+                        textInputAction: TextInputAction.next,
                         enabled: !_busy,
                         keyboardType: TextInputType.phone,
                         decoration: _decor('09XXXXXXXXX', Icons.phone_outlined),
@@ -301,6 +303,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       _label('Email Address'),
                       TextField(
                         controller: _email,
+                        textInputAction: TextInputAction.next,
                         enabled: !_busy,
                         keyboardType: TextInputType.emailAddress,
                         decoration: _decor('you@example.com', Icons.email_outlined),
@@ -328,6 +331,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       _label('Password'),
                       TextField(
                         controller: _password,
+                        textInputAction: TextInputAction.next,
                         enabled: !_busy,
                         obscureText: _obscure,
                         decoration: _decor('••••••••', Icons.lock_outline).copyWith(
@@ -345,6 +349,8 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                       _label('Confirm Password'),
                       TextField(
                         controller: _confirm,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _busy ? null : _save(),
                         enabled: !_busy,
                         obscureText: _obscure,
                         decoration: _decor('••••••••', Icons.lock_outline),

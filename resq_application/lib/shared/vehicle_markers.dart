@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/incident_data.dart';
 import 'map_pin.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -24,11 +25,10 @@ bool isVehicleForDepartment(dynamic v, String dept) {
   final deptName = (v['deptName'] ?? v['Department_Name'] ?? v['agency'] ?? v['department'] ?? '').toString().toUpperCase().trim();
   final deptId = (v['dept_ID'] ?? v['deptId'] ?? '').toString().trim();
 
-  if (dept == 'PNP') return deptName.contains('PNP') || deptId == '1' || deptName.contains('POLICE');
-  if (dept == 'BFP') return deptName.contains('BFP') || deptId == '2' || deptName.contains('FIRE');
-  if (dept == 'CDRRMO') return deptName.contains('CDRRMO') || deptId == '3' || deptName.contains('MEDICAL') || deptName.contains('RESCUE');
-
-  return deptName.contains(dept);
+  // Its agency ID (1 PNP, 2 BFP, 3 CDRRMO), or its agency's name by the shared rule
+  const ids = {'PNP': '1', 'BFP': '2', 'CDRRMO': '3'};
+  if (ids[dept] != null && deptId == ids[dept]) return true;
+  return IncidentData.normalizeDepartment(deptName) == dept;
 }
 
 /// The vehicles of [dept] that can be dispatched right now.

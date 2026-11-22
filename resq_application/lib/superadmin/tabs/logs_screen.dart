@@ -11,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../admin/admin_service.dart';
 import '../../services/firebase_services.dart';
-import '../../config.dart';
 import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/resq_toast.dart';
@@ -150,10 +149,7 @@ class _LogsScreenState extends State<LogsScreen> {
 
   void _initWebSocket() {
     try {
-      _socket = io.io(AppConfig.apiBaseUrl.replaceAll('/api', ''), <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-      });
+      _socket = io.liveEvents();
 
       _socket!.on('refreshActivityLogsEvent', (data) {
         if (mounted) {
@@ -423,87 +419,9 @@ class _LogsScreenState extends State<LogsScreen> {
         List<Map<String, dynamic>> parsedEvents = [];
 
         for (var raw in rawLogs) {
-          final log = raw as Map<String, dynamic>;
-
-          final String action = log['action']?.toString() ?? 'SYSTEM_EVENT';
-          final String entityType = log['entity_type']?.toString() ?? 'system';
-          final String status = log['status']?.toString() ?? 'SUCCESS';
-          final String actorDisplay = log['actor_display']?.toString() ?? 
-                                       log['user_role']?.toString() ?? 
-                                       log['userName']?.toString() ?? 'System';
-
-          String iconName = 'notifications_none';
-          String iconBg = '#F1F5F9';
-          String iconColor = '#64748B';
-          String typeBg = '#E2E8F0';
-          String typeColor = '#475569';
-
-          if (status == 'FAILED') {
-            iconName = 'warning_amber_rounded';
-            iconBg = '#FEF2F2';
-            iconColor = '#EF4444';
-            typeBg = '#FEE2E2';
-            typeColor = '#991B1B';
-          } else if (entityType == 'emergency_request') {
-            iconName = 'warning_amber_rounded';
-            iconBg = '#FFF7ED';
-            iconColor = '#EA580C';
-            typeBg = '#FFEDD5';
-            typeColor = '#C2410C';
-          } else if (entityType == 'dispatch_event') {
-            iconName = 'local_shipping_outlined';
-            iconBg = '#EFF6FF';
-            iconColor = '#2563EB';
-            typeBg = '#DBEAFE';
-            typeColor = '#1E40AF';
-          } else if (entityType == 'response_vehicle') {
-            iconName = 'sync_rounded';
-            iconBg = '#F0FDF4';
-            iconColor = '#16A34A';
-            typeBg = '#DCFCE7';
-            typeColor = '#15803D';
-          }
-
-          DateTime parsedTime;
-          try {
-            final timestampStr = log['timestamp']?.toString() ?? 
-                                 log['created_at']?.toString() ?? 
-                                 log['createdAt']?.toString() ?? '';
-
-            if (timestampStr.isNotEmpty) {
-              parsedTime = DateTime.parse(timestampStr).toLocal();
-            } else {
-              parsedTime = DateTime.now();
-            }
-          } catch (e) {
-            parsedTime = DateTime.now();
-          }
-
-          parsedEvents.add({
-            'id': log['log_id'],
-            'dept': log['dept'],
-            'title': actorDisplay,
-            'type': action,
-            'category': entityType,
-            'description': LogDetails.describe(Map<String, dynamic>.from(log)),
-            'raw': Map<String, dynamic>.from(log),
-            'status': status,
-            'requestId': log['entity_id']?.toString() ?? 'N/A',
-            'time': DateFormat('h:mm a').format(parsedTime),
-            'date': DateFormat('yyyy-MM-dd').format(parsedTime),
-            'timestamp': parsedTime.toIso8601String(),
-            'source': "Audit Database Engine",
-            'icon': iconName,
-            'iconBg': iconBg,
-            'iconColor': iconColor,
-            'typeBg': typeBg,
-            'typeColor': typeColor,
-            'details': log['details']?.toString() ?? '',
-            'tags': [
-              {'text': entityType, 'bg': typeBg, 'color': typeColor},
-              {'text': status, 'bg': status == 'SUCCESS' ? '#DCFCE7' : '#FEE2E2', 'color': status == 'SUCCESS' ? '#15803D' : '#991B1B'}
-            ]
-          });
+          // Same formatting as live entries (shared/log_format.dart)
+          final event = parseLogEvent(Map<String, dynamic>.from(raw as Map), source: 'Audit Database Engine');
+          if (event != null) parsedEvents.add(event);
         }
 
         final weekStart = FirebaseService.getStartOfCurrentWeekMonday();
@@ -696,7 +614,8 @@ class _LogsScreenState extends State<LogsScreen> {
   }
   
   List<String> get _availableActions {
-    final Set<String> actions = {'GET /api/admin/activity-logs', 'POST /api/dispatch', 'UPDATE /api/status'};
+    // Only actions that actually appear in the log
+    final actions = <String>{};
     for (var e in _timelineEvents) {
       final type = e['type'] as String?;
       if (type != null && type.isNotEmpty) actions.add(type);

@@ -44,13 +44,11 @@ IconData logIconData(String iconName) {
   }
 }
 
-Color departmentBadgeColor(String dept) {
-  final d = dept.toUpperCase();
-  if (d.contains('BFP') || d.contains('FIRE')) return const Color(0xFFDC2626);
-  if (d.contains('PNP') || d.contains('POLICE')) return const Color(0xFF2563EB);
-  if (d.contains('CDRRMO') || d.contains('RESCUE') || d.contains('MEDICAL')) return AppColors.success;
-  return const Color(0xFFEA580C);
-}
+/// The agency's colour (the same as its symbol); orange for anything else.
+Color departmentBadgeColor(String dept) => switch (IncidentData.normalizeDepartment(dept)) {
+      final a when a == 'BFP' || a == 'PNP' || a == 'CDRRMO' => agencySymbol(a).color,
+      _ => const Color(0xFFEA580C),
+    };
 
 /// The agency symbols, as on the phone app's report cards. Used everywhere an
 /// incident or agency is shown (phone and staff screens) so they always match.
@@ -104,10 +102,15 @@ Map<String, dynamic> vehicleMarkerConfig(dynamic vehicleInput) {
   } else {
     deptStr = (vehicleInput ?? '').toString().toUpperCase();
   }
-  String? agency;
-  if (deptStr.contains('BFP') || deptStr.contains('FIRE') || deptStr == '2') agency = 'BFP';
-  if (deptStr.contains('PNP') || deptStr.contains('POLICE') || deptStr == '1') agency = 'PNP';
-  if (deptStr.contains('CDRRMO') || deptStr.contains('RESCUE') || deptStr.contains('MEDICAL') || deptStr == '3') agency = 'CDRRMO';
+  // A name, or the agency's ID (1 PNP, 2 BFP, 3 CDRRMO)
+  final agency = switch (deptStr) {
+    '1' => 'PNP',
+    '2' => 'BFP',
+    '3' => 'CDRRMO',
+    _ => const {'BFP', 'PNP', 'CDRRMO'}.contains(IncidentData.normalizeDepartment(deptStr))
+        ? IncidentData.normalizeDepartment(deptStr)
+        : null,
+  };
   if (agency == null) return {'icon': Icons.directions_car_rounded, 'color': const Color(0xFF64748B)};
   // Agency colour, but a vehicle symbol, so units never look like incidents
   const vehicleIcon = {

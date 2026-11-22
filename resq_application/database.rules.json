@@ -117,7 +117,7 @@
     "incidents": {
       // Staff see everything; a citizen may only run the "my incidents" query
       ".read": "auth != null && ((root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (query.orderByChild === 'citizenUid' && query.equalTo === auth.uid))",
-      ".indexOn": ["citizenUid", "Req_ID", "reqStatus", "linkGroup"],
+      ".indexOn": ["citizenUid", "Req_ID", "reqStatus", "linkGroup", "SOS_timeStamp"],
       "$reqId": {
         ".read": "auth != null && (data.child('citizenUid').val() === auth.uid || (root.child('users/' + auth.uid + '/role').val() === 'Admin' && root.child('users/' + auth.uid + '/disabled').val() !== true) || (root.child('users/' + auth.uid + '/role').val() === 'Superadmin' && root.child('users/' + auth.uid + '/disabled').val() !== true))",
         // Citizens can only file a new Pending report as themselves, one at a time: the same write

@@ -1,6 +1,5 @@
-/// Drop-in replacement for the parts of `socket_io_client` the screens use.
-/// Screens import this `as io` and keep calling `io.io(...)`, `.on(...)`,
-/// `.connect()` and `.dispose()`. Events travel through the Realtime Database:
+/// Live updates between the apps. Screens import this `as io` and call
+/// `io.liveEvents()`, `.on(...)`, `.connect()` and `.dispose()`. Events travel through the Realtime Database:
 /// [LiveEvents.emit] writes to `live/<event>`, and a shared streaming
 /// connection delivers it to every registered listener. GPS trackers write to
 /// `trackers/<uid>`, which is turned into `vehicleLocationUpdated` events.
@@ -259,17 +258,10 @@ class Socket {
 }
 
 /// Same signature as socket_io_client's `io()`; the URL is ignored.
-Socket io(String url, [dynamic options]) {
+/// A connection to the app's live events. With [autoConnect] it starts listening
+/// once the caller has added its `.on(...)` handlers; otherwise call `.connect()`.
+Socket liveEvents({bool autoConnect = true}) {
   final s = Socket();
-  final auto = options is Map ? options['autoConnect'] != false : true;
-  if (auto) scheduleMicrotask(s.connect);
+  if (autoConnect) scheduleMicrotask(s.connect);
   return s;
-}
-
-class OptionBuilder {
-  final Map<String, dynamic> _opts = {'autoConnect': true};
-  OptionBuilder setTransports(List<String> _) => this;
-  OptionBuilder enableAutoConnect() => this.._opts['autoConnect'] = true;
-  OptionBuilder disableAutoConnect() => this.._opts['autoConnect'] = false;
-  Map<String, dynamic> build() => _opts;
 }

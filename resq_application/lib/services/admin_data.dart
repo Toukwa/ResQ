@@ -126,15 +126,16 @@ class AdminData {
   // ─── dashboard ───────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> dashboardMetrics() async {
+    // Only open and recent reports, and their dispatches: enough for every number here
     final results = await Future.wait([
-      Rtdb.get('incidents'),
+      IncidentData.openAndRecentIncidents(),
       Rtdb.get('vehicles'),
       Rtdb.get('departments'),
       Rtdb.get('users', query: {'shallow': 'true'}),
       Rtdb.get('trackers'),
-      Rtdb.get('dispatches'),
     ]);
     final incidents = IncidentData.rows(results[0]);
+    results.add(await IncidentData.dispatchesFrom(incidents));
     final vehicles = IncidentData.rows(results[1]);
     final depts = IncidentData.rows(results[2]);
     final trackers = (results[4] as Map?) ?? {};

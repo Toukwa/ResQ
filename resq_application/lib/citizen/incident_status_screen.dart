@@ -50,7 +50,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     _fetchIncidentDetails();
     // Staff announce every report change; reload then. The slow timer is only a backup
     // (e.g. after a lost connection), so the phone doesn't download the report every 5 s.
-    _live = io.io(AppConfig.apiBaseUrl, {'autoConnect': false})
+    _live = io.liveEvents(autoConnect: false)
       ..on('refreshIncidentQueueEvent', (_) => _fetchIncidentDetails())
       ..connect();
     _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {

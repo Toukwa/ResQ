@@ -64,7 +64,7 @@ class SoundService {
   static void start({required bool soundsOn}) {
     enabled = soundsOn;
     if (_socket != null) return;
-    _socket = io.io('')
+    _socket = io.liveEvents()
       ..on('refreshIncidentQueueEvent', (data) {
         // A report waiting for the EOC: only the EOC's app (no agency) sounds
         if (data is Map && !(data['eocOnly'] == true && agency != null)) {

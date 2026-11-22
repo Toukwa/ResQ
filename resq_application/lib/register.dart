@@ -296,6 +296,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           brandOrange,
           textDark,
           () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+          onSubmit: () => _isNetworkLoading ? null : _processAccountRegistration(),
         ),
         const SizedBox(height: 14),
         TermsConsentSection(controller: _terms),
@@ -435,6 +436,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return TextField(
       controller: ctrl,
       keyboardType: keyboardType,
+      textInputAction: TextInputAction.next, // Enter moves to the next field
       style: TextStyle(color: dark, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
@@ -463,11 +465,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     Color border,
     Color brand,
     Color dark,
-    VoidCallback onToggle,
-  ) {
+    VoidCallback onToggle, {
+    VoidCallback? onSubmit,
+  }) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
+      // Enter: next field, or on the last one, sign up
+      textInputAction: onSubmit == null ? TextInputAction.next : TextInputAction.done,
+      onSubmitted: onSubmit == null ? null : (_) => onSubmit(),
       style: TextStyle(color: dark, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,

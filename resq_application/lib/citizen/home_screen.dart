@@ -12,7 +12,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/firebase_rest.dart';
 import '../services/live_socket.dart' as io;
-import '../config.dart';
 import '../services/firebase_services.dart';
 import '../services/incident_data.dart';
 import '../services/media_upload.dart';
@@ -286,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _checkActiveIncident();
     // Instant on staff updates; the slow timer is a backup (saves mobile data)
-    _live = io.io(AppConfig.apiBaseUrl, {'autoConnect': false})
+    _live = io.liveEvents(autoConnect: false)
       ..on('refreshIncidentQueueEvent', (_) => _checkActiveIncident())
       ..connect();
     _activeCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -958,6 +957,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   TextField(
                     controller: nameCtrl,
                     autofocus: true,
+                    textInputAction: TextInputAction.next,
                     textCapitalization: TextCapitalization.words,
                     style: TextStyle(color: textDark),
                     decoration: decor('Full Name', Icons.person_outline),
@@ -966,6 +966,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   TextField(
                     controller: phoneCtrl,
                     keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => busy ? null : submit(),
                     style: TextStyle(color: textDark),
                     decoration: decor('09XXXXXXXXX', Icons.phone_outlined),
                   ),

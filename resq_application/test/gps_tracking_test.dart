@@ -38,7 +38,7 @@ void main() {
   // Opens the app's live GPS feed, runs [body], and returns what the app received.
   Future<List<Map>> listen(Future<void> Function() body) => fb.run(() async {
         final got = <Map>[];
-        final socket = io.io('')..on('vehicleLocationUpdated', (d) => got.add(d as Map));
+        final socket = io.liveEvents()..on('vehicleLocationUpdated', (d) => got.add(d as Map));
         await Future.delayed(const Duration(milliseconds: 100)); // connect
         await body();
         await Future.delayed(const Duration(milliseconds: 100));
@@ -53,7 +53,7 @@ void main() {
     late int receivedAfterMs;
     final got = await fb.run(() async {
       final got = <Map>[];
-      final socket = io.io('')
+      final socket = io.liveEvents()
         ..on('vehicleLocationUpdated', (d) {
           receivedAfterMs = sw.elapsedMilliseconds;
           got.add(d as Map);

@@ -8,7 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../services/theme_service.dart';
 
-Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log) {
+/// [source] labels where the entry came from (the live stream, or the saved log).
+Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log, {String source = 'Real-time Audit Stream'}) {
   try {
     final String action = log['action']?.toString() ?? 'SYSTEM_EVENT';
     final String entityType = log['entity_type']?.toString() ?? 'system';
@@ -64,6 +65,7 @@ Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log) {
 
     return {
       'id': log['log_id'],
+      'dept': log['dept'],
       'title': actorDisplay,
       'type': action,
       'category': entityType,
@@ -74,7 +76,7 @@ Map<String, dynamic>? parseLogEvent(Map<String, dynamic> log) {
       'time': DateFormat('h:mm a').format(parsedTime),
       'date': DateFormat('yyyy-MM-dd').format(parsedTime),
       'timestamp': parsedTime.toIso8601String(),
-      'source': "Real-time Audit Stream",
+      'source': source,
       'icon': iconName,
       'iconBg': iconBg,
       'iconColor': iconColor,

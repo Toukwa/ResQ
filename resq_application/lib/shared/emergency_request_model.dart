@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/incident_data.dart';
 import 'package:intl/intl.dart';
 import 'status_style.dart';
 
@@ -96,13 +97,13 @@ class EmergencyRequestModel {
     }
 
     for (var s in departmentStatuses) {
-      final name = (s['dept_name'] ?? s['deptName'] ?? '').toString().toUpperCase();
-      if (name.contains('BFP') || name.contains('FIRE')) {
-        addType('Fire Emergency', 'fire');
-      } else if (name.contains('PNP') || name.contains('POLICE')) {
-        addType('Police Emergency', 'police');
-      } else if (name.contains('CDRRMO') || name.contains('RESCUE') || name.contains('MEDICAL')) {
-        addType('Medical Emergency', 'medical');
+      switch (IncidentData.normalizeDepartment('${s['dept_name'] ?? s['deptName'] ?? ''}')) {
+        case 'BFP':
+          addType('Fire Emergency', 'fire');
+        case 'PNP':
+          addType('Police Emergency', 'police');
+        case 'CDRRMO':
+          addType('Medical Emergency', 'medical');
       }
     }
 
@@ -234,15 +235,7 @@ extension EmergencyRequestDisplay on EmergencyRequestModel {
       for (var item in incident.departmentStatuses) {
         final dName = (item['dept_name'] ?? item['deptName'] ?? '').toString().trim().toUpperCase();
         if (dName.isNotEmpty) {
-          if (dName.contains('BFP') || dName.contains('FIRE')) {
-            depts.add('BFP');
-          } else if (dName.contains('PNP') || dName.contains('POLICE')) {
-            depts.add('PNP');
-          } else if (dName.contains('CDRRMO') || dName.contains('RESCUE') || dName.contains('DISASTER')) {
-            depts.add('CDRRMO');
-          } else {
-            depts.add(dName);
-          }
+          depts.add(IncidentData.normalizeDepartment(dName));
         }
       }
     }
@@ -280,16 +273,7 @@ extension EmergencyRequestDisplay on EmergencyRequestModel {
     }
 
     if (depts.isEmpty && incident.deptName != null && incident.deptName!.isNotEmpty) {
-      final agency = incident.deptName!.toUpperCase();
-      if (agency.contains('BFP')) {
-        depts.add('BFP');
-      } else if (agency.contains('PNP')) {
-        depts.add('PNP');
-      } else if (agency.contains('CDRRMO')) {
-        depts.add('CDRRMO');
-      } else {
-        depts.add(agency);
-      }
+      depts.add(IncidentData.normalizeDepartment(incident.deptName));
     }
 
     if (depts.isEmpty) depts.add('CDRRMO');
