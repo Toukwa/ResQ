@@ -88,7 +88,7 @@ class _AdminHeaderState extends State<AdminHeader> {
     final Color textSecondary = ts.textSecondary;
     final Color border = ts.borderColor;
     final Color inputBg = ts.inputBackground;
-    const Color brandOrange = Color(0xFFFF6B00);
+    const Color brandOrange = AppColors.brand;
 
     final notifications = widget.notifications ?? widget.notificationObjects ?? [];
 
@@ -222,7 +222,7 @@ class _AdminHeaderState extends State<AdminHeader> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFF6B00),
+                        color: AppColors.brand,
                         shape: BoxShape.circle,
                       ),
                       constraints: const BoxConstraints(
@@ -234,7 +234,7 @@ class _AdminHeaderState extends State<AdminHeader> {
                           "${widget.unreadNotificationCount}",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             height: 1.0,
                           ),

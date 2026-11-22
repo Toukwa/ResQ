@@ -11,6 +11,7 @@ import '../../services/theme_service.dart';
 import '../../shared/incident_format.dart';
 import '../../shared/emergency_request_model.dart';
 import '../../services/incident_data.dart';
+import '../../shared/overdue_badge.dart';
 
 // ==========================================
 // MAIN SCREEN WIDGET
@@ -37,6 +38,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
 
   // RxDart streams for reactive polling & buffered socket events
   StreamSubscription? _pollingSubscription;
+  final _overdueAlarm = OverdueAlarm();
   final PublishSubject<void> _socketEventSubject = PublishSubject<void>();
   StreamSubscription? _socketBufferSubscription;
 
@@ -54,8 +56,8 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   }
 
   void _setupRxDartStreams() {
-    // RxDart periodic polling every 5 seconds
-    _pollingSubscription = Stream.periodic(const Duration(seconds: 5))
+    // Live events reload right away; this slow poll is only a backup
+    _pollingSubscription = Stream.periodic(const Duration(seconds: 30))
         .listen((_) => _loadIncidents(showLoading: false));
 
     // Buffer rapid socket events into 500ms windows to prevent UI thrash
@@ -111,6 +113,9 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
           _databaseRecords = newRecords;
           _isLoading = false;
         });
+        _overdueAlarm.check([
+          for (final r in _incomingPendingRequests) (id: r.reqId, overdue: overdueSince(r.sosTimeStamp) != null),
+        ]);
       }
     } catch (e) {
       // If API fails, clear loading state with empty list
@@ -169,7 +174,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
       resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: bgCanvas,
       body: _isLoading
-          ? const Center(child: ResqLoader(color: Color(0xFFFF6B00)))
+          ? const Center(child: ResqLoader(color: AppColors.brand))
           : Column(
               children: [
                 // ==========================================
@@ -197,7 +202,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                             const Icon(
                               Icons.notifications_none_rounded,
                               size: 18,
-                              color: Color(0xFFEF4444),
+                              color: AppColors.danger,
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -215,7 +220,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                 vertical: 2,
                               ),
                               decoration: const BoxDecoration(
-                                color: Color(0xFFEF4444),
+                                color: AppColors.danger,
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
@@ -383,7 +388,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFF6B00),
+                      color: AppColors.brand,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -398,6 +403,10 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   ),
                   const SizedBox(width: 6),
                   const Spacer(),
+                  if (overdueSince(req.sosTimeStamp) != null) ...[
+                    OverdueBadge(overdueSince(req.sosTimeStamp)!),
+                    const SizedBox(width: 6),
+                  ],
                   _buildSmallBadge(
                     "Pending",
                     ts.isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
@@ -467,7 +476,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFFFF6B00)
+                      ? AppColors.brand
                       : (ts.isDark ? const Color(0xFF334155) : Colors.transparent),
                 ),
               ),
@@ -479,7 +488,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
-                          ? const Color(0xFFFF6B00)
+                          ? AppColors.brand
                           : (ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                     ),
                   ),
@@ -488,7 +497,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFF6B00)
+                          ? AppColors.brand
                           : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -553,7 +562,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: AppColors.danger,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -620,9 +629,9 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                 const SizedBox(height: 6),
                 const Row(
                   children: [
-                    Icon(Icons.mic_rounded, size: 13, color: Color(0xFFFF6B00)),
+                    Icon(Icons.mic_rounded, size: 13, color: AppColors.brand),
                     SizedBox(width: 4),
-                    Text('Voice message', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFFF6B00))),
+                    Text('Voice message', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brand)),
                   ],
                 ),
               ],

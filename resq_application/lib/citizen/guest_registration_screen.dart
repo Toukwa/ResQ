@@ -6,6 +6,8 @@ import '../shared/resq_dropdown.dart';
 import '../services/firebase_services.dart';
 import '../services/password_policy.dart';
 import '../services/session_service.dart';
+import '../services/firebase_rest.dart';
+import '../services/phone_policy.dart';
 import '../shared/birthdate_picker.dart';
 import '../shared/iriga_address.dart';
 import '../shared/resq_toast.dart';
@@ -23,12 +25,15 @@ class GuestRegistrationScreen extends StatefulWidget {
 }
 
 class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
-  static const _orange = Color(0xFFFF6B00);
-  static const _red = Color(0xFFEF4444);
+  static const _orange = AppColors.brand;
+  static const _red = AppColors.danger;
   Color get _textDark => ThemeService.instance.textPrimary;
   Color get _textGrey => ThemeService.instance.textSecondary;
   Color get _border => ThemeService.instance.borderColor;
 
+  /// Starts empty for a Guest#### nickname, or with what they gave on the report screen.
+  late final _name = TextEditingController(text: _isNickname(widget.userName) ? '' : widget.userName);
+  final _phone = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
@@ -38,8 +43,28 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
   bool _busy = false;
   String? _error;
 
+  static bool _isNickname(String name) => RegExp(r'^Guest\d+$').hasMatch(name.trim());
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhone();
+  }
+
+  /// Fills in the phone if the guest already added it on the report screen.
+  Future<void> _loadPhone() async {
+    try {
+      final phone = await Rtdb.get('users/${FirebaseAuthRest.uid}/contactNo');
+      if (phone is String && phone.isNotEmpty && _phone.text.isEmpty && mounted) {
+        setState(() => _phone.text = phone);
+      }
+    } catch (_) {} // offline: they type it in
+  }
+
   @override
   void dispose() {
+    _name.dispose();
+    _phone.dispose();
     _email.dispose();
     _password.dispose();
     _confirm.dispose();
@@ -48,11 +73,15 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
 
   Future<void> _save() async {
     final email = _email.text.trim();
+    final name = _name.text.trim();
+    final phone = PhonePolicy.normalize(_phone.text);
     String? problem;
-    if (email.isEmpty || _birthdate == null || _barangay == null || _password.text.isEmpty) {
+    if (name.isEmpty || _phone.text.trim().isEmpty || email.isEmpty || _birthdate == null || _barangay == null || _password.text.isEmpty) {
       problem = 'Please fill out all fields.';
     } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       problem = 'Please enter a valid email address.';
+    } else if (phone == null) {
+      problem = PhonePolicy.check(_phone.text);
     } else {
       problem =
           PasswordPolicy.check(_password.text) ?? (_password.text != _confirm.text ? 'Passwords do not match.' : null);
@@ -67,6 +96,8 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
     });
     try {
       await FirebaseService.upgradeGuest(
+        fullName: name,
+        contactNo: phone!,
         email: email,
         password: _password.text,
         birthdate: BirthdatePicker.format(_birthdate!),
@@ -75,7 +106,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
       final session = await SessionService.getSession();
       await SessionService.saveSession(
         userId: (session?['id'] as int?) ?? 0,
-        fullName: widget.userName,
+        fullName: name,
         email: email.toLowerCase(),
         role: 'Citizen',
       );
@@ -83,7 +114,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
       ScaffoldMessenger.of(context).showResqSnackBar(
         const SnackBar(
           content: Text('Account created! You can now log in with your email.'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
       Navigator.pop(context, true);
@@ -248,10 +279,24 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                           border: Border.all(color: ThemeService.instance.isDark ? const Color(0xFF9A3412) : const Color(0xFFFED7AA)),
                         ),
                         child: Text(
-                          'Thank you, ${widget.userName}. To keep using ResQ, finish setting up your account. '
+                          'Thank you${_isNickname(widget.userName) ? '' : ', ${widget.userName}'}. To keep using ResQ, finish setting up your account. '
                           'Your reports stay with it, and next time you can log in with your email.',
                           style: TextStyle(fontSize: 13, height: 1.4, color: ThemeService.instance.isDark ? const Color(0xFFFDBA74) : const Color(0xFF9A3412)),
                         ),
+                      ),
+                      _label('Full Name'),
+                      TextField(
+                        controller: _name,
+                        enabled: !_busy,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: _decor('Juan Dela Cruz', Icons.person_outline),
+                      ),
+                      _label('Phone Number'),
+                      TextField(
+                        controller: _phone,
+                        enabled: !_busy,
+                        keyboardType: TextInputType.phone,
+                        decoration: _decor('09XXXXXXXXX', Icons.phone_outlined),
                       ),
                       _label('Email Address'),
                       TextField(
@@ -287,6 +332,7 @@ class _GuestRegistrationScreenState extends State<GuestRegistrationScreen> {
                         obscureText: _obscure,
                         decoration: _decor('••••••••', Icons.lock_outline).copyWith(
                           suffixIcon: IconButton(
+                            tooltip: 'Show or hide password',
                             icon: Icon(
                               _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                               color: _textGrey,

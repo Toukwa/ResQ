@@ -227,7 +227,7 @@ class _MapScreenState extends State<MapScreen> {
           Builder(
             builder: (_) {
               final on = o == selected;
-              final c = colorOf?.call(o) ?? const Color(0xFFFF6B00);
+              final c = colorOf?.call(o) ?? AppColors.brand;
               final icon = iconOf?.call(o);
               return Material(
                 color: on ? c.withValues(alpha: 0.14) : Colors.transparent,
@@ -251,7 +251,7 @@ class _MapScreenState extends State<MapScreen> {
                         Text(
                           '$o ${count(o)}',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: on ? c : ts.textSecondary,
                           ),
@@ -291,7 +291,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryOrange = Color(0xFFFF6B00);
+    const Color primaryOrange = AppColors.brand;
 
     return ListenableBuilder(
       listenable: ThemeService.instance,
@@ -567,11 +567,11 @@ class _MapScreenState extends State<MapScreen> {
                                                       ? _activeIncidents.length
                                                       : _activeIncidents.where((i) => mapStatusKey(i) == v).length,
                                                   colorOf: (s) => switch (s) {
-                                                    'Pending' => const Color(0xFFF59E0B),
+                                                    'Pending' => AppColors.warning,
                                                     'Accepted' => const Color(0xFF0EA5E9),
                                                     'En Route' => const Color(0xFF2563EB),
                                                     'Arrived' => const Color(0xFF8B5CF6),
-                                                    _ => const Color(0xFFFF6B00),
+                                                    _ => AppColors.brand,
                                                   },
                                                 ),
                                                 const SizedBox(height: 12),
@@ -786,7 +786,7 @@ class _MapScreenState extends State<MapScreen> {
                                                       ? _vehicles.length
                                                       : _vehicles.where((u) => unitMatchesFilter(u, v)).length,
                                                   colorOf: (v) =>
-                                                      v == 'All' ? const Color(0xFFFF6B00) : _unitFilterColor(v),
+                                                      v == 'All' ? AppColors.brand : _unitFilterColor(v),
                                                   iconOf: (v) => v == 'All' ? null : _unitFilterIcon(v),
                                                 ),
                                                 const SizedBox(height: 12),
@@ -911,7 +911,7 @@ class _MapScreenState extends State<MapScreen> {
                                                                               color: isOffline
                                                                                   ? Colors.grey
                                                                                   : (isAvailable
-                                                                                        ? const Color(0xFF10B981)
+                                                                                        ? AppColors.success
                                                                                         : primaryOrange),
                                                                               shape: BoxShape.circle,
                                                                             ),
@@ -925,7 +925,7 @@ class _MapScreenState extends State<MapScreen> {
                                                                               color: isOffline
                                                                                   ? Colors.grey
                                                                                   : (isAvailable
-                                                                                        ? const Color(0xFF10B981)
+                                                                                        ? AppColors.success
                                                                                         : primaryOrange),
                                                                             ),
                                                                           ),
@@ -1212,8 +1212,8 @@ class _MapScreenState extends State<MapScreen> {
     final primaryColor = isInvalid
         ? ClosedReportsTabs.textOf('Invalid')
         : isCompleted
-        ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
-        : (ts.isDark ? const Color(0xFFF87171) : const Color(0xFFEB5757));
+        ? (ts.isDark ? const Color(0xFF4ADE80) : AppColors.success)
+        : (ts.isDark ? const Color(0xFFF87171) : AppColors.danger);
 
     final selBgColor = isCompleted
         ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7))
@@ -1309,7 +1309,7 @@ class _MapScreenState extends State<MapScreen> {
               decoration: BoxDecoration(color: badgeBgColor, borderRadius: BorderRadius.circular(4)),
               child: Text(
                 status,
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: primaryColor),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: primaryColor),
               ),
             ),
           ],

@@ -60,10 +60,10 @@ class _NotSureIncidentCardState extends State<NotSureIncidentCard> {
     setState(() => _saving = true);
     try {
       final sentTo = await IncidentData.chooseIncidents(_reqId, card, picks);
-      _toast(sentTo.isEmpty ? 'Incident set.' : 'Incident set and sent to ${sentTo.join(', ')}.', const Color(0xFF16A34A));
+      _toast(sentTo.isEmpty ? 'Incident set.' : 'Incident set and sent to ${sentTo.join(', ')}.', AppColors.success);
       widget.onChosen?.call();
     } catch (e) {
-      _toast('$e'.replaceFirst('HttpException: ', ''), Colors.redAccent);
+      _toast('$e'.replaceFirst('HttpException: ', ''), AppColors.danger);
     }
     if (mounted) setState(() => _saving = false);
   }

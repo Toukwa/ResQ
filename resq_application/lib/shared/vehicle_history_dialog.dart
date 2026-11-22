@@ -12,7 +12,7 @@ import 'incident_format.dart';
 import 'map_pin.dart';
 import 'resq_date_picker.dart';
 
-const _orange = Color(0xFFFF6B00);
+const _orange = AppColors.brand;
 
 /// Two recorded points further apart than this are joined along the road, not straight.
 const _routeGapMeters = 250.0;
@@ -286,9 +286,9 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
               child: Row(children: [
                 _stat(ts, Icons.scatter_plot_rounded, 'Positions', _loading ? '—' : '${_points.length}', const Color(0xFF8B5CF6)),
                 const SizedBox(width: 12),
-                _stat(ts, Icons.flag_rounded, 'First seen', _points.isEmpty ? '—' : _time(_points.first), const Color(0xFF16A34A)),
+                _stat(ts, Icons.flag_rounded, 'First seen', _points.isEmpty ? '—' : _time(_points.first), AppColors.success),
                 const SizedBox(width: 12),
-                _stat(ts, Icons.schedule_rounded, 'Last seen', _points.isEmpty ? '—' : _time(_points.last), const Color(0xFFEF4444)),
+                _stat(ts, Icons.schedule_rounded, 'Last seen', _points.isEmpty ? '—' : _time(_points.last), AppColors.danger),
                 const SizedBox(width: 12),
                 _stat(ts, Icons.route_rounded, 'Distance',
                     _points.length < 2 ? '—' : '${_distanceKm.toStringAsFixed(2)} km', const Color(0xFF2563EB)),
@@ -363,7 +363,7 @@ class _VehicleHistoryDialogState extends State<_VehicleHistoryDialog> {
                                   message: 'Start · ${_time(_points.first)}',
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF16A34A),
+                                      color: AppColors.success,
                                       shape: BoxShape.circle,
                                       border: Border.all(color: Colors.white, width: 2.5),
                                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 4)],

@@ -335,7 +335,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
                             message: "Exit Super Admin Session",
                             child: Icon(
                               Icons.meeting_room_outlined,
-                              color: Color(0xFFEF4444),
+                              color: AppColors.danger,
                               size: 26,
                             ),
                           ),
@@ -429,7 +429,7 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
             show: !isActive && _tabsWithActivity.contains(targetIndex),
             child: Icon(
               icon,
-              color: isActive ? const Color(0xFFFF6B00) : (inactiveColor ?? const Color(0xFF94A3B8)),
+              color: isActive ? AppColors.brand : (inactiveColor ?? const Color(0xFF94A3B8)),
               size: 24,
             ),
           ),

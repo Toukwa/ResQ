@@ -74,12 +74,12 @@ Future<bool> showPrankWarningDialog(BuildContext context, Map<String, dynamic> i
   try {
     await PrankWarning.send(incident, message: message);
     messenger.showResqSnackBar(
-      const SnackBar(content: Text('Warning sent to the citizen'), backgroundColor: Color(0xFF27AE60)),
+      const SnackBar(content: Text('Warning sent to the citizen'), backgroundColor: AppColors.success),
     );
     return true;
   } catch (e) {
     messenger.showResqSnackBar(
-      SnackBar(content: Text("Couldn't send the warning: $e"), backgroundColor: Colors.redAccent),
+      SnackBar(content: Text("Couldn't send the warning: $e"), backgroundColor: AppColors.danger),
     );
     return false;
   }

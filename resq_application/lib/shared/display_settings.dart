@@ -94,7 +94,7 @@ class DisplaySettings {
           child: Text(text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
         pin,
       ],

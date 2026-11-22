@@ -11,6 +11,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/firebase_rest.dart';
+import '../services/live_socket.dart' as io;
+import '../config.dart';
 import '../services/firebase_services.dart';
 import '../services/incident_data.dart';
 import '../services/media_upload.dart';
@@ -32,6 +34,8 @@ import '../shared/resq_logo.dart';
 import 'incident_status_screen.dart';
 import '../shared/resq_toast.dart';
 import '../shared/resq_text.dart';
+import '../shared/terms.dart';
+import '../services/phone_policy.dart';
 
 class HelpIsOnTheWayBanner extends StatelessWidget {
   final String vehicleCode;
@@ -198,6 +202,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// No usable GPS: permission denied, location turned off, or no fix yet after trying.
   bool _locationOff = false;
 
+  /// True once GPS gave a real position. Until then (or a pin placed by hand) the
+  /// map shows only the default city point, which must never be sent as a report.
+  bool _hasGpsFix = false;
+
+  bool get _locationKnown => _hasGpsFix || _pinSetManually;
+
   /// Where the active report was filed. While set, nothing (GPS, taps, "my location")
   /// may move the pin; it is cleared only when the report is finished or failed to send.
   LatLng? _reportedLocation;
@@ -212,6 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Animation<double>? _pulseAnimation;
 
   Timer? _activeCheckTimer;
+  io.Socket? _live;
   Map<String, dynamic>? _activeIncident;
   List<dynamic> _dispatchedVehicles = [];
   String _activeVehicleCode = '';
@@ -219,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   bool get _hasActiveIncident => _activeIncident != null;
 
-  final Color brandOrange = const Color(0xFFFF6B00);
+  final Color brandOrange = AppColors.brand;
   final Color disabledGray = const Color(0xFFE2E8F0);
   final Color textSecondary = const Color(0xFF94A3B8);
 
@@ -228,6 +239,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Report Now guest: asked to finish registering once their report has ended.
   bool _isGuest = false;
+
+  /// Report Now guest's phone, added (optionally) from the report screen.
+  String _guestPhone = '';
   bool _registrationOpen = false;
   bool _voiceExpanded = false;
 
@@ -236,7 +250,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final profile = await Rtdb.get('users/${FirebaseAuthRest.uid}');
       if (profile is! Map) return;
-      _isGuest = profile['guest'] == true;
+      if (mounted) {
+        setState(() {
+          _isGuest = profile['guest'] == true;
+          _guestPhone = '${profile['contactNo'] ?? ''}'.trim();
+        });
+      }
       final name = (profile['fullName'] ?? '').toString().trim();
       if (name.isEmpty || name == _userName || !mounted) return;
       setState(() => _userName = name);
@@ -253,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _loadTheme();
     _showWelcomeOnce();
     _checkPrankWarning();
-    _warningTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkPrankWarning());
+    _warningTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkPrankWarning());
     _descriptionController.addListener(() => setState(() {}));
 
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
@@ -266,7 +285,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ).animate(CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut));
 
     _checkActiveIncident();
-    _activeCheckTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    // Instant on staff updates; the slow timer is a backup (saves mobile data)
+    _live = io.io(AppConfig.apiBaseUrl, {'autoConnect': false})
+      ..on('refreshIncidentQueueEvent', (_) => _checkActiveIncident())
+      ..connect();
+    _activeCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _checkActiveIncident();
     });
 
@@ -398,12 +421,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// The label next to the address: where the pin's position comes from.
   ({String text, Color color}) get _locationStatus {
     if (_hasActiveIncident || _reportedLocation != null) {
-      return (text: 'Report location', color: const Color(0xFFEF4444));
+      return (text: 'Report location', color: AppColors.danger);
     }
-    if (_pinSetManually) return (text: 'Pin set manually', color: const Color(0xFFFF6B00));
-    if (_isLoadingLocation) return (text: 'Finding you…', color: const Color(0xFFF59E0B));
+    if (_pinSetManually) return (text: 'Pin set manually', color: AppColors.brand);
+    if (_isLoadingLocation) return (text: 'Finding you…', color: AppColors.warning);
     if (_locationOff) return (text: 'Location off', color: const Color(0xFF94A3B8));
-    return (text: 'Live location', color: const Color(0xFF16A34A));
+    return (text: 'Live location', color: AppColors.success);
   }
 
   /// Pins the map to where the report was filed and keeps it there.
@@ -426,6 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _pinSetManually = true;
     } else {
       _locationOff = false; // a GPS reading arrived
+      _hasGpsFix = true;
       if (_pinSetManually) return; // a GPS reading must not undo the citizen's own pin
     }
 
@@ -560,6 +584,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               backgroundColor: ThemeService.instance.cardBackground,
               elevation: 1,
               leading: IconButton(
+                tooltip: 'Close',
                 icon: Icon(Icons.close_rounded, color: ThemeService.instance.textPrimary),
                 onPressed: () => Navigator.of(dialogContext).pop(),
               ),
@@ -586,10 +611,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 if (!_hasActiveIncident)
                   TextButton.icon(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.check_circle_rounded, color: Color(0xFFFF6B00)),
+                    icon: const Icon(Icons.check_circle_rounded, color: AppColors.brand),
                     label: const Text(
                       "Confirm Location",
-                      style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.bold),
                     ),
                   ),
               ],
@@ -645,7 +670,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             }
                             setDialogState(() {});
                           },
-                          icon: const Icon(Icons.my_location_rounded, color: Color(0xFFFF6B00)),
+                          icon: const Icon(Icons.my_location_rounded, color: AppColors.brand),
                           label: const Text("My GPS Location", style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -831,9 +856,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _showPermissionDeniedSnackBar(String feature) {
     ScaffoldMessenger.of(context).showResqSnackBar(
       SnackBar(
-        content: Text('❌ $feature permission is required to upload evidence. Please enable it in system settings.'),
+        content: Text('$feature permission is required to upload evidence. Please enable it in system settings.'),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.danger,
       ),
     );
   }
@@ -864,8 +889,183 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Last check before sending: a summary of what goes out, in the app's popup style.
+  /// Report Now guest: optional name and phone so responders can call back. Saved to
+  /// the profile, so the report carries them. Required later when finishing sign-up.
+  Future<void> _openContactDialog() async {
+    final nameCtrl = TextEditingController(text: RegExp(r'^Guest\d+$').hasMatch(_userName) ? '' : _userName);
+    final phoneCtrl = TextEditingController(text: _guestPhone);
+    String? error;
+    bool busy = false;
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialog) {
+          Future<void> submit() async {
+            final name = nameCtrl.text.trim();
+            final phone = PhonePolicy.normalize(phoneCtrl.text);
+            if (name.isEmpty || phone == null) {
+              setDialog(() => error = 'Enter your name and ${PhonePolicy.hint}.');
+              return;
+            }
+            setDialog(() {
+              busy = true;
+              error = null;
+            });
+            try {
+              await Rtdb.update('users/${FirebaseAuthRest.uid}', {'fullName': name, 'contactNo': phone});
+              await SessionService.updateFullName(name);
+            } catch (_) {
+              setDialog(() {
+                busy = false;
+                error = 'Could not save. Check your connection and try again.';
+              });
+              return;
+            }
+            if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+          }
+
+          final ts = ThemeService.instance;
+          const red = AppColors.danger;
+          final textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
+          InputDecoration decor(String hint, IconData icon) => InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, color: ts.textSecondary),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: red, width: 2),
+            ),
+          );
+
+          return AlertDialog(
+            backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
+            surfaceTintColor: Colors.transparent,
+            title: Text(
+              'Your Contact Details',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textDark),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Responders need a way to reach you about this report.',
+                    style: TextStyle(fontSize: 13, height: 1.4, color: ts.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    style: TextStyle(color: textDark),
+                    decoration: decor('Full Name', Icons.person_outline),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    style: TextStyle(color: textDark),
+                    decoration: decor('09XXXXXXXXX', Icons.phone_outlined),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(error!, style: const TextStyle(color: red, fontSize: 13)),
+                  ],
+                  const SizedBox(height: 14),
+                  Wrap(
+                    children: [
+                      Text('By continuing, you agree to our ', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                      GestureDetector(
+                        onTap: () => openTerms(dialogContext),
+                        child: const Text(
+                          'Terms and Conditions',
+                          style: TextStyle(fontSize: 12, color: red, fontWeight: FontWeight.bold, decoration: TextDecoration.underline, decorationColor: red),
+                        ),
+                      ),
+                      Text('.', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(dialogContext, false),
+                child: Text('Cancel', style: TextStyle(color: textDark)),
+              ),
+              ElevatedButton(
+                onPressed: busy ? null : submit,
+                style: ElevatedButton.styleFrom(backgroundColor: red),
+                child: busy
+                    ? const SizedBox(width: 20, height: 20, child: ResqLoader(color: Colors.white))
+                    : const Text('Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (saved != true || !mounted) return;
+    setState(() {
+      _userName = nameCtrl.text.trim();
+      _guestPhone = PhonePolicy.normalize(phoneCtrl.text) ?? '';
+    });
+  }
+
+  /// Guest-only tile under the note: orange until contact details are added, then green.
+  Widget _contactTile() {
+    final ts = ThemeService.instance;
+    final done = _guestPhone.isNotEmpty;
+    final c = done ? AppColors.success : brandOrange;
+    return Material(
+      color: c.withValues(alpha: ts.isDark ? 0.18 : 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: c.withValues(alpha: ts.isDark ? 0.8 : 0.5), width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _openContactDialog,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                child: Icon(done ? Icons.check_rounded : Icons.contact_phone_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      done ? 'Contact details added' : 'Add your name and phone',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: done ? c : ts.textPrimary),
+                    ),
+                    Text(
+                      done ? '$_userName · $_guestPhone' : 'Optional · so responders can call you',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: done ? ts.textSecondary : c),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(done ? Icons.edit_rounded : Icons.add_rounded, color: c, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<bool?> _confirmBroadcastDialog() {
-    const red = Color(0xFFEF4444);
+    const red = AppColors.danger;
     final ts = ThemeService.instance;
     final textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
     final textBody = ts.isDark ? Colors.grey.shade300 : const Color(0xFF475569);
@@ -1068,7 +1268,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ScaffoldMessenger.of(context).showResqSnackBar(
           SnackBar(
             content: Text('Failed to broadcast critical alert packet: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1081,6 +1281,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   bool get _isFormValid =>
       !_compressingVideo &&
+      _locationKnown &&
       canSubmitReport(
         hasActiveIncident: _hasActiveIncident,
         emergencyTypes: _selectedEmergencyTypes.keys,
@@ -1092,6 +1293,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// What is still missing, shown on the disabled send button.
   String get _missingHint {
     if (_compressingVideo) return 'Compressing video…';
+    if (!_locationKnown) return 'Turn on location or tap the map to place your pin';
     if (_selectedEmergencyTypes.isEmpty) return 'Select an emergency type to continue';
     if (_voiceRequired && _voiceNote == null) return 'You picked "Not sure": record a voice message';
     if (_uploadedImages.isEmpty) return 'Send evidence to continue';
@@ -1217,6 +1419,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         errorMaxLines: 3,
                         prefixIcon: Icon(Icons.key_rounded, color: ts.textMuted, size: 20),
                         suffixIcon: IconButton(
+                          tooltip: 'Show or hide password',
                           icon: Icon(
                             hidden ? Icons.visibility_rounded : Icons.visibility_off_rounded,
                             color: ts.textMuted,
@@ -1356,6 +1559,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     DisplaySettings.mapTheme.removeListener(_onThemeChanged);
     _warningTimer?.cancel();
     _activeCheckTimer?.cancel();
+    _live?.disconnect();
     _descriptionController.dispose();
     DisplaySettings.reducedMotion.removeListener(_syncMotion);
     _pulseController?.dispose();
@@ -1454,7 +1658,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             width: 26,
             height: 26,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: done ? const Color(0xFF16A34A) : brandOrange, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: done ? AppColors.success : brandOrange, shape: BoxShape.circle),
             child: done
                 ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
                 : Text(
@@ -1708,7 +1912,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
+                                decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
                                 child: const Icon(Icons.close, color: Colors.white, size: 14),
                               ),
                             ),
@@ -1727,12 +1931,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     SizedBox(
                       width: 14,
                       height: 14,
-                      child: ResqLoader(color: Color(0xFFFF6B00)),
+                      child: ResqLoader(color: AppColors.brand),
                     ),
                     SizedBox(width: 8),
                     Text(
                       'Compressing video so it sends faster…',
-                      style: TextStyle(fontSize: 12, color: Color(0xFFFF6B00)),
+                      style: TextStyle(fontSize: 12, color: AppColors.brand),
                     ),
                   ],
                 ),
@@ -1741,6 +1945,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             // Note: optional (orange) until written (green); opens a sheet to type in
             _noteTile(),
+            if (_isGuest) ...[
+              const SizedBox(height: 10),
+              _contactTile(),
+            ],
           ],
         ),
       ),
@@ -1752,7 +1960,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final ts = ThemeService.instance;
     final note = _descriptionController.text.trim();
     final done = note.isNotEmpty;
-    final c = done ? const Color(0xFF16A34A) : brandOrange;
+    final c = done ? AppColors.success : brandOrange;
     return Material(
       color: c.withValues(alpha: ts.isDark ? 0.18 : 0.08),
       shape: RoundedRectangleBorder(
@@ -1885,12 +2093,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(sheet, ''),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFEF4444)),
+                              side: const BorderSide(color: AppColors.danger),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
                             child: const Text(
                               'Remove',
-                              style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
+                              style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
@@ -2000,7 +2208,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final n = _uploadedImages.length;
     final done = n > 0;
     final full = n >= _maxEvidence;
-    final c = done ? const Color(0xFF16A34A) : const Color(0xFFEF4444);
+    final c = done ? AppColors.success : AppColors.danger;
     // Same look as the admin cards: a pale tint of the colour inside, a brighter border
     return Material(
       color: c.withValues(alpha: ts.isDark ? 0.18 : 0.08),
@@ -2103,7 +2311,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: AppColors.danger,
             foregroundColor: Colors.white,
             disabledBackgroundColor: ts.borderColor,
             disabledForegroundColor: ts.textSecondary,

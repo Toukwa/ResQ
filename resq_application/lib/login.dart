@@ -16,6 +16,7 @@ import 'shared/call_agencies_sheet.dart';
 import 'shared/role_home.dart';
 import 'shared/resq_toast.dart';
 import 'shared/terms.dart';
+import 'shared/google_logo.dart';
 import 'services/firebase_rest.dart';
 import 'shared/resq_text.dart';
 import 'shared/splash_siren.dart' show resqLogoHeroTag, resqNameHeroTag;
@@ -94,6 +95,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   bool _loggingIn = false;
+  bool _googleBusy = false;
+
+  /// Returning Google users log in here (before, only the sign-up screen had Google).
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _googleBusy = true);
+    final result = await AuthService.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _googleBusy = false);
+    // Both null: the user closed the Google window
+    if (result.data == null && result.error == null) return;
+    _handleLoginResult(result);
+  }
 
   Future<void> _handleLogin() async {
     if (_loggingIn) return;
@@ -111,14 +124,14 @@ class _LoginScreenState extends State<LoginScreen> {
     _handleLoginResult(result);
   }
 
-  /// Report Now: name and phone only, then straight to the report screen.
+  /// Report Now: straight to the report screen, no sign-up.
   Future<void> _openReportNow() async {
     // This phone already has a guest account: go straight back into it (no new account,
     // so its one-open-report limit still applies)
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: ResqLoader(color: Color(0xFFEF4444))),
+      builder: (_) => const Center(child: ResqLoader(color: AppColors.danger)),
     );
     final existing = await AuthService.resumeGuest();
     if (!mounted) return;
@@ -128,183 +141,22 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    String? error;
-    bool busy = false;
-    await showDialog(
+    // No form here: the guest is named Guest#### and gives their name and phone when sending the report
+    showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialog) {
-          Future<void> submit() async {
-            final name = nameCtrl.text.trim();
-            final phone = phoneCtrl.text.trim();
-            if (name.isEmpty || !RegExp(r'^(09|\+639)\d{9}$').hasMatch(phone)) {
-              setDialog(() => error = 'Enter your name and a valid phone number (09XXXXXXXXX).');
-              return;
-            }
-            setDialog(() {
-              busy = true;
-              error = null;
-            });
-            final result = await AuthService.quickReport(fullName: name, contactNo: phone);
-            if (!dialogContext.mounted) return;
-            if (result.data == null) {
-              setDialog(() {
-                busy = false;
-                error = result.error?.replaceFirst('Exception: ', '') ?? 'Something went wrong.';
-              });
-              return;
-            }
-            Navigator.pop(dialogContext);
-            if (!mounted) return;
-            await _openGuestHome(result.data!);
-          }
-
-          final ts = ThemeService.instance;
-          const red = Color(0xFFEF4444);
-          final textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
-          final borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
-          Widget label(String text) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              text,
-              style: TextStyle(fontWeight: FontWeight.w600, color: textDark),
-            ),
-          );
-
-          return AlertDialog(
-            backgroundColor: ts.isDark ? const Color(0xFF1F2937) : Colors.white,
-            surfaceTintColor: Colors.transparent,
-            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-            actionsPadding: const EdgeInsets.all(24),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.campaign_rounded, color: red, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Report Now',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textDark),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'No account needed. Responders only need a way to reach you.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.4,
-                      color: ts.isDark ? Colors.grey.shade300 : const Color(0xFF475569),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  label('Full Name'),
-                  TextField(
-                    controller: nameCtrl,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.words,
-                    style: TextStyle(color: textDark),
-                    decoration: _inputDecor('Juan Dela Cruz', Icons.person_outline, borderGrey, red),
-                  ),
-                  const SizedBox(height: 16),
-                  label('Phone Number'),
-                  TextField(
-                    controller: phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    style: TextStyle(color: textDark),
-                    decoration: _inputDecor('09XXXXXXXXX', Icons.phone_outlined, borderGrey, red),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.error_outline, size: 16, color: red),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(error!, style: const TextStyle(color: red, fontSize: 13)),
-                        ),
-                      ],
-                    ),
-                  ],
-                  // No checkbox here: nothing should slow down someone in an emergency
-                  const SizedBox(height: 14),
-                  Wrap(
-                    children: [
-                      Text('By continuing, you agree to our ', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
-                      GestureDetector(
-                        onTap: () => openTerms(context),
-                        child: const Text(
-                          'Terms and Conditions',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: red,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                            decorationColor: red,
-                          ),
-                        ),
-                      ),
-                      Text('.', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: busy ? null : () => Navigator.pop(dialogContext),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        side: BorderSide(color: borderGrey),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(color: textDark, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: busy ? null : submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: red,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: busy
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: ResqLoader(color: Colors.white),
-                            )
-                          : const Text(
-                              'Continue',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+      barrierDismissible: false,
+      builder: (_) => const Center(child: ResqLoader(color: AppColors.danger)),
     );
+    final result = await AuthService.quickReport();
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    if (result.data == null) {
+      ScaffoldMessenger.of(context).showResqSnackBar(
+        SnackBar(content: Text(result.error?.replaceFirst('Exception: ', '') ?? 'Something went wrong.')),
+      );
+      return;
+    }
+    await _openGuestHome(result.data!);
   }
 
   /// Saves the guest's session (so reopening the app keeps them in) and opens the report screen.
@@ -343,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final cleanError = rawError.replaceFirst('HttpException: ', '').replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(
         context,
-      ).showResqSnackBar(SnackBar(content: Text(cleanError), backgroundColor: Colors.redAccent));
+      ).showResqSnackBar(SnackBar(content: Text(cleanError), backgroundColor: AppColors.danger));
     }
   }
 
@@ -374,10 +226,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                    color: AppColors.brand.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFFFF6B00), size: 24),
+                  child: const Icon(Icons.mark_email_read_outlined, color: AppColors.brand, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -455,13 +307,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFFFF6B00)),
+                      borderSide: const BorderSide(color: AppColors.brand),
                     ),
                   ),
                 ),
                 if (errorMessage != null) ...[
                   const SizedBox(height: 8),
-                  Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                  Text(errorMessage!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
                 ],
                 const SizedBox(height: 4),
               ],
@@ -476,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B00),
+                  backgroundColor: AppColors.brand,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -595,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(
         content: Text('This admin account has no agency yet. Ask the EOC to set one.'),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: AppColors.danger,
       ));
       return;
     }
@@ -649,7 +501,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showResqSnackBar(
-        SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.redAccent),
+        SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger),
       );
     }
   }
@@ -657,7 +509,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final ts = ThemeService.instance;
-    const Color brandOrange = Color(0xFFFF6B00);
+    const Color brandOrange = AppColors.brand;
     final Color textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
     const Color textGrey = Color(0xFF94A3B8);
     final Color borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
@@ -757,6 +609,25 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           // Phones only: sign-up is for citizens; the desktop app is for staff
           if (!isDesktop) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _googleBusy || _loggingIn ? null : _handleGoogleLogin,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                side: const BorderSide(color: brandOrange, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: _googleBusy
+                  ? const SizedBox(width: 20, height: 20, child: ResqLoader(color: brandOrange))
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GoogleLogo(size: 18),
+                        SizedBox(width: 10),
+                        Text('Continue with Google', style: TextStyle(color: brandOrange, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+            ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -791,7 +662,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ResqLoader(color: Color(0xFFFF6B00)),
+              ResqLoader(color: AppColors.brand),
               SizedBox(height: 16),
               Text('Checking saved session…', style: TextStyle(color: Color(0xFF94A3B8))),
             ],
@@ -823,7 +694,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFEF4444),
+                          backgroundColor: AppColors.danger,
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -833,14 +704,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => showCallAgenciesSheet(context),
-                        icon: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
+                        icon: const Icon(Icons.phone_in_talk_rounded, color: AppColors.danger),
                         label: const Text(
                           'Call Agencies',
-                          style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
+                          style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold),
                         ),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
-                          side: const BorderSide(color: Color(0xFFEF4444)),
+                          side: const BorderSide(color: AppColors.danger),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
@@ -882,6 +753,7 @@ class _LoginScreenState extends State<LoginScreen> {
       prefixIcon: Icon(icon, color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8), size: 20),
       suffixIcon: isPassword
           ? IconButton(
+            tooltip: 'Show or hide password',
               icon: Icon(
                 _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                 size: 18,

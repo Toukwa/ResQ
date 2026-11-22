@@ -104,7 +104,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, size: 14, color: Color(0xFFFF6B00)),
+            const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.brand),
             const SizedBox(width: 8),
             Text(
               DateFormat('MMM d, yyyy').format(isStart ? _range.start : _range.end),
@@ -135,10 +135,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
         'to': f.format(_range.end),
       });
       messenger.showResqSnackBar(
-        SnackBar(content: Text('Saved $name to ${dir.path}'), backgroundColor: const Color(0xFF10B981)),
+        SnackBar(content: Text('Saved $name to ${dir.path}'), backgroundColor: AppColors.success),
       );
     } catch (e) {
-      messenger.showResqSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.redAccent));
+      messenger.showResqSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger));
     }
   }
 
@@ -172,7 +172,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               _stat(
                                 ts,
                                 Icons.warning_amber_rounded,
-                                const Color(0xFFEF4444),
+                                AppColors.danger,
                                 'Incidents',
                                 '${report.totalIncidents}',
                               ),
@@ -186,7 +186,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               _stat(
                                 ts,
                                 Icons.timer_rounded,
-                                const Color(0xFF10B981),
+                                AppColors.success,
                                 'Avg Response Time',
                                 Report.duration(report.averageResponse),
                               ),
@@ -203,7 +203,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  static const _accent = Color(0xFFFF6B00);
+  static const _accent = AppColors.brand;
 
   BoxDecoration _card(ThemeService ts) => BoxDecoration(
     color: ts.cardBackground,
@@ -462,7 +462,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _iconTile(Icons.cloud_off_rounded, Colors.redAccent, size: 48),
+          _iconTile(Icons.cloud_off_rounded, AppColors.danger, size: 48),
           const SizedBox(height: 12),
           Text(
             'Could not load reports',

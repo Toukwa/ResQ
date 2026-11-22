@@ -1,10 +1,13 @@
 import 'dart:async';
+import '../services/theme_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../admin/admin_service.dart';
 import '../services/firebase_rest.dart';
 import '../services/session_service.dart';
+import '../services/incident_data.dart';
 import 'resq_dialog.dart';
+import 'status_style.dart';
 
 /// Logs staff out after a period of no mouse, touch or keyboard activity, following
 /// their "Auto Logout" and "Session Timeout" settings (re-read every 30 s so changes
@@ -106,6 +109,12 @@ class _SessionTimeoutGuardState extends State<SessionTimeoutGuard> {
   /// Asks first; logs out if nobody answers within [SessionTimeoutGuard.warningTime].
   Future<void> _warn() async {
     if (!mounted || _loggingOut || _warning) return;
+    // A staff screen watching an open report stays signed in, so new updates aren't missed
+    if (await _hasOpenReports()) {
+      _restart();
+      return;
+    }
+    if (!mounted || _loggingOut || _warning) return;
     _warning = true;
     final navigator = Navigator.of(context);
     final noAnswer = Timer(SessionTimeoutGuard.warningTime, () {
@@ -136,6 +145,19 @@ class _SessionTimeoutGuardState extends State<SessionTimeoutGuard> {
     }
   }
 
+  /// True when this agency (or the EOC) still has a report that isn't closed.
+  Future<bool> _hasOpenReports() async {
+    try {
+      final me = await IncidentData.me();
+      final dept = me['role'] == 'Admin' ? '${me['department'] ?? ''}' : null;
+      final all = await IncidentData.getAllIncidents();
+      return all.any((i) => (dept == null || IncidentData.isForDepartment(i, dept)) &&
+          isOpenStatus(IncidentData.statusFor(i, dept)));
+    } catch (_) {
+      return false; // can't check: fall back to the normal timeout
+    }
+  }
+
   Future<void> _logOut(String reason) async {
     if (!mounted || _loggingOut) return;
     _loggingOut = true;
@@ -147,7 +169,7 @@ class _SessionTimeoutGuardState extends State<SessionTimeoutGuard> {
       barrierDismissible: false,
       builder: (ctx) => ResqDialog(
         icon: Icons.timer_off_outlined,
-        color: const Color(0xFFEF4444),
+        color: AppColors.danger,
         title: 'Session Ended',
         cancelLabel: 'Return to Login',
         child: Text('$reason\n\nPlease log in again to continue.'),

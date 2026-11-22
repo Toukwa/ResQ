@@ -73,10 +73,10 @@ class DashboardAnalyticsView extends StatelessWidget {
     final available = units.where((v) => vehicleStatus(v).toLowerCase() == 'available').length;
 
     const statusColors = {
-      'Pending': Color(0xFFF59E0B),
+      'Pending': AppColors.warning,
       'En Route': Color(0xFF2563EB),
       'Active': Color(0xFFEA580C),
-      'Resolved': Color(0xFF16A34A),
+      'Resolved': AppColors.success,
       'Declined': Color(0xFF64748B),
       'Invalid': Color(0xFF7C3AED),
       'Other': Color(0xFF94A3B8),

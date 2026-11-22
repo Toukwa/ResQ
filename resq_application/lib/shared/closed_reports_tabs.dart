@@ -7,8 +7,8 @@ import '../services/theme_service.dart';
 class ClosedReportsTabs {
   static const tabs = ['Declined', 'Completed', 'Invalid'];
 
-  static const _red = Color(0xFFEB5757);
-  static const _green = Color(0xFF16A34A);
+  static const _red = AppColors.danger;
+  static const _green = AppColors.success;
   static const _purple = Color(0xFF7C3AED);
 
   static Color colorOf(String tab) => switch (tab) {

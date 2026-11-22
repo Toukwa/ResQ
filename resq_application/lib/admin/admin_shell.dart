@@ -260,7 +260,7 @@ class _AdminShellState extends State<AdminShell> {
       context: context,
       builder: (dialogCtx) => ResqDialog(
         icon: Icons.notifications,
-        color: const Color(0xFFFF6B00),
+        color: AppColors.brand,
         title: 'Admin Notifications',
         leading: _unreadNotificationCount > 0
             ? TextButton(
@@ -301,7 +301,7 @@ class _AdminShellState extends State<AdminShell> {
                         isRead
                             ? Icons.notifications_none
                             : Icons.notifications_active,
-                        color: isRead ? Colors.grey : const Color(0xFFFF6B00),
+                        color: isRead ? Colors.grey : AppColors.brand,
                       ),
                       title: Text(
                         message,

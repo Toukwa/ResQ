@@ -289,7 +289,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: AppColors.brand,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -412,7 +412,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final ts = ThemeService.instance;
 
     if (_isLoadingAccounts) {
-      return const Center(child: ResqLoader(color: Color(0xFFFF6B00)));
+      return const Center(child: ResqLoader(color: AppColors.brand));
     }
 
     final tableHeaderStyle = TextStyle(
@@ -484,7 +484,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text("Create First Account"),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF6B00),
+                            backgroundColor: AppColors.brand,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -548,7 +548,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFFF6B00)
+                            ? AppColors.brand
                             : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -578,7 +578,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               child: Text(
                                 count.toString(),
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected
                                       ? Colors.white
@@ -658,7 +658,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                                 ? FontWeight.bold
                                 : FontWeight.w500,
                             color: isSelected
-                                ? const Color(0xFFFF6B00)
+                                ? AppColors.brand
                                 : ts.textSecondary,
                           ),
                         ),
@@ -667,7 +667,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFFFF6B00)
+                                ? AppColors.brand
                                 : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -888,7 +888,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 InkWell(
                   onTap: () => _showDeleteAccountDialog(acc),
                   child: const Icon(Icons.delete_outline,
-                      size: 16, color: Color(0xFFEF4444)),
+                      size: 16, color: AppColors.danger),
                 ),
               ],
             ),
@@ -955,7 +955,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
           return ResqDialog(
             icon: Icons.business_rounded,
-            color: const Color(0xFFFF6B00),
+            color: AppColors.brand,
             title: 'Edit Agency',
             subtitle: 'Update department details, contact info and unlock password',
             primaryLabel: 'Save Changes',
@@ -968,7 +968,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 final problem = PrankWarning.checkUnlockCode(newUnlock);
                 if (problem != null) {
                   ScaffoldMessenger.of(context).showResqSnackBar(
-                    SnackBar(content: Text('Unlock password: $problem'), backgroundColor: Colors.redAccent),
+                    SnackBar(content: Text('Unlock password: $problem'), backgroundColor: AppColors.danger),
                   );
                   return;
                 }
@@ -994,13 +994,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 Navigator.pop(context);
                 _loadDepartments();
                 ScaffoldMessenger.of(context).showResqSnackBar(
-                  const SnackBar(content: Text('Agency details updated successfully'), backgroundColor: Color(0xFF27AE60)),
+                  const SnackBar(content: Text('Agency details updated successfully'), backgroundColor: AppColors.success),
                 );
               } else {
                 setModalState(() => busy = false);
                 ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(
                   content: Text(success ? "Details saved, but the unlock password couldn't be saved: $unlockError" : 'Failed to update agency details'),
-                  backgroundColor: Colors.redAccent,
+                  backgroundColor: AppColors.danger,
                 ));
               }
             },
@@ -1119,7 +1119,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF6B00),
+                          color: AppColors.brand,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(Icons.add, color: Colors.white, size: 24),
@@ -1378,7 +1378,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF6B00),
+                              backgroundColor: AppColors.brand,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1440,7 +1440,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Color(0xFFFF6B00), width: 1.5),
+        borderSide: BorderSide(color: AppColors.brand, width: 1.5),
       ),
     );
   }
@@ -1465,8 +1465,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
           icon: const Icon(Icons.edit_rounded, size: 16),
           label: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w700)),
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFFF6B00),
-            side: const BorderSide(color: Color(0xFFFF6B00)),
+            foregroundColor: AppColors.brand,
+            side: const BorderSide(color: AppColors.brand),
             minimumSize: const Size(0, 44),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -1546,7 +1546,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => ResqDialog(
           icon: Icons.manage_accounts_rounded,
-          color: const Color(0xFFFF6B00),
+          color: AppColors.brand,
           title: 'Edit Account',
           subtitle: account['name'] ?? '',
           primaryLabel: 'Save Changes',
@@ -1572,12 +1572,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
               Navigator.pop(context);
               _loadAccounts();
               ScaffoldMessenger.of(context).showResqSnackBar(
-                const SnackBar(content: Text('Account updated successfully'), backgroundColor: Color(0xFF27AE60)),
+                const SnackBar(content: Text('Account updated successfully'), backgroundColor: AppColors.success),
               );
             } else {
               setModalState(() => busy = false);
               ScaffoldMessenger.of(context).showResqSnackBar(
-                const SnackBar(content: Text('Failed to update account'), backgroundColor: Colors.redAccent),
+                const SnackBar(content: Text('Failed to update account'), backgroundColor: AppColors.danger),
               );
             }
           },
@@ -1679,7 +1679,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
             if (success) _loadAccounts();
             messenger.showResqSnackBar(SnackBar(
               content: Text(success ? 'Account deleted. You can recover it under Deleted Accounts.' : 'Failed to delete account'),
-              backgroundColor: success ? const Color(0xFF27AE60) : Colors.redAccent,
+              backgroundColor: success ? AppColors.success : AppColors.danger,
             ));
           }
 
@@ -1760,17 +1760,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
               _loadAccounts();
               messenger.showResqSnackBar(SnackBar(
                 content: Text('${a['name']} was recovered and can log in again with their old password.'),
-                backgroundColor: const Color(0xFF27AE60),
+                backgroundColor: AppColors.success,
               ));
             } catch (e) {
               setD(() => busyIds.remove(a['uid']));
-              messenger.showResqSnackBar(SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.redAccent));
+              messenger.showResqSnackBar(SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger));
             }
           }
 
           final Widget body;
           if (error != null) {
-            body = Text(error!, style: const TextStyle(color: Colors.redAccent));
+            body = Text(error!, style: const TextStyle(color: AppColors.danger));
           } else if (list == null) {
             body = const Center(child: Padding(padding: EdgeInsets.all(16), child: ResqLoader()));
           } else if (list!.isEmpty) {
@@ -1792,8 +1792,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                     trailing: TextButton.icon(
                       onPressed: busy ? null : () => recover(a),
-                      icon: const Icon(Icons.restore_rounded, size: 18, color: Color(0xFFFF6B00)),
-                      label: const Text('Recover', style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.w700)),
+                      icon: const Icon(Icons.restore_rounded, size: 18, color: AppColors.brand),
+                      label: const Text('Recover', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w700)),
                     ),
                   );
                 },
@@ -1802,7 +1802,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
           }
           return ResqDialog(
             icon: Icons.restore_rounded,
-            color: const Color(0xFFFF6B00),
+            color: AppColors.brand,
             title: 'Deleted Accounts',
             subtitle: 'Recover brings an account back with its old password',
             maxWidth: 520,

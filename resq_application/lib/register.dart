@@ -155,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final ts = ThemeService.instance;
-    const Color brandOrange = Color(0xFFFF6B00);
+    const Color brandOrange = AppColors.brand;
     final Color textDark = ts.isDark ? Colors.white : const Color(0xFF0F172A);
     const Color textGrey = Color(0xFF94A3B8);
     final Color borderGrey = ts.isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
@@ -474,6 +474,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         hintStyle: TextStyle(color: grey.withValues(alpha: 0.7)),
         prefixIcon: Icon(Icons.lock_outline, color: grey, size: 20),
         suffixIcon: IconButton(
+          tooltip: 'Show or hide password',
           icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: grey, size: 18),
           onPressed: onToggle,
         ),

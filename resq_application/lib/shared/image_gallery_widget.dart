@@ -1,4 +1,5 @@
 import 'resq_loader.dart';
+import '../services/theme_service.dart';
 import 'package:flutter/material.dart';
 import '../config.dart';
 import 'evidence_video_player.dart';
@@ -178,7 +179,7 @@ class _PagedImageGalleryBannerState extends State<PagedImageGalleryBanner> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 36, color: const Color(0xFFFF6B00)),
+            Icon(icon, size: 36, color: AppColors.brand),
             const SizedBox(height: 6),
             Text(
               '${widget.type} Responder / Evidence Photo',
@@ -234,7 +235,7 @@ class _PagedImageGalleryBannerState extends State<PagedImageGalleryBanner> {
                       return Container(
                         color: const Color(0xFF1E293B),
                         child: const Center(
-                          child: ResqLoader(color: Color(0xFFFF6B00)),
+                          child: ResqLoader(color: AppColors.brand),
                         ),
                       );
                     },
@@ -421,13 +422,13 @@ class _IncidentImageGalleryState extends State<IncidentImageGallery> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B00),
+                  color: AppColors.brand,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '${_urls.length} photos',
                   style: const TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -476,7 +477,7 @@ class _IncidentImageGalleryState extends State<IncidentImageGallery> {
                   return Container(
                     color: const Color(0xFFF1F5F9),
                     child: const Center(
-                      child: ResqLoader(color: Color(0xFFFF6B00)),
+                      child: ResqLoader(color: AppColors.brand),
                     ),
                   );
                 },
@@ -572,7 +573,7 @@ class _IncidentImageGalleryState extends State<IncidentImageGallery> {
                       '${index + 1}/${_urls.length}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -744,6 +745,7 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
+                    tooltip: 'Close',
                     icon: const Icon(Icons.close_rounded,
                         color: Colors.white, size: 28),
                     onPressed: () => Navigator.of(context).pop(),
@@ -838,7 +840,7 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                         width: isActive ? 22 : 6,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: isActive ? const Color(0xFFFF6B00) : Colors.white38,
+                          color: isActive ? AppColors.brand : Colors.white38,
                           borderRadius: BorderRadius.circular(3),
                         ),
                       );

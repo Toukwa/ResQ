@@ -23,7 +23,7 @@ class CitizenHeader extends StatelessWidget {
     this.minimal = false,
   });
 
-  static const Color brandOrange = Color(0xFFFF6B00);
+  static const Color brandOrange = AppColors.brand;
   static const Color textSecondary = Color(0xFF94A3B8);
 
   @override
@@ -39,6 +39,7 @@ class CitizenHeader extends StatelessWidget {
       children: [
         if (showBackButton)
           IconButton(
+            tooltip: 'Back',
             icon: Icon(Icons.arrow_back_ios_new_rounded, color: ThemeService.instance.textPrimary, size: 20),
             onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
           ),

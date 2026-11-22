@@ -26,15 +26,15 @@ class StaffNotificationsPanel extends StatelessWidget {
     required this.timeAgo,
   });
 
-  static const _orange = Color(0xFFFF6B00);
+  static const _orange = AppColors.brand;
 
   /// Icon and colour by what the notification is about.
   static ({IconData icon, Color color}) _look(Map n) {
     final t = '${n['type'] ?? n['notificationType'] ?? ''} ${n['title'] ?? ''} ${n['message'] ?? ''}'.toUpperCase();
     if (t.contains('DISPATCH')) return (icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB));
-    if (t.contains('COMPLET')) return (icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A));
-    if (t.contains('DECLIN') || t.contains('CANCEL')) return (icon: Icons.cancel_rounded, color: const Color(0xFFEF4444));
-    if (t.contains('EMERGENCY')) return (icon: Icons.campaign_rounded, color: const Color(0xFFEF4444));
+    if (t.contains('COMPLET')) return (icon: Icons.check_circle_rounded, color: AppColors.success);
+    if (t.contains('DECLIN') || t.contains('CANCEL')) return (icon: Icons.cancel_rounded, color: AppColors.danger);
+    if (t.contains('EMERGENCY')) return (icon: Icons.campaign_rounded, color: AppColors.danger);
     return (icon: Icons.info_rounded, color: _orange);
   }
 

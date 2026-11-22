@@ -118,7 +118,7 @@ class AdminSidebar extends StatelessWidget {
                     message: "Exit Admin Session",
                     child: Icon(
                       Icons.meeting_room_outlined,
-                      color: Color(0xFFEF4444),
+                      color: AppColors.danger,
                       size: 26,
                     ),
                   ),
@@ -145,7 +145,7 @@ class AdminSidebar extends StatelessWidget {
             show: !isActive && tabsWithActivity.contains(targetIndex),
             child: Icon(
               icon,
-              color: isActive ? const Color(0xFFFF6B00) : inactiveColor,
+              color: isActive ? AppColors.brand : inactiveColor,
               size: 24,
             ),
           ),

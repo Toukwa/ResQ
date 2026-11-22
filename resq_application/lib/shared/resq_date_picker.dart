@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/theme_service.dart';
 
-const _orange = Color(0xFFFF6B00);
+const _orange = AppColors.brand;
 
 /// Date picker in the app's look (orange accent, rounded, light/dark colours).
 Future<DateTime?> showResqDatePicker(

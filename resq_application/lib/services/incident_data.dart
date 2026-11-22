@@ -67,6 +67,17 @@ class IncidentData {
     };
   }
 
+  /// The reporter cancels their own report (sent by mistake). Only allowed while no
+  /// agency has acted on it; frees them to send a new report.
+  static Future<void> cancelMyIncident(int reqId, String reason) async {
+    await Rtdb.update('incidents/$reqId', {'reqStatus': 'Cancelled'});
+    try {
+      await Rtdb.remove('users/${FirebaseAuthRest.uid}/activeReq');
+    } catch (_) {} // the next report clears a leftover mark anyway
+    LiveEvents.emit('refreshIncidentQueueEvent', {'reqId': reqId});
+    await log('REPORT_CANCELLED', 'incident', reqId, {'reason': reason});
+  }
+
   static Future<void> log(String action, String entityType, dynamic entityId, Map<String, dynamic> details) async {
     try {
       final user = await me();
@@ -148,9 +159,10 @@ class IncidentData {
 
   static List<Map<String, dynamic>> _deptStatusList(Map<String, dynamic> incident) {
     final raw = incident['dept_status'];
-    final invalid = '${incident['reqStatus']}'.toLowerCase() == 'invalid';
+    final overall = '${incident['reqStatus']}'.toLowerCase();
+    final closedAs = overall == 'invalid' ? 'Invalid' : overall == 'cancelled' ? 'Cancelled' : null;
     if (raw is Map && raw.isNotEmpty) {
-      return [for (final e in raw.entries) {'dept_name': e.key, 'status': invalid ? 'Invalid' : e.value}];
+      return [for (final e in raw.entries) {'dept_name': e.key, 'status': closedAs ?? e.value}];
     }
     return [
       for (final d in involvedDepartments(incident['incType']))
@@ -177,6 +189,8 @@ class IncidentData {
     final overall = '${incident['Status'] ?? incident['status'] ?? incident['reqStatus'] ?? fallback}';
     // A prank report closed as Invalid is Invalid for every agency, whatever its own status was
     if ('${incident['reqStatus']}'.toLowerCase() == 'invalid') return 'Invalid';
+    // ...and one the reporter cancelled is closed for every agency too
+    if ('${incident['reqStatus']}'.toLowerCase() == 'cancelled') return 'Cancelled';
     final mine = normalizeDepartment(dept);
     if (mine == 'ALL') return overall;
     final own = (incident['dept_status'] as Map?)?[mine];
@@ -404,6 +418,8 @@ class IncidentData {
       'citizenUid': FirebaseAuthRest.uid,
       'residentName': user['fullName'],
       'contactNo': user['contactNo'] ?? '',
+      // Report Now guest: no verified email, so agencies weigh it with the evidence
+      if (user['guest'] == true) 'fromGuest': true,
       'incType': incidentType,
       'description': description,
       'latitude': latitude,

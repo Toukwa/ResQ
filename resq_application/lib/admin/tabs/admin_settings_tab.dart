@@ -1,4 +1,5 @@
 import '../../shared/resq_loader.dart';
+import '../../shared/resq_dialog.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/prank_warning.dart';
@@ -214,13 +215,13 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.search, size: 16, color: Colors.orange),
+                  const Icon(Icons.search, size: 16, color: AppColors.brand),
                   const SizedBox(width: 8),
                   Text(
                     "Filtering settings for: '${widget.searchFilter}'",
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Colors.orange,
+                      color: AppColors.brand,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -315,19 +316,19 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
             category: SettingsCategory.appearance,
             title: 'Appearance',
             icon: Icons.wb_sunny_outlined,
-            activeColor: const Color(0xFFFF6B00),
+            activeColor: AppColors.brand,
           ),
           _buildMenuItem(
             category: SettingsCategory.alerts,
             title: 'Alerts & Notifications',
             icon: Icons.notifications_none_rounded,
-            activeColor: const Color(0xFFEF4444),
+            activeColor: AppColors.danger,
           ),
           _buildMenuItem(
             category: SettingsCategory.map,
             title: 'Map Settings',
             icon: Icons.map_outlined,
-            activeColor: const Color(0xFF10B981),
+            activeColor: AppColors.success,
           ),
           _buildMenuItem(
             category: SettingsCategory.security,
@@ -514,7 +515,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                             _saveStatusMessage == 'Saved' ? Icons.check_circle : Icons.error_outline,
                             size: 14,
                             color: _saveStatusMessage == 'Saved'
-                                ? const Color(0xFF0E9F6E)
+                                ? AppColors.success
                                 : const Color(0xFFE02424),
                           ),
                           const SizedBox(width: 6),
@@ -524,7 +525,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _saveStatusMessage == 'Saved'
-                                  ? const Color(0xFF0E9F6E)
+                                  ? AppColors.success
                                   : const Color(0xFFE02424),
                             ),
                           ),
@@ -576,11 +577,11 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
       case SettingsCategory.profile:
         return _buildHeaderItem('My Profile', 'Manage your dispatcher account & credentials', Icons.person_outline_rounded, const Color(0xFF0066FF));
       case SettingsCategory.appearance:
-        return _buildHeaderItem('Appearance', 'Configure appearance preferences', Icons.wb_sunny_outlined, const Color(0xFFFF6B00));
+        return _buildHeaderItem('Appearance', 'Configure appearance preferences', Icons.wb_sunny_outlined, AppColors.brand);
       case SettingsCategory.alerts:
-        return _buildHeaderItem('Alerts & Notifications', 'Configure alerts & notifications preferences', Icons.notifications_none_rounded, const Color(0xFFEF4444));
+        return _buildHeaderItem('Alerts & Notifications', 'Configure alerts & notifications preferences', Icons.notifications_none_rounded, AppColors.danger);
       case SettingsCategory.map:
-        return _buildHeaderItem('Map Settings', 'Configure map display and navigation preferences', Icons.map_outlined, const Color(0xFF10B981));
+        return _buildHeaderItem('Map Settings', 'Configure map display and navigation preferences', Icons.map_outlined, AppColors.success);
       case SettingsCategory.security:
         return _buildHeaderItem('Account Security', 'Manage security, session timeout, and password', Icons.shield_outlined, const Color(0xFF3B82F6));
     }
@@ -688,7 +689,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       if (_userDepartment.isNotEmpty) pill(_userDepartment, const Color(0xFF3B82F6)),
                       pill(_userRole, const Color(0xFF94A3B8)),
-                      pill('Active', const Color(0xFF10B981), icon: Icons.circle),
+                      pill('Active', AppColors.success, icon: Icons.circle),
                     ]),
                   ],
                 ),
@@ -728,9 +729,9 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildThemeOption('Light', Icons.wb_sunny_outlined, _themeMode == 'Light', const Color(0xFFFF6B00)),
+              _buildThemeOption('Light', Icons.wb_sunny_outlined, _themeMode == 'Light', AppColors.brand),
               const SizedBox(width: 8),
-              _buildThemeOption('Dark', Icons.nightlight_round, _themeMode == 'Dark', const Color(0xFFFF6B00)),
+              _buildThemeOption('Dark', Icons.nightlight_round, _themeMode == 'Dark', AppColors.brand),
             ],
           ),
         ),
@@ -750,7 +751,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
               DisplaySettings.setReducedMotion(v);
               _saveSetting({'reduced_motion': v ? 1 : 0});
             },
-            activeThumbColor: const Color(0xFFFF6B00),
+            activeThumbColor: AppColors.brand,
           ),
         ),
       );
@@ -796,8 +797,8 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   }
   // --- ALERTS & NOTIFICATIONS ---
   List<Widget> _buildAlertsContent() {
-    const activeColor = Color(0xFFEF4444);
-    const accentOrange = Color(0xFFFF6B00);
+    const activeColor = AppColors.danger;
+    const accentOrange = AppColors.brand;
     const accentPurple = Color(0xFF8B5CF6);
     final items = <Map<String, dynamic>>[
       {
@@ -887,7 +888,7 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
   }
   // --- MAP SETTINGS ---
   List<Widget> _buildMapContent() {
-    const activeColor = Color(0xFF10B981);
+    const activeColor = AppColors.success;
     final list = <Widget>[];
     final switches = [
       {
@@ -1114,24 +1115,12 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => AlertDialog(
-          backgroundColor: ts.cardBackground,
-          surfaceTintColor: Colors.transparent,
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.key_rounded, color: red, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text('Prank Warning Unlock Password',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-              ),
-            ],
-          ),
-          content: SizedBox(
+        builder: (ctx, setD) => ResqDialog(
+          icon: Icons.key_rounded,
+          color: red,
+          title: 'Prank Warning Unlock Password',
+          maxWidth: 480,
+          child: SizedBox(
             width: 420,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1179,9 +1168,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
               ],
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-          ],
         ),
       ),
     );
@@ -1204,18 +1190,62 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
     showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.lock_reset_rounded, color: Color(0xFF0066FF)),
-              SizedBox(width: 10),
-              Text(
-                'Change Password',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: SizedBox(
+        builder: (context, setDialogState) => ResqDialog(
+          icon: Icons.lock_reset_rounded,
+          color: AppColors.brand,
+          title: 'Change Password',
+          maxWidth: 480,
+          primaryLabel: 'Update Password',
+          primaryIcon: Icons.lock_reset_rounded,
+          busy: isSubmitting,
+          onPrimary: () async {
+                      final currentPass = currentPasswordController.text.trim();
+                      final newPass = newPasswordController.text.trim();
+                      final confirmPass = confirmPasswordController.text.trim();
+                      if (currentPass.isEmpty) {
+                        setDialogState(() => errorMessage = 'Please enter your current password.');
+                        return;
+                      }
+                      final passwordError = PasswordPolicy.check(newPass);
+                      if (passwordError != null) {
+                        setDialogState(() => errorMessage = passwordError);
+                        return;
+                      }
+                      if (newPass != confirmPass) {
+                        setDialogState(() => errorMessage = 'New passwords do not match.');
+                        return;
+                      }
+                      if (currentPass == newPass) {
+                        setDialogState(() => errorMessage = 'New password cannot be identical to current password.');
+                        return;
+                      }
+                      setDialogState(() {
+                        isSubmitting = true;
+                        errorMessage = null;
+                      });
+                      final messenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(dialogCtx);
+                      final res = await AdminService.changePassword(
+                        userId: widget.adminId,
+                        currentPassword: currentPass,
+                        newPassword: newPass,
+                      );
+                      if (res['success'] == true) {
+                        navigator.pop();
+                        messenger.showResqSnackBar(
+                          const SnackBar(
+                            content: Text('Password updated successfully!'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      } else {
+                        setDialogState(() {
+                          isSubmitting = false;
+                          errorMessage = (res['message'] as String?) ?? 'Failed to update password.';
+                        });
+                      }
+                    },
+          child: SizedBox(
             width: 420,
             child: SingleChildScrollView(
               child: Column(
@@ -1324,76 +1354,6 @@ class _AdminSettingsTabState extends State<AdminSettingsTab> {
               ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0066FF),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              ),
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      final currentPass = currentPasswordController.text.trim();
-                      final newPass = newPasswordController.text.trim();
-                      final confirmPass = confirmPasswordController.text.trim();
-                      if (currentPass.isEmpty) {
-                        setDialogState(() => errorMessage = 'Please enter your current password.');
-                        return;
-                      }
-                      final passwordError = PasswordPolicy.check(newPass);
-                      if (passwordError != null) {
-                        setDialogState(() => errorMessage = passwordError);
-                        return;
-                      }
-                      if (newPass != confirmPass) {
-                        setDialogState(() => errorMessage = 'New passwords do not match.');
-                        return;
-                      }
-                      if (currentPass == newPass) {
-                        setDialogState(() => errorMessage = 'New password cannot be identical to current password.');
-                        return;
-                      }
-                      setDialogState(() {
-                        isSubmitting = true;
-                        errorMessage = null;
-                      });
-                      final messenger = ScaffoldMessenger.of(context);
-                      final navigator = Navigator.of(dialogCtx);
-                      final res = await AdminService.changePassword(
-                        userId: widget.adminId,
-                        currentPassword: currentPass,
-                        newPassword: newPass,
-                      );
-                      if (res['success'] == true) {
-                        navigator.pop();
-                        messenger.showResqSnackBar(
-                          const SnackBar(
-                            content: Text('Password updated successfully!'),
-                            backgroundColor: Color(0xFF0E9F6E),
-                          ),
-                        );
-                      } else {
-                        setDialogState(() {
-                          isSubmitting = false;
-                          errorMessage = (res['message'] as String?) ?? 'Failed to update password.';
-                        });
-                      }
-                    },
-              child: isSubmitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: ResqLoader(color: Colors.white),
-                    )
-                  : const Text('Update Password'),
-            ),
-          ],
         ),
       ),
     );

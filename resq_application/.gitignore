@@ -67,3 +67,6 @@ installer/*.apk
 installer/*.exe
 installer/output/
 .firebase/
+
+# Database exports hold personal data (names, phones, locations); never commit them
+*backup*.json

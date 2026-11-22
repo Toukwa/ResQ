@@ -1,4 +1,5 @@
 import 'resq_loader.dart';
+import '../services/theme_service.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -86,7 +87,7 @@ class _EvidenceVideoPageState extends State<_EvidenceVideoPage> {
                         )
                       : v.isInitialized
                           ? AspectRatio(aspectRatio: v.aspectRatio, child: VideoPlayer(_video))
-                          : const ResqLoader(color: Color(0xFFFF6B00)),
+                          : const ResqLoader(color: AppColors.brand),
                 ),
               ),
             ),
@@ -119,6 +120,7 @@ class _EvidenceVideoPageState extends State<_EvidenceVideoPage> {
                   child: Row(
                     children: [
                       IconButton(
+                        tooltip: v.isPlaying ? 'Pause' : 'Play',
                         iconSize: 36,
                         icon: Icon(v.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
                         onPressed: _togglePlay,
@@ -129,7 +131,7 @@ class _EvidenceVideoPageState extends State<_EvidenceVideoPage> {
                           allowScrubbing: true,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           colors: const VideoProgressColors(
-                            playedColor: Color(0xFFFF6B00),
+                            playedColor: AppColors.brand,
                             bufferedColor: Colors.white38,
                             backgroundColor: Colors.white12,
                           ),

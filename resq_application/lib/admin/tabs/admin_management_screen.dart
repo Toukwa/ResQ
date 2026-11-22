@@ -328,7 +328,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: AppColors.brand,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -446,14 +446,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
                       : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(10),
-                  border: unassignedCount > 0 ? Border.all(color: const Color(0xFFFF6B00).withValues(alpha: 0.3)) : null,
+                  border: unassignedCount > 0 ? Border.all(color: AppColors.brand.withValues(alpha: 0.3)) : null,
                 ),
                 child: Text(
                   "$unassignedCount",
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: unassignedCount > 0 ? const Color(0xFFFF6B00) : ts.textSecondary,
+                    color: unassignedCount > 0 ? AppColors.brand : ts.textSecondary,
                   ),
                 ),
               ),
@@ -514,7 +514,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFFFF6B00)),
+                        child: const Icon(Icons.sensors_rounded, size: 16, color: AppColors.brand),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -547,7 +547,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B00),
+                            color: AppColors.brand,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
@@ -609,7 +609,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFFF6B00)
+                            ? AppColors.brand
                             : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -637,7 +637,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               child: Text(
                                 count.toString(),
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? Colors.white : ts.textSecondary,
                                 ),
@@ -723,7 +723,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? const Color(0xFFFF6B00) : ts.textSecondary,
+                                color: isSelected ? AppColors.brand : ts.textSecondary,
                               ),
                             ),
                           ],
@@ -731,7 +731,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFF6B00) : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
+                            color: isSelected ? AppColors.brand : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -762,7 +762,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     final ts = ThemeService.instance;
 
     if (_isLoadingVehicles) {
-      return const Center(child: ResqLoader(color: Color(0xFFFF6B00)));
+      return const Center(child: ResqLoader(color: AppColors.brand));
     }
 
     final tableHeaderStyle = TextStyle(
@@ -823,7 +823,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text("Add New Vehicle"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: AppColors.brand,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -878,7 +878,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   child: Icon(
                     _getVehicleIcon(type),
                     size: 18,
-                    color: const Color(0xFFFF6B00),
+                    color: AppColors.brand,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1000,7 +1000,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   tooltip: "Edit Vehicle",
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.danger),
                   onPressed: () => _showDeleteVehicleDialog(v),
                   tooltip: "Delete Vehicle",
                 ),
@@ -1067,16 +1067,57 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             }
             final dynamicStatusColor = _getStatusColor(dynamicStatus);
 
-            return AlertDialog(
-              backgroundColor: ts.cardBackground,
-              title: Row(
-                children: [
-                  const Icon(Icons.directions_car_filled_outlined, color: Color(0xFFFF6B00)),
-                  const SizedBox(width: 8),
-                  Text("Add New Department Vehicle", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ts.textPrimary)),
-                ],
-              ),
-              content: Container(
+            return ResqDialog(
+              icon: Icons.directions_car_filled_outlined,
+              color: AppColors.brand,
+              title: 'Add New Department Vehicle',
+              maxWidth: 480,
+              primaryLabel: 'Add Vehicle',
+              primaryIcon: Icons.add_rounded,
+              busy: saving,
+              onPrimary: () async {
+                    final plate = plateController.text.trim();
+                    final officer = officerController.text.trim();
+                    final messenger = ScaffoldMessenger.of(context);
+                    final targetDept = (widget.department.isNotEmpty && widget.department.toUpperCase() != 'ALL')
+                        ? widget.department.toUpperCase()
+                        : 'BFP';
+                    setModalState(() => saving = true);
+
+                    bool success = false;
+                    if (selectedUnassignedVehicleId != null) {
+                      // Claim existing unassigned vehicle for signed in admin's department
+                      success = await AdminService.updateVehicle(selectedUnassignedVehicleId!, {
+                        'plate_no': plate.isEmpty ? null : plate,
+                        'vehicle_type': selectedType,
+                        'deptName': targetDept,
+                        'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
+                        'status': dynamicStatus,
+                      });
+                    } else {
+                      // Create a new vehicle record for signed in admin's department
+                      success = await AdminService.createVehicle({
+                        'plate_no': plate.isEmpty ? null : plate,
+                        'vehicle_type': selectedType,
+                        'deptName': targetDept,
+                        'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
+                        'status': dynamicStatus,
+                      });
+                    }
+
+                    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                    if (success) {
+                      _loadData(showLoading: false);
+                      messenger.showResqSnackBar(
+                        const SnackBar(content: Text("Vehicle assigned successfully")),
+                      );
+                    } else {
+                      messenger.showResqSnackBar(
+                        const SnackBar(content: Text("Failed to save vehicle")),
+                      );
+                    }
+                  },
+              child: Container(
                 width: 440,
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.7,
@@ -1229,62 +1270,6 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   ),
                 ),
               ),
-
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: Text("Cancel", style: TextStyle(color: ts.textSecondary)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: saving ? null : () async {
-                    final plate = plateController.text.trim();
-                    final officer = officerController.text.trim();
-                    final messenger = ScaffoldMessenger.of(context);
-                    final targetDept = (widget.department.isNotEmpty && widget.department.toUpperCase() != 'ALL')
-                        ? widget.department.toUpperCase()
-                        : 'BFP';
-                    setModalState(() => saving = true);
-
-                    bool success = false;
-                    if (selectedUnassignedVehicleId != null) {
-                      // Claim existing unassigned vehicle for signed in admin's department
-                      success = await AdminService.updateVehicle(selectedUnassignedVehicleId!, {
-                        'plate_no': plate.isEmpty ? null : plate,
-                        'vehicle_type': selectedType,
-                        'deptName': targetDept,
-                        'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
-                        'status': dynamicStatus,
-                      });
-                    } else {
-                      // Create a new vehicle record for signed in admin's department
-                      success = await AdminService.createVehicle({
-                        'plate_no': plate.isEmpty ? null : plate,
-                        'vehicle_type': selectedType,
-                        'deptName': targetDept,
-                        'officer_in_charge': officer.isEmpty ? 'Officer On Duty' : officer,
-                        'status': dynamicStatus,
-                      });
-                    }
-
-                    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                    if (success) {
-                      _loadData(showLoading: false);
-                      messenger.showResqSnackBar(
-                        const SnackBar(content: Text("Vehicle assigned successfully")),
-                      );
-                    } else {
-                      messenger.showResqSnackBar(
-                        const SnackBar(content: Text("Failed to save vehicle")),
-                      );
-                    }
-                  },
-                  child: const Text("Add Vehicle"),
-                ),
-              ],
             );
           },
         );
@@ -1320,7 +1305,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
           builder: (context, setModalState) {
             return ResqDialog(
               icon: Icons.edit_rounded,
-              color: const Color(0xFFFF6B00),
+              color: AppColors.brand,
               title: 'Edit Vehicle',
               subtitle: 'Unit #$vehicleId',
               primaryLabel: 'Save Changes',
@@ -1346,11 +1331,11 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                 if (success) {
                   _loadData(showLoading: false);
                   messenger.showResqSnackBar(
-                    const SnackBar(content: Text("Vehicle updated successfully"), backgroundColor: Color(0xFF27AE60)),
+                    const SnackBar(content: Text("Vehicle updated successfully"), backgroundColor: AppColors.success),
                   );
                 } else {
                   messenger.showResqSnackBar(
-                    const SnackBar(content: Text("Failed to update vehicle"), backgroundColor: Colors.redAccent),
+                    const SnackBar(content: Text("Failed to update vehicle"), backgroundColor: AppColors.danger),
                   );
                 }
               },
@@ -1453,11 +1438,11 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
             if (success) {
               _loadData(showLoading: false);
               messenger.showResqSnackBar(
-                const SnackBar(content: Text("Vehicle deleted successfully"), backgroundColor: Color(0xFF27AE60)),
+                const SnackBar(content: Text("Vehicle deleted successfully"), backgroundColor: AppColors.success),
               );
             } else {
               messenger.showResqSnackBar(
-                const SnackBar(content: Text("Failed to delete vehicle. A unit on a report can't be deleted until the report is closed."), backgroundColor: Colors.redAccent),
+                const SnackBar(content: Text("Failed to delete vehicle. A unit on a report can't be deleted until the report is closed."), backgroundColor: AppColors.danger),
               );
             }
           },

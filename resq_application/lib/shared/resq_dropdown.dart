@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/theme_service.dart';
 
-const _orange = Color(0xFFFF6B00);
+const _orange = AppColors.brand;
 
 /// One choice in a [ResqSelect]: its value, text, and optional icon or colour (shown as a dot).
 class ResqOption<T> {
@@ -154,7 +154,7 @@ class ResqSelect<T> extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   color: selected ? color : ts.textPrimary,
                 ),

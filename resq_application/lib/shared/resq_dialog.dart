@@ -156,7 +156,7 @@ class ResqDialogField extends StatelessWidget {
     this.obscure = false,
     this.hint,
     this.suffix,
-    this.accent = const Color(0xFFFF6B00),
+    this.accent = AppColors.brand,
   });
 
   @override

@@ -461,7 +461,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
       builder: (context, _) {
         final ts = ThemeService.instance;
         final borderGrey = ts.borderColor;
-        const brandOrange = Color(0xFFFF6B00);
+        const brandOrange = AppColors.brand;
 
         return _isLoading
             ? const Center(child: ResqLoader(color: brandOrange))
@@ -561,7 +561,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                             width: 8,
                                             height: 8,
                                             decoration: const BoxDecoration(
-                                              color: Colors.green,
+                                              color: AppColors.success,
                                               shape: BoxShape.circle,
                                             ),
                                           ),
@@ -716,7 +716,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                   'Bureau of Fire',
                                   _bfpCount.toString(),
                                   'Active Units',
-                                  const Color(0xFFFF6B00),
+                                  AppColors.brand,
                                   const Color(0xFFFFEDD5),
                                 ),
                                 const SizedBox(width: 8),
@@ -725,7 +725,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                   'Disaster Risk',
                                   _cdrrmoCount.toString(),
                                   'Active Units',
-                                  const Color(0xFF10B981),
+                                  AppColors.success,
                                   const Color(0xFFECFDF5),
                                 ),
                               ],
@@ -803,7 +803,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                                 child: const Icon(
                                                   Icons.refresh_rounded,
                                                   size: 18,
-                                                  color: Color(0xFFFF6B00),
+                                                  color: AppColors.brand,
                                                 ),
                                               ),
                                             ),
@@ -887,7 +887,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                         constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
                         child: Text(
                           '$badgeCount',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -968,7 +968,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
   Widget _buildUnitFilterChip(String key, String label) {
     final ts = ThemeService.instance;
     final isSelected = _selectedUnitFilter == key;
-    final color = key == 'all' ? const Color(0xFFFF6B00) : agencySymbol(label).color;
+    final color = key == 'all' ? AppColors.brand : agencySymbol(label).color;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Material(
@@ -985,7 +985,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
             ),
             child: Text(label,
                 style: TextStyle(
-                    fontSize: 10.5, fontWeight: FontWeight.w800, color: isSelected ? color : ts.textSecondary)),
+                    fontSize: 11, fontWeight: FontWeight.w800, color: isSelected ? color : ts.textSecondary)),
           ),
         ),
       ),
@@ -1153,7 +1153,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                         child: Text(
                           event['type'] as String? ?? '',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: _parseLogColor(event['typeColor'] as String? ?? '#475569'),
                           ),
@@ -1198,7 +1198,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                             child: Text(
                               tag['text'] as String? ?? '',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: _parseLogColor(tag['color'] as String? ?? '#475569'),
                               ),
@@ -1338,12 +1338,12 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                     '${item['incType'] ?? item['type'] ?? 'Emergency'}',
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, height: 1.25, color: ts.textPrimary),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, height: 1.25, color: ts.textPrimary),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
                                     '${formatRequestId(item)}${reported != null ? '  ·  ${formatTimeAgo(reported)}' : ''}',
-                                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: ts.textMuted),
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ts.textMuted),
                                   ),
                                 ],
                               ),
@@ -1398,7 +1398,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                             ),
                             // Shows this incident on the map (the rest of the card opens its details)
                             Material(
-                              color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                              color: AppColors.brand.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               child: InkWell(
                                 onTap: () => _locateIncidentOnMap(item),
@@ -1406,10 +1406,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                                 child: const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(Icons.near_me_rounded, size: 12, color: Color(0xFFFF6B00)),
+                                    Icon(Icons.near_me_rounded, size: 12, color: AppColors.brand),
                                     SizedBox(width: 3),
                                     Text('Map',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFFF6B00))),
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.brand)),
                                   ]),
                                 ),
                               ),
@@ -1507,10 +1507,10 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                     IncidentQueueFilter.active => Icons.bolt_rounded,
                   },
                   color: switch (f) {
-                    IncidentQueueFilter.pending => const Color(0xFFF59E0B),
+                    IncidentQueueFilter.pending => AppColors.warning,
                     IncidentQueueFilter.enRoute => const Color(0xFF2563EB),
-                    IncidentQueueFilter.declined => const Color(0xFFEF4444),
-                    _ => const Color(0xFFFF6B00),
+                    IncidentQueueFilter.declined => AppColors.danger,
+                    _ => AppColors.brand,
                   }),
           ],
         ),
@@ -1583,7 +1583,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                 Text(
                   line1,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: ts.isDark ? accentColor : accentColor.withValues(alpha: 0.9),
                     height: 1.1,
@@ -1593,7 +1593,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   Text(
                     line2,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: ts.isDark ? accentColor.withValues(alpha: 0.9) : accentColor.withValues(alpha: 0.8),
                       height: 1.1,
@@ -1635,7 +1635,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   Text(
                     name,
                     style: TextStyle(
-                      fontSize: 8,
+                      fontSize: 10,
                       color: ts.isDark ? accentColor.withValues(alpha: 0.9) : accentColor.withValues(alpha: 0.8),
                       height: 1.1,
                     ),
@@ -1655,7 +1655,7 @@ class _OverviewDashboardScreenState extends State<OverviewDashboardScreen> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 8,
+                      fontSize: 10,
                       color: ts.isDark ? accentColor.withValues(alpha: 0.9) : accentColor.withValues(alpha: 0.8),
                     ),
                   ),

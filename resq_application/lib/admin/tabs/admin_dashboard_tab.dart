@@ -541,7 +541,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       : '${selectedVehicleIds.length} units dispatched!')
                 : '$failed of ${selectedVehicleIds.length} units failed to dispatch${reason == null ? '' : ' ($reason)'}';
             if (!mounted) return;
-            messenger.showResqSnackBar(SnackBar(content: Text(result), backgroundColor: const Color(0xFF27AE60)));
+            messenger.showResqSnackBar(SnackBar(content: Text(result), backgroundColor: AppColors.success));
             _loadDashboardData();
             widget.onRefreshNeeded();
           }
@@ -567,10 +567,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B00).withValues(alpha: 0.14),
+                            color: AppColors.brand.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.local_shipping_rounded, color: Color(0xFFFF6B00), size: 22),
+                          child: const Icon(Icons.local_shipping_rounded, color: AppColors.brand, size: 22),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -683,12 +683,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                          color: AppColors.danger.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
                           'No available units right now.',
-                          style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       )
                     else
@@ -731,11 +731,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                             padding: const EdgeInsets.all(10),
                                             decoration: BoxDecoration(
                                               color: picked
-                                                  ? const Color(0xFFFF6B00).withValues(alpha: 0.1)
+                                                  ? AppColors.brand.withValues(alpha: 0.1)
                                                   : ts.cardBackground,
                                               borderRadius: BorderRadius.circular(12),
                                               border: Border.all(
-                                                color: picked ? const Color(0xFFFF6B00) : ts.borderColor,
+                                                color: picked ? AppColors.brand : ts.borderColor,
                                                 width: picked ? 1.5 : 1,
                                               ),
                                             ),
@@ -773,7 +773,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                                   picked
                                                       ? Icons.check_circle_rounded
                                                       : Icons.radio_button_unchecked_rounded,
-                                                  color: picked ? const Color(0xFFFF6B00) : ts.textMuted,
+                                                  color: picked ? AppColors.brand : ts.textMuted,
                                                   size: 22,
                                                 ),
                                               ],
@@ -809,7 +809,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           flex: 2,
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF6B00),
+                              backgroundColor: AppColors.brand,
                               foregroundColor: Colors.white,
                               disabledBackgroundColor: ts.borderColor,
                               disabledForegroundColor: ts.textMuted,
@@ -843,7 +843,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   Widget build(BuildContext context) {
     final ts = ThemeService.instance;
     final Color borderGrey = ts.borderColor;
-    const Color brandOrange = Color(0xFFFF6B00);
+    const Color brandOrange = AppColors.brand;
 
     if (_isLoading) {
       return const Center(child: ResqLoader(color: brandOrange));
@@ -862,7 +862,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 icon: Icons.warning_amber_rounded,
                 backgroundColor: themedBg(const Color(0xFFFFEFF1)),
                 borderColor: const Color(0xFFFFDDE1),
-                accentColor: const Color(0xFFEB5757),
+                accentColor: AppColors.danger,
               ),
             ),
             const SizedBox(width: 12),
@@ -873,7 +873,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 icon: Icons.check_circle_outline,
                 backgroundColor: themedBg(const Color(0xFFEFFFF4)),
                 borderColor: const Color(0xFFD3F8DF),
-                accentColor: const Color(0xFF27AE60),
+                accentColor: AppColors.success,
               ),
             ),
             const SizedBox(width: 12),
@@ -963,7 +963,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                              decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
                             ),
                           ],
                         ),
@@ -1188,7 +1188,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
                         child: Text(
                           '$badgeCount',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1355,9 +1355,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: ResqLoader(color: Color(0xFFFF6B00)),
+                          child: ResqLoader(color: AppColors.brand),
                         )
-                      : const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFFFF6B00)),
+                      : const Icon(Icons.refresh_rounded, size: 18, color: AppColors.brand),
                 ),
               ),
             ],
@@ -1783,7 +1783,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       deptIcon = Icons.local_police_outlined;
     } else {
       iconBg = ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
-      iconColor = const Color(0xFF059669);
+      iconColor = AppColors.success;
       deptIcon = Icons.health_and_safety_outlined;
     }
 
@@ -1890,7 +1890,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         decoration: BoxDecoration(color: ts.inputBackground, borderRadius: BorderRadius.circular(4)),
                         child: Text(
                           actor.toString(),
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: ts.textSecondary),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary),
                         ),
                       ),
                       const Spacer(),
@@ -1945,12 +1945,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         if (v != null) setState(() => _selectedQueueFilter = v);
       },
       options: [
-        ResqOption(AdminIncidentFilter.all, 'All', icon: Icons.all_inclusive_rounded, color: const Color(0xFFFF6B00)),
+        ResqOption(AdminIncidentFilter.all, 'All', icon: Icons.all_inclusive_rounded, color: AppColors.brand),
         ResqOption(
           AdminIncidentFilter.pending,
           'Pending',
           icon: Icons.schedule_rounded,
-          color: const Color(0xFFF59E0B),
+          color: AppColors.warning,
         ),
         ResqOption(
           AdminIncidentFilter.enRoute,
@@ -1962,9 +1962,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           AdminIncidentFilter.declined,
           'Declined',
           icon: Icons.cancel_rounded,
-          color: const Color(0xFFEF4444),
+          color: AppColors.danger,
         ),
-        ResqOption(AdminIncidentFilter.active, 'Active', icon: Icons.bolt_rounded, color: const Color(0xFFFF6B00)),
+        ResqOption(AdminIncidentFilter.active, 'Active', icon: Icons.bolt_rounded, color: AppColors.brand),
       ],
     ),
   );
@@ -2068,8 +2068,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final List<Widget> items = [
       for (final (code, name, color) in const [
         ('PNP', 'PNP', Color(0xFF2F80ED)),
-        ('BFP', 'BFP', Color(0xFFFF6B00)),
-        ('CDRRMO', 'CDRRMO', Color(0xFF27AE60)),
+        ('BFP', 'BFP', AppColors.brand),
+        ('CDRRMO', 'CDRRMO', AppColors.success),
       ])
         if (_dept == 'ALL' || _dept == code)
           _buildAgencyStatusItem(name, color, count(code, 'Available'), count(code, 'En Route'), count(code, 'Arrived')),

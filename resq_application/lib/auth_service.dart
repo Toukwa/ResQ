@@ -54,12 +54,9 @@ class AuthService {
     }
   }
 
-  static Future<({Map<String, dynamic>? data, String? error})> quickReport({
-    required String fullName,
-    required String contactNo,
-  }) async {
+  static Future<({Map<String, dynamic>? data, String? error})> quickReport() async {
     try {
-      return (data: await FirebaseService.quickReport(fullName: fullName, contactNo: contactNo), error: null);
+      return (data: await FirebaseService.quickReport(), error: null);
     } catch (e) {
       return (data: null, error: friendlyError(e));
     }

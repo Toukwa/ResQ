@@ -3,6 +3,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_icon_service.dart';
 
+/// The app's named colors. Use these instead of typing hex values, so the same
+/// meaning always gets the same shade. Report statuses have their own set in
+/// shared/status_style.dart.
+abstract final class AppColors {
+  static const brand = Color(0xFFFF6B00); // ResQ orange: main buttons, highlights
+  static const success = Color(0xFF16A34A); // done, available, accept
+  static const danger = Color(0xFFEF4444); // errors, decline, emergency
+  static const warning = Color(0xFFF59E0B); // waiting, caution
+}
+
 class ThemeService extends ChangeNotifier {
   static final ThemeService instance = ThemeService._internal();
   ThemeService._internal();

@@ -38,8 +38,8 @@ class _CallAgenciesSheetState extends State<_CallAgenciesSheet> {
 
   static const _colors = {
     'PNP': Color(0xFF2563EB),
-    'BFP': Color(0xFFFF6B00),
-    'CDRRMO': Color(0xFF10B981),
+    'BFP': AppColors.brand,
+    'CDRRMO': AppColors.success,
   };
   static const _icons = {
     'PNP': Icons.local_police,

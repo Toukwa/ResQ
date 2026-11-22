@@ -7,7 +7,7 @@ import '../services/theme_service.dart';
 class CitizenAlertsBell extends StatelessWidget {
   const CitizenAlertsBell({super.key});
 
-  static const _orange = Color(0xFFFF6B00);
+  static const _orange = AppColors.brand;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +39,7 @@ class CitizenAlertsBell extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     constraints: const BoxConstraints(minWidth: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
+                      color: AppColors.danger,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: ts.cardBackground, width: 1.5),
                     ),
@@ -72,12 +72,12 @@ class CitizenAlertsBell extends StatelessWidget {
 class _AlertsSheet extends StatelessWidget {
   const _AlertsSheet();
 
-  static const _orange = Color(0xFFFF6B00);
+  static const _orange = AppColors.brand;
 
   static ({IconData icon, Color color}) _look(String sound) => switch (sound) {
     'dispatch' => (icon: Icons.local_shipping_rounded, color: const Color(0xFF2563EB)),
-    'completed' => (icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
-    'declined' => (icon: Icons.cancel_rounded, color: const Color(0xFFEF4444)),
+    'completed' => (icon: Icons.check_circle_rounded, color: AppColors.success),
+    'declined' => (icon: Icons.cancel_rounded, color: AppColors.danger),
     _ => (icon: Icons.info_rounded, color: _orange),
   };
 

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import '../services/theme_service.dart';
 
 import 'package:flutter/material.dart';
 
@@ -62,7 +63,7 @@ class _ResqLoaderState extends State<ResqLoader> with SingleTickerProviderStateM
           height: s,
           child: CircularProgressIndicator(
             strokeWidth: s < 24 ? 2 : 3,
-            color: widget.color ?? const Color(0xFFFF6B00),
+            color: widget.color ?? AppColors.brand,
           ),
         );
       }

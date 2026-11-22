@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import '../services/theme_service.dart';
 
 import 'package:flutter/material.dart';
 
@@ -18,7 +19,7 @@ class _AssigningAnimationState extends State<AssigningAnimation> with SingleTick
   static const _vehicles = [
     (icon: Icons.fire_truck_rounded, color: Color(0xFFDC2626)), // BFP (agencySymbol colours)
     (icon: Icons.local_police_rounded, color: Color(0xFF1E40AF)), // PNP
-    (icon: Icons.airport_shuttle_rounded, color: Color(0xFF16A34A)), // CDRRMO
+    (icon: Icons.airport_shuttle_rounded, color: AppColors.success), // CDRRMO
   ];
   static const _iconSize = 28.0;
 

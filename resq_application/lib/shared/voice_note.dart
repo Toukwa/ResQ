@@ -11,9 +11,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'resq_toast.dart';
 
-const _orange = Color(0xFFFF6B00);
-const _red = Color(0xFFEF4444);
-const _green = Color(0xFF16A34A);
+const _orange = AppColors.brand;
+const _red = AppColors.danger;
+const _green = AppColors.success;
 const _textGrey = Color(0xFF94A3B8);
 
 String _clock(Duration d) => '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';

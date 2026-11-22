@@ -134,7 +134,7 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFFF4F3F0),
             cardColor: Colors.white,
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF6B00),
+              seedColor: AppColors.brand,
               brightness: Brightness.light,
               surface: const Color(0xFFF4F3F0),
             ),
@@ -148,7 +148,7 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFF111827),
             cardColor: const Color(0xFF1F2937),
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF6B00),
+              seedColor: AppColors.brand,
               brightness: Brightness.dark,
               surface: const Color(0xFF1F2937),
             ),

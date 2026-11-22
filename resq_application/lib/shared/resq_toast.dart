@@ -52,10 +52,10 @@ Widget _cleanContent(Widget content) {
 }
 
 enum _Tone {
-  success(Icons.check_circle_rounded, Color(0xFF16A34A)),
+  success(Icons.check_circle_rounded, AppColors.success),
   error(Icons.error_rounded, Color(0xFFDC2626)),
   warning(Icons.warning_amber_rounded, Color(0xFFD97706)),
-  info(Icons.info_rounded, Color(0xFFFF6B00));
+  info(Icons.info_rounded, AppColors.brand);
 
   final IconData icon;
   final Color color;

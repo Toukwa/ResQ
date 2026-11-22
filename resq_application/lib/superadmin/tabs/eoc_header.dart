@@ -107,7 +107,7 @@ class _EocHeaderState extends State<EocHeader> {
     final Color textSecondary = ThemeService.instance.textSecondary;
     final Color border = ThemeService.instance.borderColor;
     final Color inputBg = ThemeService.instance.inputBackground;
-    const Color brandOrange = Color(0xFFFF6B00);
+    const Color brandOrange = AppColors.brand;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -240,7 +240,7 @@ class _EocHeaderState extends State<EocHeader> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFF6B00),
+                        color: AppColors.brand,
                         shape: BoxShape.circle,
                       ),
                       constraints: const BoxConstraints(
@@ -252,7 +252,7 @@ class _EocHeaderState extends State<EocHeader> {
                           "${widget.unreadCount}",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             height: 1.0,
                           ),

@@ -301,7 +301,7 @@ class _IncidentPickerSheetState extends State<_IncidentPickerSheet> {
                   padding: const EdgeInsets.only(right: 10),
                   child: TextButton(
                     onPressed: () => setState(_picked.clear),
-                    child: const Text('Clear', style: TextStyle(color: Color(0xFFEF4444))),
+                    child: const Text('Clear', style: TextStyle(color: AppColors.danger)),
                   ),
                 ),
               Expanded(

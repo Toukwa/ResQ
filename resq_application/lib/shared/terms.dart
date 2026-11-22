@@ -222,7 +222,7 @@ class TermsConsentSection extends StatelessWidget {
   final TermsConsentController controller;
   const TermsConsentSection({super.key, required this.controller});
 
-  static const _orange = Color(0xFFFF6B00);
+  static const _orange = AppColors.brand;
   static const _blue = Color(0xFF2563EB);
 
   @override
@@ -463,7 +463,7 @@ class TermsScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: ts.textPrimary),
                   ),
                   const SizedBox(height: 6),
-                  ResqText(body, style: TextStyle(fontSize: 13.5, height: 1.5, color: ts.textSecondary)),
+                  ResqText(body, style: TextStyle(fontSize: 14, height: 1.5, color: ts.textSecondary)),
                 ],
               ),
             ),
@@ -498,10 +498,10 @@ Future<bool> showTermsAcceptanceDialog(BuildContext context, {DateTime? birthdat
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B00).withValues(alpha: 0.12),
+                      color: AppColors.brand.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.gavel_rounded, color: Color(0xFFFF6B00), size: 32),
+                    child: const Icon(Icons.gavel_rounded, color: AppColors.brand, size: 32),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -521,7 +521,7 @@ Future<bool> showTermsAcceptanceDialog(BuildContext context, {DateTime? birthdat
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(error!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                    child: Text(error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
                   ),
               ],
             ),
@@ -571,7 +571,7 @@ Future<bool> showTermsAcceptanceDialog(BuildContext context, {DateTime? birthdat
                               }
                             },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B00),
+                        backgroundColor: AppColors.brand,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

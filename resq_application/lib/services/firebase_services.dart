@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../shared/iriga_address.dart';
@@ -94,8 +95,10 @@ class FirebaseService {
   }
 
   /// Turns the signed-in guest into a full citizen account: same uid and reports,
-  /// now with an email, password, birthdate and address.
+  /// now with a real name, phone, email, password, birthdate and address.
   static Future<void> upgradeGuest({
+    required String fullName,
+    required String contactNo,
     required String email,
     required String password,
     required String birthdate,
@@ -104,6 +107,8 @@ class FirebaseService {
     await FirebaseAuthRest.linkEmailPassword(email, password);
     final uid = FirebaseAuthRest.uid!;
     await Rtdb.update('users/$uid', {
+      'fullName': fullName.trim(),
+      'contactNo': contactNo,
       'email': email.trim().toLowerCase(),
       'birthdate': birthdate,
       'barangay': barangay,
@@ -114,19 +119,16 @@ class FirebaseService {
     await _logEvent(await _profile(uid), 'GUEST_REGISTERED', {'email': email});
   }
 
-  /// Report Now: a guest Citizen profile with only a name and phone number,
-  /// so someone can report an emergency without registering first.
-  static Future<Map<String, dynamic>> quickReport({
-    required String fullName,
-    required String contactNo,
-  }) async {
+  /// Report Now: a guest Citizen profile nicknamed Guest####, so someone can report
+  /// an emergency without registering first. Name and phone are asked when they send it.
+  static Future<Map<String, dynamic>> quickReport() async {
     final uid = await FirebaseAuthRest.signInAnonymously();
     final id = await Rtdb.nextId('counters/users');
     final user = {
       'id': id,
-      'fullName': fullName.trim(),
+      'fullName': 'Guest${1000 + Random().nextInt(9000)}',
       'email': '',
-      'contactNo': contactNo.trim(),
+      'contactNo': '',
       'role': 'Citizen',
       'guest': true,
       'createdAt': {'.sv': 'timestamp'},

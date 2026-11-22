@@ -9,8 +9,10 @@ import 'package:intl/intl.dart';
 import '../config.dart';
 import '../services/firebase_services.dart';
 import '../services/incident_data.dart';
+import '../services/live_socket.dart' as io;
 import '../services/theme_service.dart';
 import 'citizen_header.dart';
+import '../shared/resq_toast.dart';
 
 class IncidentStatusScreen extends StatefulWidget {
   final String citizenId;
@@ -46,15 +48,107 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     super.initState();
     _displayEmergency = widget.emergencyTypes.isNotEmpty ? widget.emergencyTypes : "General Emergency";
     _fetchIncidentDetails();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    // Staff announce every report change; reload then. The slow timer is only a backup
+    // (e.g. after a lost connection), so the phone doesn't download the report every 5 s.
+    _live = io.io(AppConfig.apiBaseUrl, {'autoConnect': false})
+      ..on('refreshIncidentQueueEvent', (_) => _fetchIncidentDetails())
+      ..connect();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _fetchIncidentDetails();
     });
   }
 
+  io.Socket? _live;
+
   @override
   void dispose() {
+    _live?.disconnect();
     _pollingTimer?.cancel();
     super.dispose();
+  }
+
+  bool _cancelling = false;
+
+  /// Sent by mistake: the reporter may cancel until any agency acts on the report.
+  bool get _canCancel =>
+      _currentIncidentData != null &&
+      _currentStatus.trim().toLowerCase() == 'pending' &&
+      _dispatchedVehicles.isEmpty &&
+      _deptStatuses.every((d) => reportStatusLabel(d.status) == 'Pending');
+
+  Widget _buildCancelButton() => OutlinedButton.icon(
+        onPressed: _cancelling ? null : _confirmCancel,
+        icon: const Icon(Icons.cancel_outlined, size: 18),
+        label: Text(_cancelling ? 'Cancelling…' : 'Cancel this report'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.danger,
+          side: const BorderSide(color: AppColors.danger),
+          minimumSize: const Size.fromHeight(46),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      );
+
+  Future<void> _confirmCancel() async {
+    final ts = ThemeService.instance;
+    const reasons = ['Sent by mistake', 'The emergency is over', 'Help is no longer needed'];
+    String? reason;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          backgroundColor: ts.cardBackground,
+          surfaceTintColor: Colors.transparent,
+          title: Text('Cancel this report?', style: TextStyle(fontWeight: FontWeight.bold, color: ts.textPrimary)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Responders will stop looking at it. Why are you cancelling?',
+                  style: TextStyle(fontSize: 13, height: 1.4, color: ts.textSecondary)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final r in reasons)
+                    ChoiceChip(
+                      label: Text(r),
+                      selected: reason == r,
+                      onSelected: (_) => setDialog(() => reason = r),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Keep report', style: TextStyle(color: ts.textPrimary)),
+            ),
+            ElevatedButton(
+              onPressed: reason == null ? null : () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger, foregroundColor: Colors.white),
+              child: const Text('Cancel report'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _cancelling = true);
+    try {
+      await IncidentData.cancelMyIncident(int.parse(widget.emergencyId), reason!);
+      await _fetchIncidentDetails();
+    } catch (_) {
+      // Most likely an agency acted on it a moment ago
+      if (mounted) {
+        ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(
+          content: Text('Could not cancel. An agency may already be responding to this report.'),
+        ));
+      }
+      await _fetchIncidentDetails();
+    }
+    if (mounted) setState(() => _cancelling = false);
   }
 
   Future<void> _fetchIncidentDetails() async {
@@ -112,6 +206,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
               ),
             ),
             IconButton(
+              tooltip: 'Close',
               icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -202,6 +297,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
   /// The top banner shows the furthest any agency has got.
   int get _headerIndex {
     // A closed report says so at the top instead of falling back to "Sent"
+    if (_currentStatus.trim().toLowerCase() == 'cancelled') return -3;
     final overall = reportStatusLabel(_currentStatus);
     if (overall == 'Invalid') return -2;
     if (overall == 'Declined') return -1;
@@ -353,6 +449,10 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                   // 1. DYNAMIC ALERT STATUS CARD
                   _buildStatusHeaderCard(ticketId, currentIndex),
                   const SizedBox(height: 16),
+                  if (_canCancel) ...[
+                    _buildCancelButton(),
+                    const SizedBox(height: 16),
+                  ],
 
                   // 1.5 RESPONSE PROGRESS: one line per agency (replaces the map; responders' positions are never shown)
                   Text(
@@ -376,13 +476,13 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A).withValues(alpha: ts.isDark ? 0.18 : 0.08),
+                        color: AppColors.success.withValues(alpha: ts.isDark ? 0.18 : 0.08),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.45)),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.45)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.group_add_rounded, color: themedInk(const Color(0xFF16A34A)), size: 22),
+                          Icon(Icons.group_add_rounded, color: themedInk(AppColors.success), size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -408,7 +508,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                   if (_dispatchedVehicles.isNotEmpty) ...[
                     Row(
                       children: [
-                        const Icon(Icons.local_shipping_rounded, size: 14, color: Color(0xFFFF6B00)),
+                        const Icon(Icons.local_shipping_rounded, size: 14, color: AppColors.brand),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -450,12 +550,12 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444).withValues(alpha: ts.isDark ? 0.18 : 0.08),
+                                color: AppColors.danger.withValues(alpha: ts.isDark ? 0.18 : 0.08),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
                                 Icons.local_fire_department_rounded,
-                                color: Color(0xFFEF4444),
+                                color: AppColors.danger,
                                 size: 20,
                               ),
                             ),
@@ -634,6 +734,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     final ts = ThemeService.instance;
     // -2 Invalid · -1 Declined · 0 Sent · 1 Accepted · 2 En route · 3 Arrived · 4 Completed
     final (String label, IconData iconData, String title, String subtitle) = switch (currentIndex) {
+      -3 => ('Declined', Icons.cancel_outlined, 'Report Cancelled', 'You cancelled this report. You can send a new one any time'),
       -2 => ('Invalid', Icons.gpp_bad_rounded, 'Report Marked Invalid', 'Responders found this report was not a real emergency'),
       -1 => ('Declined', Icons.cancel_rounded, 'Report Declined', 'No agency is responding. Call an agency if you still need help'),
       1 => ('Accepted', Icons.rule_folder_outlined, 'Alert Acknowledged!', 'Dispatchers have received and acknowledged your request'),
@@ -724,7 +825,7 @@ class _IncidentStatusScreenState extends State<IncidentStatusScreen> {
     required bool isFirst,
     required bool isLast,
   }) {
-    const Color activeColor = Color(0xFF10B981);
+    const Color activeColor = AppColors.success;
     final ts = ThemeService.instance;
     final inactiveColor = ts.isDark ? const Color(0xFF4B5563) : const Color(0xFFE2E8F0);
 

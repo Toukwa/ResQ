@@ -192,7 +192,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
       resizeToAvoidBottomInset: false, // keyboard covers the screen instead of pushing it up
       backgroundColor: bgCanvas,
       body: _isLoading
-          ? const Center(child: ResqLoader(color: Color(0xFFFF6B00)))
+          ? const Center(child: ResqLoader(color: AppColors.brand))
           : Column(
               children: [
                 // ==========================================
@@ -220,7 +220,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                             const Icon(
                               Icons.notifications_none_rounded,
                               size: 18,
-                              color: Color(0xFFEF4444),
+                              color: AppColors.danger,
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -238,7 +238,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                                 vertical: 2,
                               ),
                               decoration: const BoxDecoration(
-                                color: Color(0xFFEF4444),
+                                color: AppColors.danger,
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
@@ -406,7 +406,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFF6B00),
+                      color: AppColors.brand,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -490,7 +490,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFFFF6B00)
+                      ? AppColors.brand
                       : (ts.isDark ? const Color(0xFF334155) : Colors.transparent),
                 ),
               ),
@@ -502,7 +502,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
-                          ? const Color(0xFFFF6B00)
+                          ? AppColors.brand
                           : (ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                     ),
                   ),
@@ -511,7 +511,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFF6B00)
+                          ? AppColors.brand
                           : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -576,7 +576,7 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: AppColors.danger,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -643,9 +643,9 @@ class _AdminIncidentsTabState extends State<AdminIncidentsTab> {
                 const SizedBox(height: 6),
                 const Row(
                   children: [
-                    Icon(Icons.mic_rounded, size: 13, color: Color(0xFFFF6B00)),
+                    Icon(Icons.mic_rounded, size: 13, color: AppColors.brand),
                     SizedBox(width: 4),
-                    Text('Voice message', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFFF6B00))),
+                    Text('Voice message', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brand)),
                   ],
                 ),
               ],

@@ -43,7 +43,7 @@ Color statusColor(String status) {
     'accepted' => dark ? const Color(0xFF2DD4BF) : const Color(0xFF0D9488),
     'en route' => dark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
     'arrived' => dark ? const Color(0xFFC084FC) : const Color(0xFF8B5CF6),
-    'completed' || 'available' => dark ? const Color(0xFF34D399) : const Color(0xFF16A34A),
+    'completed' || 'available' => dark ? const Color(0xFF34D399) : AppColors.success,
     'declined' => dark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
     'invalid' => dark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
     _ => dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), // offline

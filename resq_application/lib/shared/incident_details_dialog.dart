@@ -19,7 +19,7 @@ import 'status_style.dart';
 /// A button shown at the bottom of the details, e.g. "Dispatch Units".
 typedef IncidentAction = ({String label, IconData icon, VoidCallback onPressed});
 
-const _orange = Color(0xFFFF6B00);
+const _orange = AppColors.brand;
 
 /// Complete details of one report, opened from anywhere an incident appears on the
 /// staff screens (maps, dashboards, queues, records). Loads the latest data itself.
@@ -87,7 +87,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
       _picked.clear();
       await _load();
     } catch (e) {
-      _toast('$failPrefix: ${'$e'.replaceFirst('HttpException: ', '')}', Colors.redAccent);
+      _toast('$failPrefix: ${'$e'.replaceFirst('HttpException: ', '')}', AppColors.danger);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -113,7 +113,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
           helping
               ? '${added.join(' and ')} asked to help with report #${widget.reqId}.'
               : 'Report #${widget.reqId} assigned to ${added.join(' and ')}.',
-          const Color(0xFF16A34A),
+          AppColors.success,
         );
       }, 'Could not assign');
 
@@ -279,6 +279,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
 
   Widget _reporterCard(ThemeService ts, Map inc) => _card(ts, Icons.person_rounded, 'Reported by', _orange, [
         _field(ts, 'Name', '${inc['residentName'] ?? 'Unknown'}'),
+        if (inc['fromGuest'] == true) _field(ts, 'Account', 'Report Now guest (not verified)'),
         _field(ts, 'Contact', '${inc['contactNo'] ?? ''}'.isEmpty ? '—' : '${inc['contactNo']}'),
         _field(ts, 'Reported', _when(inc['SOS_timeStamp'])),
         if (inc['completedAt'] != null) _field(ts, 'Completed', _when(inc['completedAt'])),
@@ -338,7 +339,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(3),
                           color: step < 0
-                              ? const Color(0xFFEF4444).withValues(alpha: 0.35)
+                              ? AppColors.danger.withValues(alpha: 0.35)
                               : i <= step
                                   ? look.color
                                   : ts.borderColor,
@@ -388,7 +389,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
   Widget _locationCard(ThemeService ts, Map inc, Map style, Color color) {
     final lat = double.tryParse('${inc['latitude']}');
     final lng = double.tryParse('${inc['longitude']}');
-    return _card(ts, Icons.place_rounded, 'Location', const Color(0xFFEF4444), [
+    return _card(ts, Icons.place_rounded, 'Location', AppColors.danger, [
       if (lat == null || lng == null)
         Text('No location recorded', style: TextStyle(fontSize: 12, color: ts.textSecondary))
       else ...[
@@ -430,7 +431,7 @@ class _IncidentDetailsDialogState extends State<_IncidentDetailsDialog> {
   Widget _notesCard(ThemeService ts, Map inc) {
     final notes = '${inc['description'] ?? ''}'.trim();
     final voice = '${inc['voice_path'] ?? ''}';
-    return _card(ts, Icons.notes_rounded, 'Additional notes', const Color(0xFF16A34A), [
+    return _card(ts, Icons.notes_rounded, 'Additional notes', AppColors.success, [
       Text(notes.isEmpty ? 'No additional notes' : notes,
           style: TextStyle(fontSize: 13, height: 1.45, color: notes.isEmpty ? ts.textSecondary : ts.textPrimary)),
       if (voice.isNotEmpty) ...[const SizedBox(height: 12), VoiceNotePlayer(url: voice)],

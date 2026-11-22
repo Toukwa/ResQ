@@ -28,9 +28,9 @@ class CitizenSettingsScreen extends StatefulWidget {
 }
 
 class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
-  static const _orange = Color(0xFFFF6B00);
-  static const _red = Color(0xFFEF4444);
-  static const _green = Color(0xFF16A34A);
+  static const _orange = AppColors.brand;
+  static const _red = AppColors.danger;
+  static const _green = AppColors.success;
   static const _blue = Color(0xFF2563EB);
   static const _purple = Color(0xFF7C3AED);
 
@@ -65,7 +65,7 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
 
   void _toast(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context).showResqSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: error ? Colors.redAccent : const Color(0xFF27AE60)),
+      SnackBar(content: Text(msg), backgroundColor: error ? AppColors.danger : AppColors.success),
     );
   }
 
@@ -587,7 +587,7 @@ class _CitizenSettingsScreenState extends State<CitizenSettingsScreen> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFF6B00), Color(0xFFFF9248)],
+          colors: [AppColors.brand, Color(0xFFFF9248)],
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [BoxShadow(color: _orange.withValues(alpha: 0.3), blurRadius: 18, offset: const Offset(0, 8))],
@@ -912,7 +912,7 @@ class ProfileAvatar extends StatelessWidget {
       decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
       child: CircleAvatar(
         radius: radius,
-        backgroundColor: const Color(0xFFFF6B00),
+        backgroundColor: AppColors.brand,
         backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
         child: hasPhoto
             ? null

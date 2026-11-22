@@ -1,4 +1,5 @@
 import 'resq_loader.dart';
+import '../services/theme_service.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -28,8 +29,8 @@ class EvidenceCameraScreen extends StatefulWidget {
 }
 
 class _EvidenceCameraScreenState extends State<EvidenceCameraScreen> with WidgetsBindingObserver {
-  static const _red = Color(0xFFEF4444);
-  static const _orange = Color(0xFFFF6B00);
+  static const _red = AppColors.danger;
+  static const _orange = AppColors.brand;
 
   List<CameraDescription> _cameras = const [];
   CameraController? _controller;

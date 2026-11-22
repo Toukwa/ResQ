@@ -1,6 +1,7 @@
 import '../../shared/resq_loader.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../../shared/map_format.dart';
 import '../../shared/vehicle_markers.dart';
 import '../../shared/status_style.dart' hide statusColor;
@@ -12,6 +13,7 @@ import '../../shared/prank_warning_dialog.dart';
 import '../../shared/voice_note.dart';
 import '../../shared/not_sure_card.dart';
 import '../../shared/severity_gate.dart';
+import '../../shared/overdue_badge.dart';
 import '../../shared/resq_dropdown.dart';
 import '../../shared/incident_details_dialog.dart';
 import 'package:intl/intl.dart';
@@ -59,6 +61,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   int? _selectedRequestId;
   /// Units picked on the right panel; all of them go out on one dispatch.
   final Set<int> _selectedVehicleIds = {};
+  final _overdueAlarm = OverdueAlarm();
   String _bottomTabFilter = 'Declined';
   String _selectedQueueFilter = 'All';
 
@@ -187,6 +190,11 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             setState(() {
               _incidents = incidents;
               _vehicles = results[1] ?? [];
+              _overdueAlarm.check([
+                for (final i in incidents)
+                  if (i is Map && IncidentData.statusFor(i, widget.department) == 'Pending')
+                    (id: _getReqId(i), overdue: overdueFor(i) != null),
+              ]);
               _isLoading = false;
               _errorMessage = null;
             });
@@ -395,20 +403,44 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
   String _getVehicleStatus(Map<String, dynamic> v) => vehicleStatus(v);
 
-  List<dynamic> get _filteredVehicles {
-    final dept = widget.department.toUpperCase().trim();
-    return _vehicles.where((v) {
-      if (v is! Map) return false;
-      if (dept == 'ALL' || dept.isEmpty) return true;
-      final deptName = (v['deptName'] ?? v['Department_Name'] ?? v['agency'] ?? v['department'] ?? '').toString().toUpperCase().trim();
-      final deptId = (v['dept_ID'] ?? v['deptId'] ?? '').toString().trim();
+  /// This agency's vehicles, matched the same way as everywhere else (name or ID).
+  List<dynamic> get _filteredVehicles =>
+      _vehicles.where((v) => v is Map && isVehicleForDepartment(v, widget.department.toUpperCase().trim())).toList();
 
-      if (dept == 'PNP') return deptName.contains('PNP') || deptId == '1';
-      if (dept == 'BFP') return deptName.contains('BFP') || deptId == '2';
-      if (dept == 'CDRRMO') return deptName.contains('CDRRMO') || deptId == '3';
+  /// Opens a report. A pending one gets its nearest available unit ticked, so
+  /// Accept & Dispatch is a single tap (the admin can still change the pick).
+  void _selectRequest(dynamic req) {
+    setState(() {
+      _selectedRequestId = _getReqId(req);
+      _selectedVehicleIds.clear();
+      if (req is! Map || IncidentData.statusFor(req, widget.department) != 'Pending') return;
+      final nearest = _nearestAvailableUnit(req);
+      if (nearest != null) _selectedVehicleIds.add(nearest);
+    });
+  }
 
-      return deptName.contains(dept);
-    }).toList();
+  /// Closest available unit by straight-line distance; units without a GPS fix
+  /// come last, so one is still picked when none report a position.
+  int? _nearestAvailableUnit(Map req) {
+    final lat = double.tryParse('${req['latitude']}');
+    final lng = double.tryParse('${req['longitude']}');
+    int? best;
+    var bestMeters = double.infinity;
+    for (final v in availableVehiclesFor(_vehicles, widget.department)) {
+      if (v is! Map) continue;
+      final id = int.tryParse('${v['Vehicle_ID'] ?? v['vehicle_ID'] ?? v['vehicle_id'] ?? v['id']}');
+      if (id == null) continue;
+      final vLat = double.tryParse('${v['latitude']}');
+      final vLng = double.tryParse('${v['longitude']}');
+      final meters = lat == null || lng == null || vLat == null || vLng == null
+          ? double.maxFinite
+          : const Distance()(LatLng(lat, lng), LatLng(vLat, vLng));
+      if (best == null || meters < bestMeters) {
+        best = id;
+        bestMeters = meters;
+      }
+    }
+    return best;
   }
 
   Future<void> _handleAcceptRequest(int reqId) async {
@@ -426,7 +458,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Request accepted successfully!'),
-            backgroundColor: Color(0xFF27AE60),
+            backgroundColor: AppColors.success,
           ),
         );
         _fetchData(showLoading: false);
@@ -435,7 +467,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to accept request.'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -443,6 +475,24 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleDenyRequest(int reqId) async {
+    // One wrong tap shouldn't turn away an emergency
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ResqDialog(
+        icon: Icons.cancel_rounded,
+        color: statusColorOf('Declined'),
+        title: 'Decline this report?',
+        subtitle: 'REQ-${reqId.toString().padLeft(4, '0')}',
+        primaryLabel: 'Decline',
+        primaryIcon: Icons.cancel_rounded,
+        onPrimary: () => Navigator.pop(ctx, true),
+        child: Text(
+          'Your agency will not respond to it, and the reporter will see it as declined.',
+          style: TextStyle(fontSize: 13, height: 1.4, color: ThemeService.instance.textSecondary),
+        ),
+      ),
+    );
+    if (sure != true || !mounted) return;
     if (!await ensureSeverityRated(context, reqId, reason: 'Required before responding', blockIfCannotRate: false) || !mounted) return;
     setState(() => _isActionInProgress = true);
     final success = await AdminService.updateIncidentStatus(
@@ -457,7 +507,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Request declined.'),
-            backgroundColor: Color(0xFFEB5757),
+            backgroundColor: AppColors.danger,
           ),
         );
         _fetchData(showLoading: false);
@@ -466,14 +516,43 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to decline request.'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
     }
   }
 
+  /// The tracker is silent (Offline), but the unit itself was never sent anywhere.
+  bool _isOfflineButFree(Map v) =>
+      _getVehicleStatus(Map<String, dynamic>.from(v)) == 'Offline' && '${v['status'] ?? 'Available'}'.toLowerCase() == 'available';
+
   Future<void> _handleDispatchUnits(int reqId, List<int> vehicleIds) async {
+    final offline = [
+      for (final v in _vehicles)
+        if (v is Map && vehicleIds.contains(int.tryParse('${v['vehicle_ID'] ?? v['id']}')) && _isOfflineButFree(v))
+          '${v['plate_no'] ?? 'Unit #${v['vehicle_ID']}'}',
+    ];
+    if (offline.isNotEmpty) {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => ResqDialog(
+          icon: Icons.gps_off_rounded,
+          color: _amber,
+          title: 'Send a unit with no live location?',
+          subtitle: offline.join(', '),
+          primaryLabel: 'Send anyway',
+          primaryIcon: Icons.send_rounded,
+          onPrimary: () => Navigator.pop(ctx, true),
+          child: Text(
+            'Its GPS tracker has not reported in the last 10 minutes, so you will not see it move on the map. '
+            'Confirm by radio or phone that the crew is ready.',
+            style: TextStyle(fontSize: 13, height: 1.4, color: ThemeService.instance.textSecondary),
+          ),
+        ),
+      );
+      if (go != true || !mounted) return;
+    }
     if (!await ensureSeverityRated(context, reqId) || !mounted) return;
     setState(() => _isActionInProgress = true);
     var failed = 0;
@@ -502,7 +581,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
       ScaffoldMessenger.of(context).showResqSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: const Color(0xFFFF6B00),
+          backgroundColor: AppColors.brand,
         ),
       );
       await _fetchData(showLoading: false);
@@ -579,7 +658,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(
       content: Text(success ? 'Marked as arrived. The citizen has been notified.' : 'Failed to mark as arrived.'),
-      backgroundColor: success ? const Color(0xFF8B5CF6) : Colors.redAccent,
+      backgroundColor: success ? const Color(0xFF8B5CF6) : AppColors.danger,
     ));
     if (success) {
       await _fetchData(showLoading: false);
@@ -588,6 +667,24 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   }
 
   Future<void> _handleCompleteRequest(int reqId) async {
+    // Closing frees the units and ends the citizen's report, so ask first
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ResqDialog(
+        icon: Icons.task_alt_rounded,
+        color: statusColorOf('Completed'),
+        title: 'Mark as completed?',
+        subtitle: 'REQ-${reqId.toString().padLeft(4, '0')}',
+        primaryLabel: 'Complete',
+        primaryIcon: Icons.task_alt_rounded,
+        onPrimary: () => Navigator.pop(ctx, true),
+        child: Text(
+          'Your units on this report become available again, and the reporter is told it is resolved.',
+          style: TextStyle(fontSize: 13, height: 1.4, color: ThemeService.instance.textSecondary),
+        ),
+      ),
+    );
+    if (sure != true || !mounted) return;
     if (!await ensureSeverityRated(context, reqId, reason: 'Required before responding', blockIfCannotRate: false) || !mounted) return;
     setState(() => _isActionInProgress = true);
     final success = await AdminService.updateIncidentStatus(
@@ -602,7 +699,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Incident completed! Assigned vehicle is now Available.'),
-            backgroundColor: Color(0xFF27AE60),
+            backgroundColor: AppColors.success,
           ),
         );
         await _fetchData(showLoading: false);
@@ -611,7 +708,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ScaffoldMessenger.of(context).showResqSnackBar(
           const SnackBar(
             content: Text('Failed to complete incident.'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -622,7 +719,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-        child: ResqLoader(color: Color(0xFFFF6B00)),
+        child: ResqLoader(color: AppColors.brand),
       );
     }
 
@@ -631,11 +728,11 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)),
+            Text(_errorMessage!, style: const TextStyle(color: AppColors.danger)),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => _fetchData(),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B00)),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.brand),
               child: const Text('Retry', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -751,7 +848,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF6B00),
+                        color: AppColors.brand,
                       ),
                     ),
                   ),
@@ -870,8 +967,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     final primaryColor = isInvalid
         ? ClosedReportsTabs.textOf('Invalid')
         : isCompleted
-        ? (ts.isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
-        : (ts.isDark ? const Color(0xFFF87171) : const Color(0xFFEB5757));
+        ? (ts.isDark ? const Color(0xFF4ADE80) : AppColors.success)
+        : (ts.isDark ? const Color(0xFFF87171) : AppColors.danger);
 
     final selBgColor = isCompleted
         ? (ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7))
@@ -890,7 +987,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
-      onTap: () => setState(() => _selectedRequestId = _getReqId(req)),
+      onTap: () => _selectRequest(req),
       borderRadius: BorderRadius.circular(8),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -931,7 +1028,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               child: Text(
                 status,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -959,11 +1056,11 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ? (ts.isDark ? const Color(0xFF1E3A8A) : const Color(0xFFF2F7FE))
         : (ts.isDark ? const Color(0xFF1E293B) : const Color(0xFFFBFBFB));
     final cardBorder = isSelected
-        ? const Color(0xFFFF6B00)
+        ? AppColors.brand
         : (ts.isDark ? const Color(0xFF334155) : const Color(0xFFEEEEEE));
 
     return InkWell(
-      onTap: () => setState(() => _selectedRequestId = _getReqId(req)),
+      onTap: () => _selectRequest(req),
       borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -981,7 +1078,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           children: [
             Row(
               children: [
-                Icon(_getEmergencyIcon(type), size: 16, color: const Color(0xFFFF6B00)),
+                Icon(_getEmergencyIcon(type), size: 16, color: AppColors.brand),
                 const SizedBox(width: 6),
                 Text(
                   reqIdStr,
@@ -991,6 +1088,20 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     color: ts.isDark ? Colors.white : const Color(0xFF212121),
                   ),
                 ),
+                if (req['fromGuest'] == true) ...[
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: 'Sent with Report Now: no verified account',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: ts.textSecondary),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('Guest', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary)),
+                    ),
+                  ),
+                ],
                 if (_linkedTo(req).isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Tooltip(
@@ -1030,6 +1141,10 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                if (status.toLowerCase() == 'pending' && overdueFor(req) != null) ...[
+                  OverdueBadge(overdueFor(req)!),
+                  const SizedBox(width: 4),
+                ],
                 // Flagged before it's even opened
                 if (status.toLowerCase() == 'pending' && req['duplicateOf'] == null && _duplicatesOf(req).isNotEmpty) ...[
                   Tooltip(
@@ -1045,7 +1160,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                         children: [
                           Icon(Icons.content_copy_rounded, size: 10, color: _amber),
                           SizedBox(width: 3),
-                          Text('Duplicate?', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: _amber)),
+                          Text('Duplicate?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _amber)),
                         ],
                       ),
                     ),
@@ -1061,7 +1176,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   child: Text(
                     _displayStatus(status),
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: statusColor,
                     ),
@@ -1126,7 +1241,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.mic_rounded, size: 16, color: Color(0xFFFF6B00)),
+            const Icon(Icons.mic_rounded, size: 16, color: AppColors.brand),
             const SizedBox(width: 6),
             Text('Voice message', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ts.textPrimary)),
           ]),
@@ -1229,7 +1344,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                 ),
                 child: Row(
                   children: [
-                    Icon(_getEmergencyIcon(m.report), color: const Color(0xFFFF6B00), size: 20),
+                    Icon(_getEmergencyIcon(m.report), color: AppColors.brand, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -1330,7 +1445,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
     } catch (e) {
       messenger.showResqSnackBar(SnackBar(
         content: Text('$e'.replaceFirst(RegExp(r'^\w*Exception: '), '')),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: AppColors.danger,
       ));
     }
     if (mounted) setState(() => _isActionInProgress = false);
@@ -1398,7 +1513,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFE0D1)),
                 ),
-                child: Icon(_getEmergencyIcon(type), color: const Color(0xFFFF6B00), size: 24),
+                child: Icon(_getEmergencyIcon(type), color: AppColors.brand, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1461,8 +1576,8 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                         : isAccepted
                             ? (ts.isDark ? const Color(0xFF93C5FD) : const Color(0xFF0052CC))
                             : (isDispatched || isCompleted)
-                                ? (ts.isDark ? const Color(0xFF6EE7B7) : const Color(0xFF27AE60))
-                                : (ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757)),
+                                ? (ts.isDark ? const Color(0xFF6EE7B7) : AppColors.success)
+                                : (ts.isDark ? const Color(0xFFFCA5A5) : AppColors.danger),
                   ),
                 ),
               ),
@@ -1583,7 +1698,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
           // Action Buttons
           if (_isActionInProgress)
-            const Center(child: ResqLoader(color: Color(0xFFFF6B00)))
+            const Center(child: ResqLoader(color: AppColors.brand))
           else if (isPending && reqIdNum != 0)
             Column(
               children: [
@@ -1593,14 +1708,19 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       child: SizedBox(
                         height: 42,
                         child: ElevatedButton.icon(
-                          onPressed: () => _handleAcceptRequest(reqIdNum),
-                          icon: const Icon(Icons.check, size: 16),
-                          label: const Text(
-                            'Accept Request',
+                          // Units ticked: accepting and sending them is one step
+                          onPressed: () => _selectedVehicleIds.isEmpty
+                              ? _handleAcceptRequest(reqIdNum)
+                              : _handleDispatchUnits(reqIdNum, _selectedVehicleIds.toList()),
+                          icon: Icon(_selectedVehicleIds.isEmpty ? Icons.check : Icons.send_rounded, size: 16),
+                          label: Text(
+                            _selectedVehicleIds.isEmpty
+                                ? 'Accept Request'
+                                : 'Accept & Dispatch ${_selectedVehicleIds.length} Unit${_selectedVehicleIds.length == 1 ? '' : 's'}',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00B050),
+                            backgroundColor: AppColors.success,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -1618,11 +1738,11 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                           onPressed: () => _handleDenyRequest(reqIdNum),
                           icon: const Icon(Icons.close, size: 16),
                           label: const Text(
-                            'Deny Request',
+                            'Decline Request',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                           ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFEB5757),
+                            foregroundColor: AppColors.danger,
                             backgroundColor: themedBg(const Color(0xFFFFF0F0)),
                             side: BorderSide(color: themedBg(const Color(0xFFFFDDE1))),
                             elevation: 0,
@@ -1655,7 +1775,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B00),
+                      backgroundColor: AppColors.brand,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: ts.isDark ? const Color(0xFF1E293B) : Colors.grey.shade200,
                       disabledForegroundColor: ts.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -1681,7 +1801,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
+                    backgroundColor: AppColors.brand,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1702,17 +1822,17 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                     decoration: BoxDecoration(
                       color: ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFEFFFF4),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ts.isDark ? const Color(0xFF047857) : const Color(0xFF27AE60)),
+                      border: Border.all(color: ts.isDark ? const Color(0xFF047857) : AppColors.success),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline, color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60), size: 20),
+                        Icon(Icons.check_circle_outline, color: ts.isDark ? const Color(0xFF34D399) : AppColors.success, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             isArrived ? 'Unit On Scene (Arrived)' : 'Unit Dispatched (En Route)',
                             style: TextStyle(
-                              color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60),
+                              color: ts.isDark ? const Color(0xFF34D399) : AppColors.success,
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                             ),
@@ -1752,7 +1872,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF27AE60),
+                      backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -1770,16 +1890,16 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               decoration: BoxDecoration(
                 color: ts.isDark ? const Color(0xFF064E3B) : const Color(0xFFEFFFF4),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ts.isDark ? const Color(0xFF059669) : const Color(0xFF27AE60)),
+                border: Border.all(color: ts.isDark ? AppColors.success : AppColors.success),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.verified_user_outlined, color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60), size: 20),
+                  Icon(Icons.verified_user_outlined, color: ts.isDark ? const Color(0xFF34D399) : AppColors.success, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Incident Completed & Vehicle Released',
                     style: TextStyle(
-                      color: ts.isDark ? const Color(0xFF34D399) : const Color(0xFF27AE60),
+                      color: ts.isDark ? const Color(0xFF34D399) : AppColors.success,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1797,12 +1917,12 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.cancel_outlined, color: ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757), size: 20),
+                  Icon(Icons.cancel_outlined, color: ts.isDark ? const Color(0xFFFCA5A5) : AppColors.danger, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'This request was cancelled or declined.',
                     style: TextStyle(
-                      color: ts.isDark ? const Color(0xFFFCA5A5) : const Color(0xFFEB5757),
+                      color: ts.isDark ? const Color(0xFFFCA5A5) : AppColors.danger,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1898,7 +2018,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF27AE60),
+                    color: AppColors.success,
                   ),
                 ),
               ),
@@ -1947,11 +2067,13 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
 
     final statusStr = _getVehicleStatus(v);
     final isAvailable = statusStr == 'Available';
+    // Free but its tracker is silent: can still be sent, after a warning
+    final selectable = isAvailable || _isOfflineButFree(v);
     final dotColor = statusColorOf(statusStr);
     final statusTextColor = dotColor;
 
     return InkWell(
-      onTap: isAvailable && vId != null
+      onTap: selectable && vId != null
           ? () {
               setState(() {
                 final id = int.parse('$vId');
@@ -1968,7 +2090,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFFFF6B00)
+                ? AppColors.brand
                 : ts.borderColor,
             width: isSelected ? 1.5 : 1,
           ),
@@ -1989,7 +2111,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                   child: Icon(
                     Icons.directions_car,
                     size: 16,
-                    color: isSelected ? const Color(0xFFFF6B00) : const Color(0xFF0052CC),
+                    color: isSelected ? AppColors.brand : const Color(0xFF0052CC),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -2001,7 +2123,7 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFFFF6B00) : const Color(0xFF2563EB),
+                        color: isSelected ? AppColors.brand : const Color(0xFF2563EB),
                       ),
                     ),
                     Text(
@@ -2056,11 +2178,11 @@ class _AdminVehiclesTabState extends State<AdminVehiclesTab> {
             if (v != null) setState(() => _selectedQueueFilter = v);
           },
           options: [
-        ResqOption('All', 'All', icon: Icons.all_inclusive_rounded, color: const Color(0xFFFF6B00)),
-        ResqOption('Pending', 'Pending', icon: Icons.schedule_rounded, color: const Color(0xFFF59E0B)),
+        ResqOption('All', 'All', icon: Icons.all_inclusive_rounded, color: AppColors.brand),
+        ResqOption('Pending', 'Pending', icon: Icons.schedule_rounded, color: AppColors.warning),
         ResqOption('Accepted', 'Accepted', icon: Icons.thumb_up_alt_rounded, color: const Color(0xFF0EA5E9)),
         ResqOption('En Route', 'En Route', icon: Icons.local_shipping_rounded, color: statusColorOf('En Route')),
-        ResqOption('Completed', 'Completed', icon: Icons.check_circle_rounded, color: const Color(0xFF16A34A)),
+        ResqOption('Completed', 'Completed', icon: Icons.check_circle_rounded, color: AppColors.success),
         ResqOption('Declined', 'Declined', icon: Icons.cancel_rounded, color: statusColorOf('Declined')),
         ResqOption('Invalid', 'Invalid (prank)', icon: Icons.gpp_bad_rounded, color: const Color(0xFF7C3AED)),
           ],

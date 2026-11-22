@@ -38,8 +38,8 @@ class _ProfileDetailsDialog extends StatefulWidget {
 }
 
 class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
-  static const _orange = Color(0xFFFF6B00);
-  static const _red = Color(0xFFEF4444);
+  static const _orange = AppColors.brand;
+  static const _red = AppColors.danger;
   DateTime? _birthdate;
   String? _barangay;
   String? _error;
@@ -195,6 +195,7 @@ class _ProfileDetailsDialogState extends State<_ProfileDetailsDialog> {
                 style: TextStyle(color: textDark),
                 decoration: decor('New password', Icons.lock_outline).copyWith(
                   suffixIcon: IconButton(
+                    tooltip: 'Show or hide password',
                     icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                         color: textGrey, size: 20),
                     onPressed: () => setState(() => _obscure = !_obscure),

@@ -48,7 +48,7 @@ Color departmentBadgeColor(String dept) {
   final d = dept.toUpperCase();
   if (d.contains('BFP') || d.contains('FIRE')) return const Color(0xFFDC2626);
   if (d.contains('PNP') || d.contains('POLICE')) return const Color(0xFF2563EB);
-  if (d.contains('CDRRMO') || d.contains('RESCUE') || d.contains('MEDICAL')) return const Color(0xFF059669);
+  if (d.contains('CDRRMO') || d.contains('RESCUE') || d.contains('MEDICAL')) return AppColors.success;
   return const Color(0xFFEA580C);
 }
 
@@ -57,11 +57,11 @@ Color departmentBadgeColor(String dept) {
 ({IconData icon, Color color, Color bgColor}) agencySymbol(String? agency) => switch (agency) {
       'BFP' => (icon: Icons.local_fire_department_outlined, color: const Color(0xFFDC2626), bgColor: themedBg(const Color(0xFFFEE2E2))),
       'PNP' => (icon: Icons.local_police_outlined, color: const Color(0xFF1E40AF), bgColor: themedBg(const Color(0xFFDBEAFE))),
-      'CDRRMO' => (icon: Icons.health_and_safety_outlined, color: const Color(0xFF16A34A), bgColor: themedBg(const Color(0xFFDCFCE7))),
+      'CDRRMO' => (icon: Icons.health_and_safety_outlined, color: AppColors.success, bgColor: themedBg(const Color(0xFFDCFCE7))),
       // General Emergency: the EOC decides who responds
-      'EOC' => (icon: Icons.support_agent_rounded, color: const Color(0xFFFF6B00), bgColor: themedBg(const Color(0xFFFFEDD5))),
+      'EOC' => (icon: Icons.support_agent_rounded, color: AppColors.brand, bgColor: themedBg(const Color(0xFFFFEDD5))),
       // Several agencies on one report
-      _ => (icon: Icons.priority_high_rounded, color: const Color(0xFFFF6B00), bgColor: themedBg(const Color(0xFFFFEDD5))),
+      _ => (icon: Icons.priority_high_rounded, color: AppColors.brand, bgColor: themedBg(const Color(0xFFFFEDD5))),
     };
 
 /// Incident severity, set by the EOC (Super Admin) before assigning: most to least serious.
@@ -74,7 +74,7 @@ const severityLevels = ['Immediate', 'Emergent', 'Urgent', 'Semi-urgent', 'Non-u
       'Emergent' => (label: 'Emergent', color: const Color(0xFFEA580C), bgColor: themedBg(const Color(0xFFFFEDD5))),
       'Urgent' => (label: 'Urgent', color: const Color(0xFFD97706), bgColor: themedBg(const Color(0xFFFEF3C7))),
       'Semi-urgent' => (label: 'Semi-urgent', color: const Color(0xFF2563EB), bgColor: themedBg(const Color(0xFFDBEAFE))),
-      'Non-urgent' => (label: 'Non-urgent', color: const Color(0xFF16A34A), bgColor: themedBg(const Color(0xFFDCFCE7))),
+      'Non-urgent' => (label: 'Non-urgent', color: AppColors.success, bgColor: themedBg(const Color(0xFFDCFCE7))),
       _ => (label: 'Not rated', color: const Color(0xFF64748B), bgColor: themedBg(const Color(0xFFF1F5F9))),
     };
 
