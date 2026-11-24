@@ -31,12 +31,16 @@ bool isVehicleForDepartment(dynamic v, String dept) {
   return IncidentData.normalizeDepartment(deptName) == dept;
 }
 
+/// True when the vehicle belongs to an agency. Unassigned (just auto-detected) units stay off the maps.
+bool isAssignedVehicle(dynamic v) => const ['BFP', 'PNP', 'CDRRMO'].any((a) => isVehicleForDepartment(v, a));
+
 /// The vehicles of [dept] that can be dispatched right now.
 List<dynamic> availableVehiclesFor(List<dynamic> vehicles, String dept) => vehicles
     .where((v) => vehicleStatus(v).toLowerCase() == 'available' && isVehicleForDepartment(v, dept))
     .toList();
 
-/// One pin per vehicle with a GPS fix. Offline vehicles are drawn faded at their last position.
+/// One pin per vehicle with live GPS. Offline vehicles are left off the map (their last position
+/// could be far from where they are now); they reappear as soon as their tracker reports again.
 /// Keyed by vehicle_ID for [AnimatedMarkerLayer].
 Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
   final markers = <String, Marker>{};
@@ -45,8 +49,8 @@ Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
     final lat = double.tryParse('${v['latitude']}');
     final lng = double.tryParse('${v['longitude']}');
     if (lat == null || lng == null) continue;
+    if (v['computed_status'] == 'Offline' || !isAssignedVehicle(v)) continue;
     final style = vehicleMarkerStyle(v);
-    final offline = v['computed_status'] == 'Offline';
     final size = DisplaySettings.labeledSize(kPinWidth, kPinHeight);
     markers['${v['vehicle_ID'] ?? v['Vehicle_ID'] ?? v['plate_no']}'] = Marker(
       point: LatLng(lat, lng),
@@ -54,11 +58,8 @@ Map<String, Marker> buildVehicleMarkers(List<dynamic> vehicles) {
       height: size.height,
       alignment: kPinAlignment, // the tip marks the spot
       child: DisplaySettings.labeledPin(Tooltip(
-        message: '${v['plate_no'] ?? 'Vehicle'} · ${v['deptName'] ?? ''}${offline ? ' (offline)' : ''}',
-        child: Opacity(
-          opacity: offline ? 0.45 : 1,
-          child: MapPin(icon: style.icon, color: style.color, filled: true),
-        ),
+        message: '${v['plate_no'] ?? 'Vehicle'} · ${v['deptName'] ?? ''}',
+        child: MapPin(icon: style.icon, color: style.color, filled: true),
       ), v['plate_no']),
     );
   }

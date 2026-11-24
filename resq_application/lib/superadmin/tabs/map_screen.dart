@@ -144,7 +144,9 @@ class _MapScreenState extends State<MapScreen> {
         final focus = DisplaySettings.newIncidentPosition(_incidents, incidents ?? []);
         setState(() {
           _incidents = incidents ?? [];
-          _vehicles = (vehicles ?? []).where((v) => v['latitude'] != null && v['longitude'] != null).toList();
+          _vehicles = (vehicles ?? [])
+              .where((v) => v['latitude'] != null && v['longitude'] != null && isAssignedVehicle(v))
+              .toList();
         });
         if (focus != null) _mapController.move(focus, 16.5);
       }
@@ -193,7 +195,7 @@ class _MapScreenState extends State<MapScreen> {
   String _incidentStatusFilter = 'All';
   String _unitAgencyFilter = 'All';
   static const _statusFilters = ['All', 'Pending', 'Accepted', 'En Route', 'Arrived'];
-  static const _agencyFilters = ['All', 'BFP', 'PNP', 'CDRRMO', 'Unassigned'];
+  static const _agencyFilters = ['All', 'BFP', 'PNP', 'CDRRMO'];
 
   static Color _unitFilterColor(String f) => f == 'Unassigned' ? const Color(0xFF64748B) : agencySymbol(f).color;
   static IconData _unitFilterIcon(String f) => f == 'Unassigned' ? Icons.directions_car_rounded : agencySymbol(f).icon;

@@ -65,10 +65,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
   void _setupRxDartPipelines() {
     // Debounce search query changes
-    _searchSubscription = _searchSubject
-        .debounceTime(const Duration(milliseconds: 300))
-        .distinct()
-        .listen((_) {
+    _searchSubscription = _searchSubject.debounceTime(const Duration(milliseconds: 300)).distinct().listen((_) {
       if (mounted) setState(() {});
     });
 
@@ -77,8 +74,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
         .bufferTime(const Duration(milliseconds: 500))
         .where((batch) => batch.isNotEmpty)
         .listen((_) {
-      if (mounted) _loadData(showLoading: false);
-    });
+          if (mounted) _loadData(showLoading: false);
+        });
   }
 
   @override
@@ -108,10 +105,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   Future<void> _loadData({bool showLoading = true}) async {
-    await Future.wait([
-      _loadAccounts(showLoading: showLoading),
-      _loadDepartments(),
-    ]);
+    await Future.wait([_loadAccounts(showLoading: showLoading), _loadDepartments()]);
   }
 
   Future<void> _loadDepartments() async {
@@ -127,7 +121,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
   Future<void> _loadAccounts({bool showLoading = true}) async {
     if (mounted && showLoading) setState(() => _isLoadingAccounts = true);
-    
+
     try {
       final accounts = await AdminService.getAccounts();
       final newAccounts = accounts.map((a) {
@@ -141,8 +135,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
 
         final initials = (name.toString().trim().isNotEmpty)
             ? (name.toString().trim().length >= 2
-                ? name.toString().trim().substring(0, 2).toUpperCase()
-                : name.toString().trim().toUpperCase())
+                  ? name.toString().trim().substring(0, 2).toUpperCase()
+                  : name.toString().trim().toUpperCase())
             : 'NA';
 
         return {
@@ -167,7 +161,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
           'created': map['created'] ?? 'Active',
         };
       }).toList();
-      
+
       if (mounted) {
         setState(() {
           _accounts = newAccounts;
@@ -195,15 +189,15 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // Color helper method
   Color _parseColor(dynamic colorValue) {
     if (colorValue == null) return const Color(0xFF64748B);
-    
+
     if (colorValue is Color) return colorValue;
-    
+
     if (colorValue is String) {
       if (colorValue.startsWith('#')) {
         return Color(int.parse(colorValue.substring(1), radix: 16) + 0xFF000000);
       }
     }
-    
+
     return const Color(0xFF64748B);
   }
 
@@ -211,36 +205,34 @@ class _ManagementScreenState extends State<ManagementScreen> {
   List<Map<String, dynamic>> get _filteredAccounts {
     final query = _searchController.text.toLowerCase().trim();
 
-    return _accounts.where((acc) {
+    final list = _accounts.where((acc) {
       final matchesAgency =
           _selectedAgency == 'All' || (acc['agency']?.toString().toLowerCase() == _selectedAgency.toLowerCase());
 
-      final matchesRole = _selectedRole == 'All Roles' ||
-          acc['role']?.toString().toLowerCase() == _selectedRole.toLowerCase();
+      final matchesRole =
+          _selectedRole == 'All Roles' || acc['role']?.toString().toLowerCase() == _selectedRole.toLowerCase();
 
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           acc['name']?.toString().toLowerCase().contains(query) == true ||
           acc['email']?.toString().toLowerCase().contains(query) == true ||
           acc['agency']?.toString().toLowerCase().contains(query) == true;
 
       return matchesAgency && matchesRole && matchesQuery;
     }).toList();
+    // Super admins always stay on top; everyone else keeps their order
+    final supers = list.where((a) => a['role'] == 'Superadmin').toList();
+    return [...supers, ...list.where((a) => a['role'] != 'Superadmin')];
   }
 
   int _getRoleCount(String roleName) {
     if (roleName == 'All Roles') return _accounts.length;
-    return _accounts
-        .where((acc) =>
-            acc['role']?.toString().toLowerCase() == roleName.toLowerCase())
-        .length;
+    return _accounts.where((acc) => acc['role']?.toString().toLowerCase() == roleName.toLowerCase()).length;
   }
 
   int _getAgencyCount(String agencyName) {
     if (agencyName == 'All') return _accounts.length;
-    return _accounts
-        .where((acc) =>
-            acc['agency']?.toString().toLowerCase() == agencyName.toLowerCase())
-        .length;
+    return _accounts.where((acc) => acc['agency']?.toString().toLowerCase() == agencyName.toLowerCase()).length;
   }
 
   @override
@@ -279,18 +271,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         icon: const Icon(Icons.add, size: 20, color: Colors.white),
                         label: const Text(
                           "Create Account",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.brand,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                         ),
                       ),
                     ),
@@ -305,18 +291,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         icon: Icon(Icons.edit_location_alt_outlined, size: 20, color: ts.textPrimary),
                         label: Text(
                           "Edit Agency",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: ts.textPrimary,
-                          ),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: ts.textPrimary),
                         ),
                         style: OutlinedButton.styleFrom(
                           backgroundColor: ts.cardBackground,
                           side: BorderSide(color: ts.borderColor),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                         ),
                       ),
                     ),
@@ -362,26 +342,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   children: [
                     // TABLE HEADER BAR
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       child: Row(
                         children: [
                           Text(
                             "All Accounts",
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: ts.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: ts.textPrimary),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             "(${filteredAccounts.length} results)",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: ts.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: TextStyle(fontSize: 13, color: ts.textSecondary, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -389,9 +360,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     Divider(height: 1, color: ts.borderColor),
 
                     // TABLE CONTENT
-                    Expanded(
-                      child: _buildAccountsTable(filteredAccounts),
-                    ),
+                    Expanded(child: _buildAccountsTable(filteredAccounts)),
                   ],
                 ),
               ),
@@ -433,7 +402,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
               Expanded(flex: 2, child: Text("STATUS", style: tableHeaderStyle)),
               Expanded(flex: 2, child: Text("LAST ACTIVE", style: tableHeaderStyle)),
               Expanded(flex: 2, child: Text("CREATED", style: tableHeaderStyle)),
-              SizedBox(width: 80, child: Align(alignment: Alignment.centerRight, child: Text("ACTIONS", style: tableHeaderStyle))),
+              SizedBox(
+                width: 80,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text("ACTIONS", style: tableHeaderStyle),
+                ),
+              ),
             ],
           ),
         ),
@@ -448,30 +423,21 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 48,
-                        color: ts.textSecondary,
-                      ),
+                      Icon(Icons.search_off, size: 48, color: ts.textSecondary),
                       const SizedBox(height: 16),
                       Text(
                         (_selectedAgency != 'All' || _selectedRole != 'All Roles' || _searchController.text.isNotEmpty)
                             ? "No accounts match your filters"
                             : "No accounts found",
-                        style: TextStyle(
-                          color: ts.textSecondary, 
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(color: ts.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                       ),
-                      if (_selectedAgency != 'All' || _selectedRole != 'All Roles' || _searchController.text.isNotEmpty) ...[
+                      if (_selectedAgency != 'All' ||
+                          _selectedRole != 'All Roles' ||
+                          _searchController.text.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
                           "Try adjusting your filters or search term",
-                          style: TextStyle(
-                            color: ts.textSecondary, 
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: ts.textSecondary, fontSize: 12),
                         ),
                       ],
                       if (_accounts.isEmpty) ...[
@@ -490,12 +456,16 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   ),
                 )
               : ListView(
-                  children: accounts.map((account) => Column(
-                    children: [
-                      _buildAccountRow(account),
-                      Divider(height: 1, color: ts.borderColor),
-                    ],
-                  )).toList(),
+                  children: accounts
+                      .map(
+                        (account) => Column(
+                          children: [
+                            _buildAccountRow(account),
+                            Divider(height: 1, color: ts.borderColor),
+                          ],
+                        ),
+                      )
+                      .toList(),
                 ),
         ),
       ],
@@ -522,75 +492,70 @@ class _ManagementScreenState extends State<ManagementScreen> {
         children: [
           Text(
             "FILTER BY AGENCY",
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: ts.textSecondary,
-              letterSpacing: 0.5,
-            ),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary, letterSpacing: 0.5),
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: agencies.map((agency) {
-                final isSelected = _selectedAgency == agency;
-                final count = _getAgencyCount(agency);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4.0),
-                  child: InkWell(
-                    onTap: () => setState(() => _selectedAgency = agency),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.brand
-                            : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            agency,
+          // Same list style as Filter by Role, with each agency's icon and colour
+          Column(
+            children: agencies.map((agency) {
+              final isSelected = _selectedAgency == agency;
+              final count = _getAgencyCount(agency);
+              final sym = agency == 'All' ? null : agencySymbol(normalizeAgency(agency));
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4.0),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedAgency = agency),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          sym?.icon ?? Icons.apps_rounded,
+                          size: 16,
+                          color: sym?.color ?? (isSelected ? AppColors.brand : ts.textSecondary),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            agency == 'All' ? 'All Agencies' : agency,
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? Colors.white
-                                  : ts.textSecondary,
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? AppColors.brand : ts.textSecondary,
                             ),
                           ),
-                          if (count > 0) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.white.withValues(alpha: 0.3)
-                                    : ts.borderColor,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                count.toString(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : ts.textSecondary,
-                                ),
-                              ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.brand
+                                : (ts.isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            "$count",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : ts.textSecondary,
                             ),
-                          ],
-                        ],
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -602,7 +567,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // ==========================================
   Widget _buildFilterByRoleCard() {
     final ts = ThemeService.instance;
-    final roles = ['All Roles', 'Admin', 'Citizen'];
+    final roles = ['All Roles', 'Superadmin', 'Admin', 'Citizen'];
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -617,12 +582,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
         children: [
           Text(
             "FILTER BY ROLE",
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: ts.textSecondary,
-              letterSpacing: 0.5,
-            ),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ts.textSecondary, letterSpacing: 0.5),
           ),
           const SizedBox(height: 12),
           Column(
@@ -636,8 +596,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   onTap: () => setState(() => _selectedRole = role),
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (ts.isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFF7ED))
@@ -648,20 +607,15 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          role,
+                          role == 'Superadmin' ? 'Super Admin' : role,
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? AppColors.brand
-                                : ts.textSecondary,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected ? AppColors.brand : ts.textSecondary,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.brand
@@ -673,9 +627,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? Colors.white
-                                  : ts.textSecondary,
+                              color: isSelected ? Colors.white : ts.textSecondary,
                             ),
                           ),
                         ),
@@ -711,11 +663,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   backgroundColor: _parseColor(acc['avatarBg']),
                   child: Text(
                     acc['initials'] ?? 'NA',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -727,20 +675,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         acc['name'] ?? 'Unknown User',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: ts.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: ts.textPrimary),
                       ),
                       Text(
                         acc['email'] ?? 'N/A',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: ts.textSecondary,
-                        ),
+                        style: TextStyle(fontSize: 11, color: ts.textSecondary),
                       ),
                     ],
                   ),
@@ -757,26 +698,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 Container(
                   width: 20,
                   height: 20,
-                  decoration: BoxDecoration(
-                    color: _parseColor(acc['agencyBg']),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.shield_rounded,
-                      size: 11,
-                      color: Colors.white,
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: _parseColor(acc['agencyBg']), shape: BoxShape.circle),
+                  child: const Center(child: Icon(Icons.shield_rounded, size: 11, color: Colors.white)),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   acc['agency'] ?? 'Unassigned',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: ts.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textPrimary),
                 ),
               ],
             ),
@@ -788,13 +716,15 @@ class _ManagementScreenState extends State<ManagementScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: ts.isDark ? _parseColor(acc['avatarBg']).withValues(alpha: 0.18) : _parseColor(acc['roleBg']),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: _parseColor(ts.isDark ? acc['avatarBg'] : acc['roleText']).withValues(alpha: ts.isDark ? 0.45 : 0.2)),
+                    color: _parseColor(
+                      ts.isDark ? acc['avatarBg'] : acc['roleText'],
+                    ).withValues(alpha: ts.isDark ? 0.45 : 0.2),
+                  ),
                 ),
                 child: Text(
                   acc['role'] ?? 'Unknown',
@@ -818,10 +748,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: BoxDecoration(
-                    color: _parseColor(acc['statusColor']),
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: _parseColor(acc['statusColor']), shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 6),
                 Flexible(
@@ -829,11 +756,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     acc['status'] ?? 'Unknown',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: _parseColor(acc['statusColor']),
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _parseColor(acc['statusColor'])),
                   ),
                 ),
               ],
@@ -843,25 +766,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
           // 5. LAST ACTIVE
           Expanded(
             flex: 2,
-            child: Text(
-              acc['lastActive'] ?? 'Unknown',
-              style: TextStyle(
-                fontSize: 12,
-                color: ts.textSecondary,
-              ),
-            ),
+            child: Text(acc['lastActive'] ?? 'Unknown', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
           ),
 
           // 6. CREATED
           Expanded(
             flex: 2,
-            child: Text(
-              acc['created'] ?? 'Unknown',
-              style: TextStyle(
-                fontSize: 12,
-                color: ts.textSecondary,
-              ),
-            ),
+            child: Text(acc['created'] ?? 'Unknown', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
           ),
 
           // 7. ACTIONS (View, Edit, Delete)
@@ -872,20 +783,17 @@ class _ManagementScreenState extends State<ManagementScreen> {
               children: [
                 InkWell(
                   onTap: () => _showAccountDetailsModal(acc),
-                  child: const Icon(Icons.remove_red_eye_outlined,
-                      size: 16, color: Color(0xFF2563EB)),
+                  child: const Icon(Icons.remove_red_eye_outlined, size: 16, color: Color(0xFF2563EB)),
                 ),
                 const SizedBox(width: 8),
                 InkWell(
                   onTap: () => _showEditAccountModal(acc),
-                  child: const Icon(Icons.edit_outlined,
-                      size: 16, color: Color(0xFFEA580C)),
+                  child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFEA580C)),
                 ),
                 const SizedBox(width: 8),
                 InkWell(
                   onTap: () => _showDeleteAccountDialog(acc),
-                  child: const Icon(Icons.delete_outline,
-                      size: 16, color: AppColors.danger),
+                  child: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
                 ),
               ],
             ),
@@ -900,9 +808,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
   // ==========================================
   Future<void> _showEditAgencyModal() async {
     if (_departments.isEmpty) {
-      ScaffoldMessenger.of(context).showResqSnackBar(
-        const SnackBar(content: Text('No departments available to edit.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showResqSnackBar(const SnackBar(content: Text('No departments available to edit.')));
       return;
     }
 
@@ -991,14 +899,23 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 Navigator.pop(context);
                 _loadDepartments();
                 ScaffoldMessenger.of(context).showResqSnackBar(
-                  const SnackBar(content: Text('Agency details updated successfully'), backgroundColor: AppColors.success),
+                  const SnackBar(
+                    content: Text('Agency details updated successfully'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
               } else {
                 setModalState(() => busy = false);
-                ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(
-                  content: Text(success ? "Details saved, but the unlock password couldn't be saved: $unlockError" : 'Failed to update agency details'),
-                  backgroundColor: AppColors.danger,
-                ));
+                ScaffoldMessenger.of(context).showResqSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? "Details saved, but the unlock password couldn't be saved: $unlockError"
+                          : 'Failed to update agency details',
+                    ),
+                    backgroundColor: AppColors.danger,
+                  ),
+                );
               }
             },
             child: Column(
@@ -1012,9 +929,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   icon: Icons.apartment_rounded,
                   options: [
                     for (final dept in _departments)
-                      ResqOption(dept, '${dept['deptName'] ?? 'Unknown Agency'}',
-                          icon: agencySymbol(normalizeAgency(dept['deptName'])).icon,
-                          color: agencySymbol(normalizeAgency(dept['deptName'])).color),
+                      ResqOption(
+                        dept,
+                        '${dept['deptName'] ?? 'Unknown Agency'}',
+                        icon: agencySymbol(normalizeAgency(dept['deptName'])).icon,
+                        color: agencySymbol(normalizeAgency(dept['deptName'])).color,
+                      ),
                   ],
                   onChanged: (val) {
                     if (!busy && val != null && val != selectedDept) selectDept(val);
@@ -1074,9 +994,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final confirmPasswordController = TextEditingController();
 
     // Initialize with first available department or default
-    String selectedAgency = _departments.isNotEmpty 
-        ? (_departments.first['deptName'] as String? ?? 'PNP') 
-        : 'PNP';
+    String selectedAgency = _departments.isNotEmpty ? (_departments.first['deptName'] as String? ?? 'PNP') : 'PNP';
     String selectedRole = 'Admin';
     bool obscurePassword = true;
     // Restoring a deleted account takes a few seconds; a second press used to close the EOC
@@ -1088,329 +1006,314 @@ class _ManagementScreenState extends State<ManagementScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           Future<void> create() async {
-                              if (nameController.text.isEmpty ||
-                                  emailController.text.isEmpty ||
-                                  contactNoController.text.isEmpty ||
-                                  passwordController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showResqSnackBar(
-                                  const SnackBar(content: Text('Please fill all required fields')),
-                                );
-                                return;
-                              }
+            if (nameController.text.isEmpty ||
+                emailController.text.isEmpty ||
+                contactNoController.text.isEmpty ||
+                passwordController.text.isEmpty) {
+              ScaffoldMessenger.of(
+                context,
+              ).showResqSnackBar(const SnackBar(content: Text('Please fill all required fields')));
+              return;
+            }
 
-                              if (passwordController.text != confirmPasswordController.text) {
-                                ScaffoldMessenger.of(context).showResqSnackBar(
-                                  const SnackBar(content: Text('Passwords do not match')),
-                                );
-                                return;
-                              }
+            if (passwordController.text != confirmPasswordController.text) {
+              ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(content: Text('Passwords do not match')));
+              return;
+            }
 
-                              // Map agency name to deptID
-                              int? deptID;
-                              for (var dept in _departments) {
-                                if (dept['deptName'] == selectedAgency) {
-                                  deptID = dept['dept_ID'] as int?;
-                                  break;
-                                }
-                              }
+            // Map agency name to deptID
+            int? deptID;
+            for (var dept in _departments) {
+              if (dept['deptName'] == selectedAgency) {
+                deptID = dept['dept_ID'] as int?;
+                break;
+              }
+            }
 
-                              final accountData = {
-                                'userName': nameController.text,
-                                'email': emailController.text,
-                                'contactNo': contactNoController.text,
-                                'password': passwordController.text,
-                                'role': selectedRole,
-                                'deptID': deptID,
-                              };
+            final accountData = {
+              'userName': nameController.text,
+              'email': emailController.text,
+              'contactNo': contactNoController.text,
+              'password': passwordController.text,
+              'role': selectedRole,
+              'deptID': deptID,
+            };
 
-                              final messenger = ScaffoldMessenger.of(context);
-                              final navigator = Navigator.of(context);
-                              setModalState(() => creating = true);
-                              final success = await AdminService.createAccount(accountData);
-                              if (!context.mounted) return;
-                              if (success) {
-                                navigator.pop();
-                                _loadAccounts();
-                                messenger.showResqSnackBar(
-                                  SnackBar(
-                                    content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
-                                    duration: const Duration(seconds: 6),
-                                  ),
-                                );
-                              } else {
-                                setModalState(() => creating = false);
-                                messenger.showResqSnackBar(
-                                  SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
-                                );
-                              }
-                            }
+            final messenger = ScaffoldMessenger.of(context);
+            final navigator = Navigator.of(context);
+            setModalState(() => creating = true);
+            final success = await AdminService.createAccount(accountData);
+            if (!context.mounted) return;
+            if (success) {
+              navigator.pop();
+              _loadAccounts();
+              messenger.showResqSnackBar(
+                SnackBar(
+                  content: Text(FirebaseService.lastAccountMessage ?? 'Account created successfully'),
+                  duration: const Duration(seconds: 6),
+                ),
+              );
+            } else {
+              setModalState(() => creating = false);
+              messenger.showResqSnackBar(
+                SnackBar(content: Text(FirebaseService.lastAccountMessage ?? 'Failed to create account')),
+              );
+            }
+          }
 
           // Enter = Create Account
           return SubmitOnEnter(
             onSubmit: creating ? null : create,
             child: Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Container(
-            width: 480,
-            decoration: BoxDecoration(
-              color: ts.cardBackground,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Container(
+                width: 480,
+                decoration: BoxDecoration(
+                  color: ts.cardBackground,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10)),
+                  ],
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.all(28),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- HEADER ---
-                  Row(
+                padding: const EdgeInsets.all(28),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.brand,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.add, color: Colors.white, size: 24),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Create Account",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: ts.textPrimary,
-                                height: 1.2,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              "Admin authority required",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: ts.textMuted,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(Icons.close, color: ts.textMuted, size: 20),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // --- FULL NAME ---
-                  _buildInputLabel("Full Name"),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: nameController,
-                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                    decoration: _buildInputDecoration("e.g. Juan dela Cruz"),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- EMAIL ADDRESS ---
-                  _buildInputLabel("Email Address"),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: emailController,
-                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: _buildInputDecoration("juan.delacruz@pnp.gov.ph"),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- CONTACT NUMBER ---
-                  _buildInputLabel("Contact Number"),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: contactNoController,
-                    keyboardType: TextInputType.phone,
-                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                    decoration: _buildInputDecoration("09XX XXX XXXX"),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- AGENCY & ROLE ROW ---
-                  Row(
-                    children: [
-                      // Agency Dropdown
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildInputLabel("Agency"),
-                            const SizedBox(height: 6),
-                            ResqSelect<String>(
-                              value: selectedAgency,
-                              hint: 'Agency',
-                              options: [
-                                for (final a in _departments.isEmpty
-                                    ? const ['PNP', 'BFP', 'CDRRMO']
-                                    : [for (final d in _departments) '${d['deptName'] ?? 'Unknown'}'])
-                                  ResqOption(a, a, icon: agencySymbol(normalizeAgency(a)).icon, color: agencySymbol(normalizeAgency(a)).color),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setModalState(() => selectedAgency = val);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Role Dropdown
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildInputLabel("Role"),
-                            const SizedBox(height: 6),
-                            ResqSelect<String>(
-                              value: selectedRole,
-                              hint: 'Role',
-                              options: [
-                                for (final r in const ['Admin', 'Superadmin'])
-                                  ResqOption(r, r, icon: switch (r) {
-                                    'Superadmin' => Icons.shield_rounded,
-                                    'Admin' => Icons.admin_panel_settings_rounded,
-                                    _ => Icons.badge_rounded,
-                                  }),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setModalState(() => selectedRole = val);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- PASSWORD ---
-                  Row(
-                    children: [
-                      Icon(Icons.lock_outline, size: 14, color: ts.textMuted),
-                      const SizedBox(width: 4),
-                      _buildInputLabel("Password"),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscurePassword,
-                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                    decoration: _buildInputDecoration(
-                      "Create a strong password",
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: ts.textMuted,
-                          size: 18,
-                        ),
-                        onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- CONFIRM PASSWORD ---
-                  _buildInputLabel("Confirm Password"),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: confirmPasswordController,
-                    obscureText: true,
-                    style: TextStyle(fontSize: 13, color: ts.textPrimary),
-                    decoration: _buildInputDecoration("Re-enter password"),
-                  ),
-                  const SizedBox(height: 16),
-
-                  const SizedBox(height: 12),
-
-                  // --- ACTIONS ---
-                  Row(
-                    children: [
-                      // Cancel Button
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: ts.borderColor),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              "Cancel",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: ts.textSecondary,
-                              ),
-                            ),
+                      // --- HEADER ---
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(12)),
+                            child: Icon(Icons.add, color: Colors.white, size: 24),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Create Account Button
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: ElevatedButton(
-                            onPressed: creating ? null : create,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.brand,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: creating
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: ResqLoader(color: Colors.white),
-                                  )
-                                : Text(
-                                    "Create Account",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Create Account",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: ts.textPrimary,
+                                    height: 1.2,
                                   ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  "Admin authority required",
+                                  style: TextStyle(fontSize: 12, color: ts.textMuted, fontWeight: FontWeight.w400),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(Icons.close, color: ts.textMuted, size: 20),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // --- FULL NAME ---
+                      _buildInputLabel("Full Name"),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: nameController,
+                        style: TextStyle(fontSize: 13, color: ts.textPrimary),
+                        decoration: _buildInputDecoration("e.g. Juan dela Cruz"),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- EMAIL ADDRESS ---
+                      _buildInputLabel("Email Address"),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: emailController,
+                        style: TextStyle(fontSize: 13, color: ts.textPrimary),
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: _buildInputDecoration("juan.delacruz@pnp.gov.ph"),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- CONTACT NUMBER ---
+                      _buildInputLabel("Contact Number"),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: contactNoController,
+                        keyboardType: TextInputType.phone,
+                        style: TextStyle(fontSize: 13, color: ts.textPrimary),
+                        decoration: _buildInputDecoration("09XX XXX XXXX"),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- AGENCY & ROLE ROW ---
+                      Row(
+                        children: [
+                          // Agency Dropdown
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildInputLabel("Agency"),
+                                const SizedBox(height: 6),
+                                ResqSelect<String>(
+                                  value: selectedAgency,
+                                  hint: 'Agency',
+                                  options: [
+                                    for (final a
+                                        in _departments.isEmpty
+                                            ? const ['PNP', 'BFP', 'CDRRMO']
+                                            : [for (final d in _departments) '${d['deptName'] ?? 'Unknown'}'])
+                                      ResqOption(
+                                        a,
+                                        a,
+                                        icon: agencySymbol(normalizeAgency(a)).icon,
+                                        color: agencySymbol(normalizeAgency(a)).color,
+                                      ),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) setModalState(() => selectedAgency = val);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Role Dropdown
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildInputLabel("Role"),
+                                const SizedBox(height: 6),
+                                ResqSelect<String>(
+                                  value: selectedRole,
+                                  hint: 'Role',
+                                  options: [
+                                    for (final r in const ['Admin', 'Superadmin'])
+                                      ResqOption(
+                                        r,
+                                        r,
+                                        icon: switch (r) {
+                                          'Superadmin' => Icons.shield_rounded,
+                                          'Admin' => Icons.admin_panel_settings_rounded,
+                                          _ => Icons.badge_rounded,
+                                        },
+                                      ),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) setModalState(() => selectedRole = val);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- PASSWORD ---
+                      Row(
+                        children: [
+                          Icon(Icons.lock_outline, size: 14, color: ts.textMuted),
+                          const SizedBox(width: 4),
+                          _buildInputLabel("Password"),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: obscurePassword,
+                        style: TextStyle(fontSize: 13, color: ts.textPrimary),
+                        decoration: _buildInputDecoration(
+                          "Create a strong password",
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              color: ts.textMuted,
+                              size: 18,
+                            ),
+                            onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+
+                      // --- CONFIRM PASSWORD ---
+                      _buildInputLabel("Confirm Password"),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: confirmPasswordController,
+                        obscureText: true,
+                        style: TextStyle(fontSize: 13, color: ts.textPrimary),
+                        decoration: _buildInputDecoration("Re-enter password"),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const SizedBox(height: 12),
+
+                      // --- ACTIONS ---
+                      Row(
+                        children: [
+                          // Cancel Button
+                          Expanded(
+                            child: SizedBox(
+                              height: 44,
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: ts.borderColor),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: Text(
+                                  "Cancel",
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ts.textSecondary),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Create Account Button
+                          Expanded(
+                            child: SizedBox(
+                              height: 44,
+                              child: ElevatedButton(
+                                onPressed: creating ? null : create,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brand,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: creating
+                                    ? const SizedBox(width: 18, height: 18, child: ResqLoader(color: Colors.white))
+                                    : Text(
+                                        "Create Account",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
           );
         },
       ),
@@ -1422,11 +1325,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final ts = ThemeService.instance;
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: ts.textSecondary,
-      ),
+      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ts.textSecondary),
     );
   }
 
@@ -1502,8 +1401,10 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(account['name'] ?? 'Unknown',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ts.textPrimary)),
+                        Text(
+                          account['name'] ?? 'Unknown',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ts.textPrimary),
+                        ),
                         const SizedBox(height: 2),
                         Text(account['email'] ?? 'N/A', style: TextStyle(fontSize: 12, color: ts.textSecondary)),
                       ],
@@ -1517,7 +1418,11 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     ),
                     child: Text(
                       account['status'] ?? 'Unknown',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _parseColor(account['statusColor'])),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: _parseColor(account['statusColor']),
+                      ),
                     ),
                   ),
                 ],
@@ -1540,7 +1445,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final phoneController = TextEditingController(text: account['phone']);
 
     // Responder is no longer offered; an old Responder account still shows its role so saving doesn't change it
-    final roles = ['Citizen', if (account['role'] == 'Responder' || account['role'] == 'Dispatcher') 'Responder', 'Admin', 'Superadmin'];
+    final roles = [
+      'Citizen',
+      if (account['role'] == 'Responder' || account['role'] == 'Dispatcher') 'Responder',
+      'Admin',
+      'Superadmin',
+    ];
     String selectedRole = account['role'] == 'Dispatcher' ? 'Responder' : (account['role'] ?? 'Citizen');
     if (!roles.contains(selectedRole)) selectedRole = 'Citizen';
     int? selectedDeptId = account['deptID'];
@@ -1559,9 +1469,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
           busy: busy,
           onPrimary: () async {
             if (nameController.text.trim().isEmpty || emailController.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showResqSnackBar(
-                const SnackBar(content: Text('Please fill all required fields')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showResqSnackBar(const SnackBar(content: Text('Please fill all required fields')));
               return;
             }
             setModalState(() => busy = true);
@@ -1609,11 +1519,15 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 hint: 'Role',
                 options: [
                   for (final r in roles)
-                    ResqOption(r, r, icon: switch (r) {
-                      'Superadmin' => Icons.shield_rounded,
-                      'Admin' => Icons.admin_panel_settings_rounded,
-                      _ => Icons.badge_rounded,
-                    }),
+                    ResqOption(
+                      r,
+                      r,
+                      icon: switch (r) {
+                        'Superadmin' => Icons.shield_rounded,
+                        'Admin' => Icons.admin_panel_settings_rounded,
+                        _ => Icons.badge_rounded,
+                      },
+                    ),
                 ],
                 onChanged: (value) {
                   if (value != null) setModalState(() => selectedRole = value);
@@ -1628,9 +1542,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 options: [
                   for (final dept in _departments)
                     if (dept['dept_ID'] is int)
-                      ResqOption(dept['dept_ID'] as int, '${dept['deptName'] ?? 'Unknown'}',
-                          icon: agencySymbol(normalizeAgency(dept['deptName'])).icon,
-                          color: agencySymbol(normalizeAgency(dept['deptName'])).color),
+                      ResqOption(
+                        dept['dept_ID'] as int,
+                        '${dept['deptName'] ?? 'Unknown'}',
+                        icon: agencySymbol(normalizeAgency(dept['deptName'])).icon,
+                        color: agencySymbol(normalizeAgency(dept['deptName'])).color,
+                      ),
                 ],
                 onChanged: (value) => setModalState(() => selectedDeptId = value),
               ),
@@ -1682,10 +1599,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
             final success = await AdminService.deleteAccount(account['id'] as int);
             navigator.pop();
             if (success) _loadAccounts();
-            messenger.showResqSnackBar(SnackBar(
-              content: Text(success ? 'Account deleted. You can recover it under Deleted Accounts.' : 'Failed to delete account'),
-              backgroundColor: success ? AppColors.success : AppColors.danger,
-            ));
+            messenger.showResqSnackBar(
+              SnackBar(
+                content: Text(
+                  success ? 'Account deleted. You can recover it under Deleted Accounts.' : 'Failed to delete account',
+                ),
+                backgroundColor: success ? AppColors.success : AppColors.danger,
+              ),
+            );
           }
 
           return ResqDialog(
@@ -1750,11 +1671,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
         builder: (context, setD) {
           if (list == null && error == null && !loading) {
             loading = true;
-            AdminData.deletedAccounts().then((l) {
-              if (context.mounted) setD(() => list = l);
-            }, onError: (Object e) {
-              if (context.mounted) setD(() => error = friendlyError(e));
-            });
+            AdminData.deletedAccounts().then(
+              (l) {
+                if (context.mounted) setD(() => list = l);
+              },
+              onError: (Object e) {
+                if (context.mounted) setD(() => error = friendlyError(e));
+              },
+            );
           }
           Future<void> recover(Map<String, dynamic> a) async {
             final messenger = ScaffoldMessenger.of(context);
@@ -1763,10 +1687,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
               await AdminData.recoverAccount(a['uid']);
               setD(() => list!.remove(a));
               _loadAccounts();
-              messenger.showResqSnackBar(SnackBar(
-                content: Text('${a['name']} was recovered and can log in again with their old password.'),
-                backgroundColor: AppColors.success,
-              ));
+              messenger.showResqSnackBar(
+                SnackBar(
+                  content: Text('${a['name']} was recovered and can log in again with their old password.'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
             } catch (e) {
               setD(() => busyIds.remove(a['uid']));
               messenger.showResqSnackBar(SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger));
@@ -1777,7 +1703,9 @@ class _ManagementScreenState extends State<ManagementScreen> {
           if (error != null) {
             body = Text(error!, style: const TextStyle(color: AppColors.danger));
           } else if (list == null) {
-            body = const Center(child: Padding(padding: EdgeInsets.all(16), child: ResqLoader()));
+            body = const Center(
+              child: Padding(padding: EdgeInsets.all(16), child: ResqLoader()),
+            );
           } else if (list!.isEmpty) {
             body = Text('No deleted accounts.', style: TextStyle(color: ts.textSecondary));
           } else {
@@ -1792,13 +1720,21 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   final busy = busyIds.contains(a['uid']);
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('${a['name']}', style: TextStyle(fontWeight: FontWeight.w700, color: ts.textPrimary)),
-                    subtitle: Text('${a['email']} · ${a['role']} · ${a['agency']}',
-                        style: TextStyle(fontSize: 12, color: ts.textSecondary)),
+                    title: Text(
+                      '${a['name']}',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: ts.textPrimary),
+                    ),
+                    subtitle: Text(
+                      '${a['email']} · ${a['role']} · ${a['agency']}',
+                      style: TextStyle(fontSize: 12, color: ts.textSecondary),
+                    ),
                     trailing: TextButton.icon(
                       onPressed: busy ? null : () => recover(a),
                       icon: const Icon(Icons.restore_rounded, size: 18, color: AppColors.brand),
-                      label: const Text('Recover', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w700)),
+                      label: const Text(
+                        'Recover',
+                        style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w700),
+                      ),
                     ),
                   );
                 },
@@ -1829,21 +1765,11 @@ class _ManagementScreenState extends State<ManagementScreen> {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: ts.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ts.textSecondary),
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                color: ts.textPrimary,
-              ),
-            ),
+            child: Text(value, style: TextStyle(fontSize: 12, color: ts.textPrimary)),
           ),
         ],
       ),

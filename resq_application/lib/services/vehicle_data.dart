@@ -32,7 +32,8 @@ class VehicleData {
 
   static Future<bool>? _provisioning;
 
-  /// Creates an "Unassigned" vehicle for every tracker that isn't linked to one yet.
+  /// Creates an "Unassigned" vehicle for every live tracker (reported in the last [_offlineAfter])
+  /// that isn't linked to one yet.
   /// Returns true if any were added. (The old server did this when a tracker first reported.)
   /// Several screens call this at once, so calls in this app share one run, and a
   /// claim in tracker_links/ stops other computers from creating a second vehicle.
@@ -50,6 +51,9 @@ class VehicleData {
     for (final entry in trackers.entries) {
       final uid = entry.key.toString();
       if (linked.contains(uid)) continue;
+      // Only trackers reporting right now: an old record (e.g. after its vehicle was deleted)
+      // must not come back as a new unit
+      if (entry.value is! Map || isTrackerOffline(entry.value as Map)) continue;
       // Only the first claimer creates the vehicle, even if two apps race
       if (!await Rtdb.createIfAbsent('tracker_links/$uid', {'claimedAt': {'.sv': 'timestamp'}})) continue;
       final id = await Rtdb.nextId('counters/vehicles');

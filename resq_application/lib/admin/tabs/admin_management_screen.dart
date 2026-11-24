@@ -1013,10 +1013,17 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     return 'VHE-${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.year}';
   }
 
+  /// The vehicle type that fits this admin's agency (PNP police, BFP fire, CDRRMO ambulance).
+  String get _defaultVehicleType => switch (widget.department.toUpperCase().trim()) {
+        'PNP' => 'Police Vehicle',
+        'CDRRMO' => 'Ambulance',
+        _ => 'Fire Truck',
+      };
+
   void _showAddVehicleModal({int? initialUnassignedId}) {
     final plateController = TextEditingController();
     final officerController = TextEditingController(text: 'Officer On Duty');
-    String selectedType = 'Fire Truck';
+    String selectedType = _defaultVehicleType;
     int? selectedUnassignedVehicleId = initialUnassignedId;
 
     if (selectedUnassignedVehicleId != null) {
@@ -1279,7 +1286,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     String selectedType = ['Fire Truck', 'Ambulance', 'Police Vehicle']
             .contains(v['vehicle_type']?.toString())
         ? v['vehicle_type'].toString()
-        : 'Fire Truck';
+        : _defaultVehicleType;
 
     // A unit on a report keeps its status until the report closes; otherwise Available or Offline (e.g. repairs)
     final onCall = const ['En Route', 'Arrived'].contains(vehicleStatusLabel(v['status']));

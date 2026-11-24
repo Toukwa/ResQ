@@ -497,7 +497,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
   }
 
   void _updateFilters() {
-    final Set<String> categoriesSet = {'emergency_request', 'dispatch_event', 'response_vehicle', 'admin'};
+    // Only kinds that actually appear in the log
+    final Set<String> categoriesSet = {};
     for (var e in _timelineEvents) {
       final cat = e['category'] as String?;
       if (cat != null && cat.isNotEmpty) {
@@ -508,11 +509,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     final categoriesList = categoriesSet.toList();
 
     _filters = [
-      {'label': 'All Events', 'count': _timelineEvents.length},
-      ...categoriesList.map((cat) {
-        final count = _timelineEvents.where((e) => e['category'] == cat).length;
-        return {'label': cat, 'count': count};
-      }),
+      {'label': 'All Events', 'key': null},
+      ...categoriesList.map((cat) => {'label': _categoryLabel(cat), 'key': cat}),
     ];
   }
 
@@ -524,7 +522,29 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
         widget.searchFilter.trim().isNotEmpty;
   }
 
-  List<Map<String, dynamic>> get _filteredEvents {
+  /// Plain names for the log kinds stored in the database.
+  static String _categoryLabel(String cat) => switch (cat) {
+        'emergency_request' => 'Emergency Reports',
+        'dispatch_event' => 'Dispatches',
+        'response_vehicle' => 'Vehicles',
+        'admin' => 'Admin Actions',
+        'user' => 'Logins & Accounts',
+        'user_settings' => 'Settings Changes',
+        'system' => 'System',
+        _ => cat
+            .split('_')
+            .where((w) => w.isNotEmpty)
+            .map((w) => w[0].toUpperCase() + w.substring(1))
+            .join(' '),
+      };
+
+  List<Map<String, dynamic>> get _filteredEvents => _filterEvents();
+
+  /// Live view: the latest of today's logs (same rules as the summary and category counts).
+  List<Map<String, dynamic>> get _liveEvents => _filteredEvents.take(_liveMaxItems).toList();
+
+  /// [byCategory] false gives the events every other filter allows, for the category counts.
+  List<Map<String, dynamic>> _filterEvents({bool byCategory = true}) {
     List<Map<String, dynamic>> events = List.from(_timelineEvents);
 
     final dept = widget.department.toUpperCase().trim();
@@ -560,8 +580,8 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
       }).toList();
     }
     
-    if (_selectedFilterIndex > 0 && _filters.isNotEmpty && _selectedFilterIndex < _filters.length) {
-      final selectedCategory = _filters[_selectedFilterIndex]['label'];
+    if (byCategory && _selectedFilterIndex > 0 && _filters.isNotEmpty && _selectedFilterIndex < _filters.length) {
+      final selectedCategory = _filters[_selectedFilterIndex]['key'];
       events = events.where((event) => event['category'] == selectedCategory).toList();
     }
     
@@ -595,7 +615,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
     final filtered = _filteredEvents;
     
     if (!_hasActiveFilters) {
-      return _displayedLiveEvents;
+      return _liveEvents;
     }
     
     final startIndex = (_currentPage - 1) * _itemsPerPage;
@@ -810,6 +830,12 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   children: List.generate(_filters.length, (index) {
                     final item = _filters[index];
                     final isSelected = _selectedFilterIndex == index;
+                    // Counts follow the date range, search and other filters, like the list does
+                    final base = _filterEvents(byCategory: false);
+                    final count =
+                        item['key'] == null ? base.length : base.where((e) => e['category'] == item['key']).length;
+                    // Hide empty kinds (keep "All Events" and the selected one)
+                    if (count == 0 && index != 0 && !isSelected) return const SizedBox.shrink();
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4.0),
@@ -846,7 +872,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
-                                  "${item['count']}",
+                                  "$count",
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -1090,7 +1116,7 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _hasActiveFilters ? "Filtered Search Stream" : "Live Stream (Recent 7)",
+                    _hasActiveFilters ? "Filtered Search Stream" : "Live Stream (Today, latest $_liveMaxItems)",
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: themedInk(AppColors.success)),
                   ),
                 ],
@@ -1126,11 +1152,10 @@ class _AdminLogsTabState extends State<AdminLogsTab> {
                   )
                 : !_hasActiveFilters
                     ? ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _displayedLiveEvents.length,
+                        itemCount: _liveEvents.length,
                         itemBuilder: (context, index) {
-                          final event = _displayedLiveEvents[index];
-                          final isLast = index == _displayedLiveEvents.length - 1;
+                          final event = _liveEvents[index];
+                          final isLast = index == _liveEvents.length - 1;
                           return _buildStaticLogTile(event, isLast: isLast);
                         },
                       )

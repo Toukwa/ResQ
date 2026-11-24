@@ -1,4 +1,5 @@
 import 'shared/resq_loader.dart';
+import 'shared/dot_wave_background.dart';
 import 'services/friendly_error.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
@@ -375,11 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 onPressed: isVerifying ? null : verify,
                 child: isVerifying
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: ResqLoader(color: Colors.white),
-                      )
+                    ? const SizedBox(width: 18, height: 18, child: ResqLoader(color: Colors.white))
                     : const Text('Verify & Login'),
               ),
             ],
@@ -447,10 +444,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (homeForRole(userRole) == RoleHome.admin && department == 'ALL') {
       await FirebaseService.signOut();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showResqSnackBar(const SnackBar(
-        content: Text('This admin account has no agency yet. Ask the EOC to set one.'),
-        backgroundColor: AppColors.danger,
-      ));
+      ScaffoldMessenger.of(context).showResqSnackBar(
+        const SnackBar(
+          content: Text('This admin account has no agency yet. Ask the EOC to set one.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
       return;
     }
 
@@ -502,9 +501,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showResqSnackBar(SnackBar(content: Text('Password reset link sent to $email.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showResqSnackBar(
-        SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showResqSnackBar(SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger));
     }
   }
 
@@ -539,7 +538,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     type: MaterialType.transparency,
                     child: Text(
                       "ResQ",
-                      style: TextStyle(fontFamily: 'Bangers', fontSize: 36, height: 1.0, letterSpacing: 1.5, color: resqOrange),
+                      style: TextStyle(
+                        fontFamily: 'Bangers',
+                        fontSize: 36,
+                        height: 1.0,
+                        letterSpacing: 1.5,
+                        color: resqOrange,
+                      ),
                     ),
                   ),
                 ),
@@ -593,23 +598,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 30),
-          ElevatedButton(
+          _LiftButton(
             onPressed: _loggingIn ? null : _handleLogin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: brandOrange,
-              disabledBackgroundColor: brandOrange.withValues(alpha: 0.6),
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
             child: _loggingIn
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: ResqLoader(color: Colors.white),
-                  )
+                ? const SizedBox(width: 20, height: 20, child: ResqLoader(color: Colors.white))
                 : const Text(
                     'Log In',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
           ),
           // Phones only: sign-up is for citizens; the desktop app is for staff
@@ -629,7 +624,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         GoogleLogo(size: 18),
                         SizedBox(width: 10),
-                        Text('Continue with Google', style: TextStyle(color: brandOrange, fontWeight: FontWeight.bold)),
+                        Text(
+                          'Continue with Google',
+                          style: TextStyle(color: brandOrange, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
             ),
@@ -725,20 +723,54 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: isDesktop
-              ? Card(
-                  elevation: 8,
-                  color: cardContainerBg,
-                  surfaceTintColor: Colors.transparent,
-                  shadowColor: ts.isDark ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  child: loginForm,
-                )
-              : loginForm,
-        ),
+      body: Stack(
+        children: [
+          // Same dots and orange waves as the download page
+          const Positioned.fill(child: DotWaveBackground()),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 450),
+              child: isDesktop
+                  ? Container(
+                      // orange-to-light-orange border, like the download page cards
+                      padding: const EdgeInsets.all(1.5),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.brand, Color(0xFFFFB27A)],
+                        ),
+                        boxShadow: ts.isDark
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                                BoxShadow(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.07),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(color: cardContainerBg, borderRadius: BorderRadius.circular(22.5)),
+                        child: loginForm,
+                      ),
+                    )
+                  : loginForm,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -758,7 +790,7 @@ class _LoginScreenState extends State<LoginScreen> {
       prefixIcon: Icon(icon, color: ts.isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8), size: 20),
       suffixIcon: isPassword
           ? IconButton(
-            tooltip: 'Show or hide password',
+              tooltip: 'Show or hide password',
               icon: Icon(
                 _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                 size: 18,
@@ -776,6 +808,75 @@ class _LoginScreenState extends State<LoginScreen> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: brand),
+      ),
+    );
+  }
+}
+
+/// Log In button that behaves like the download page button: lifts and brightens on hover,
+/// gets a stronger orange glow, and presses in slightly when clicked.
+class _LiftButton extends StatefulWidget {
+  const _LiftButton({required this.onPressed, required this.child});
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  State<_LiftButton> createState() => _LiftButtonState();
+}
+
+class _LiftButtonState extends State<_LiftButton> {
+  bool _hover = false, _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onPressed != null;
+    final hover = enabled && _hover && !_down;
+    final dur = Duration(milliseconds: _down ? 120 : 350);
+    const curve = Cubic(.22, 1, .36, 1);
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = _down = false),
+      child: GestureDetector(
+        onTapDown: enabled ? (_) => setState(() => _down = true) : null,
+        onTapUp: enabled ? (_) => setState(() => _down = false) : null,
+        onTapCancel: () => setState(() => _down = false),
+        onTap: widget.onPressed,
+        child: AnimatedScale(
+          scale: _down ? 0.985 : 1,
+          duration: dur,
+          curve: curve,
+          child: AnimatedContainer(
+            duration: dur,
+            curve: curve,
+            transform: Matrix4.translationValues(0, hover ? -2 : 0, 0),
+            constraints: const BoxConstraints(minHeight: 50),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: !enabled
+                  ? AppColors.brand.withValues(alpha: 0.6)
+                  : hover
+                  ? const Color(0xFFFF7D1F)
+                  : AppColors.brand,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                hover
+                    ? BoxShadow(
+                        color: AppColors.brand.withValues(alpha: 0.16),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    : BoxShadow(
+                        color: AppColors.brand.withValues(alpha: 0.10),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+              ],
+            ),
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }
