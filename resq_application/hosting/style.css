@@ -27,6 +27,9 @@
   --text-2: #64748b;         /* textSecondary */
   --muted: #94a3b8;          /* textMuted */
   --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
+  --dot: rgba(15, 23, 42, .14);
+  --glass: rgba(255, 255, 255, .25);
+  --glass-inner: rgba(248, 250, 252, .25);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -39,6 +42,9 @@
     --text-2: #9ca3af;
     --muted: #6b7280;
     --shadow: 0 8px 32px rgba(0, 0, 0, .35);
+    --dot: rgba(255, 255, 255, .10);
+    --glass: rgba(31, 41, 55, .2);
+    --glass-inner: rgba(17, 24, 39, .2);
   }
 }
 
@@ -54,8 +60,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Square polka-dot background with orange waves (bg.js) */
+#bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+
 /* Siren + name, like the app's start screen */
-.hero { text-align: center; margin-bottom: 36px; animation: rise .5s ease both; }
+.hero { text-align: center; margin-bottom: 36px; animation: rise .8s cubic-bezier(.22, 1, .36, 1) both; }
 .hero { width: 100%; max-width: 560px; }
 .brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 auto 20px; }
 .brand img { width: 88px; height: 88px; display: block; }
@@ -83,14 +92,46 @@ h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 800; letter-spacing: -.5px;
 
 .cards { display: grid; gap: 16px; width: 100%; max-width: 560px; }
 .card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  /* see-through frosted glass */
+  position: relative;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(4px) saturate(140%);
+  backdrop-filter: blur(4px) saturate(140%);
   border-radius: 20px;
   padding: 24px;
   box-shadow: var(--shadow);
-  animation: rise .55s .08s ease both;
+  animation: rise .8s .1s cubic-bezier(.22, 1, .36, 1) backwards;   /* backwards: hover can move it afterwards */
+  transition: transform .45s cubic-bezier(.22, 1, .36, 1), box-shadow .45s cubic-bezier(.22, 1, .36, 1), background-color .45s cubic-bezier(.22, 1, .36, 1);
 }
-.card:nth-child(2) { animation-delay: .16s; }
+.card:nth-child(2) { animation-delay: .2s; }
+.card:hover {
+  transform: translate3d(0, -4px, 0);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .06), 0 18px 40px rgba(255, 107, 0, .14);
+}
+.card::before { transition: opacity .45s cubic-bezier(.22, 1, .36, 1); opacity: .85; }
+.card:hover::before { opacity: 1; }
+.platform-icon { transition: transform .45s cubic-bezier(.22, 1, .36, 1); }
+.card:hover .platform-icon { transform: scale(1.06); }
+/* orange-to-light-orange gradient stroke, drawn as a ring so the glass stays see-through */
+.card::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--brand), #ffb27a);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.card { display: flex; flex-direction: column; }
+.card .btn-download { margin-top: auto; }
+
+/* Wider screens: the two cards side by side */
+@media (min-width: 900px) {
+  .cards { grid-template-columns: 1fr 1fr; max-width: 1040px; gap: 24px; }
+  .hero { max-width: 640px; }
+}
 
 .platform-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
 .platform-icon {
@@ -114,7 +155,7 @@ h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 800; letter-spacing: -.5px;
 }
 
 .requirements {
-  background: var(--subtle);
+  background: var(--glass-inner);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px 16px;
@@ -136,10 +177,13 @@ h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 800; letter-spacing: -.5px;
   font: 700 15px 'Inter', sans-serif;
   border-radius: 14px;
   text-decoration: none;
-  transition: filter .15s, transform .15s;
+  box-shadow: 0 2px 6px rgba(255, 107, 0, .18);
+  transition: background-color .35s cubic-bezier(.22, 1, .36, 1), transform .35s cubic-bezier(.22, 1, .36, 1), box-shadow .35s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+  backface-visibility: hidden;
 }
-.btn-download:hover { filter: brightness(1.06); transform: translateY(-1px); }
-.btn-download:active { transform: none; }
+.btn-download:hover { background-color: #ff7d1f; transform: translate3d(0, -2px, 0); box-shadow: 0 10px 22px rgba(255, 107, 0, .30); }
+.btn-download:active { transform: translate3d(0, 0, 0) scale(.985); box-shadow: 0 2px 6px rgba(255, 107, 0, .18); transition-duration: .12s; }
 .btn-download:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; }
 .btn-download svg { width: 20px; height: 20px; fill: #fff; flex-shrink: 0; }
 
@@ -149,8 +193,12 @@ h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 800; letter-spacing: -.5px;
 
 footer { margin-top: 40px; font-size: 12.5px; color: var(--muted); text-align: center; }
 
-@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .hero, .card { animation: none; } }
+@keyframes rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .hero, .card { animation: none; }
+  .card, .card::before, .platform-icon, .btn-download { transition: none; }
+  .card:hover, .card:hover .platform-icon { transform: none; }
+}
 @media (max-width: 420px) {
   .card { padding: 20px 16px; }
   .platform-row { flex-wrap: wrap; }
